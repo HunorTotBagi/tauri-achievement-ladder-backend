@@ -10,13 +10,16 @@ services:
       - "5001:5001"
 
   achievementladder.database:
-    image: postgres:latest
+    image: postgres:15
     container_name: achi-database
     environment:
       - POSTGRES_DB=achievementladder
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - ./.containers/postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+volumes:
+  postgres-data:
