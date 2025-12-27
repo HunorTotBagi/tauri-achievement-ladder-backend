@@ -6,9 +6,9 @@ namespace AchievementLadder.Data
     {
         public static IEnumerable<Player> Sample()
         {
-            return
-            [
-                new Player { 
+            return new List<Player>
+            {
+                new Player {
                     Name = "Xyhop",
                     Race = 8,
                     Gender = 1,
@@ -17,7 +17,7 @@ namespace AchievementLadder.Data
                     Guild = "beloved",
                     AchievementPoints = 18580,
                     HonorableKills = 57680,
-                    LastUpdated = DateTime.Now },
+                    LastUpdated = DateTime.UtcNow },
 
                 new Player {
                     Name = "Langston",
@@ -28,8 +28,8 @@ namespace AchievementLadder.Data
                     Guild = "Искатели легенд",
                     AchievementPoints = 18760,
                     HonorableKills = 48010,
-                    LastUpdated = DateTime.Now },
-            ];
+                    LastUpdated = DateTime.UtcNow },
+            };
         }
     }
 }

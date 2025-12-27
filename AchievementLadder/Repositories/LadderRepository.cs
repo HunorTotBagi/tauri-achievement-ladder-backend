@@ -1,5 +1,6 @@
 using AchievementLadder.Data;
 using AchievementLadder.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AchievementLadder.Repositories
 {
@@ -15,6 +16,32 @@ namespace AchievementLadder.Repositories
         public async Task AddSnapshotAsync(IEnumerable<Player> players)
         {
             await _db.Players.AddRangeAsync(players);
+            await _db.SaveChangesAsync();
+        }
+
+        public async Task UpsertPlayersAsync(IEnumerable<Player> players)
+        {
+            foreach (var p in players)
+            {
+                var existing = await _db.Players
+                    .FirstOrDefaultAsync(x => x.Name == p.Name && x.Realm == p.Realm);
+
+                if (existing == null)
+                {
+                    await _db.Players.AddAsync(p);
+                }
+                else
+                {
+                    existing.AchievementPoints = p.AchievementPoints;
+                    existing.Guild = p.Guild;
+                    existing.HonorableKills = p.HonorableKills;
+                    existing.LastUpdated = p.LastUpdated;
+                    existing.Race = p.Race;
+                    existing.Gender = p.Gender;
+                    existing.Class = p.Class;
+                }
+            }
+
             await _db.SaveChangesAsync();
         }
     }
