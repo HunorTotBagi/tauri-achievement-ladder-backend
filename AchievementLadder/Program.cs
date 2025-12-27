@@ -22,6 +22,17 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+// Seed database if empty
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AchievementContext>();
+    if (!db.Players.Any())
+    {
+        db.Players.AddRange(SeedData.Sample());
+        db.SaveChanges();
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
