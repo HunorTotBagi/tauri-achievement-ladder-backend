@@ -1,0 +1,6 @@
+@AchievementLadder_HostAddress = http://localhost:5290
+
+GET {{AchievementLadder_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
