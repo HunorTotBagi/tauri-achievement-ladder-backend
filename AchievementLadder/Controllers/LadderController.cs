@@ -18,7 +18,6 @@ namespace AchievementLadder.Controllers
         [HttpPost("snapshot")]
         public async Task<IActionResult> Snapshot([FromBody] Dictionary<string, int> payload)
         {
-            // payload is expected as { "Name-Realm": points }
             var mapped = payload.Select(kvp =>
             {
                 var parts = kvp.Key.Split('-', 2);
