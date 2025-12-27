@@ -7,15 +7,13 @@ namespace AchievementLadder.Controllers
     [Route("api/[controller]")]
     public class LadderController(ILadderService ladderService) : ControllerBase
     {
+
         [HttpPost("import/evermoon")]
         public async Task<IActionResult> ImportEvermoon()
         {
-            var baseDir = AppContext.BaseDirectory;
-            var filePath = Path.Combine(baseDir, "..", "..", "..", "Data", "CharacterCollection", "evermoon-achi.txt");
-
             try
             {
-                await ladderService.ImportCharactersFromFileAsync(filePath, "[EN] Evermoon", "Evermoon");
+                await ladderService.ImportCharactersFromFileAsync();
                 return Accepted();
             }
             catch (FileNotFoundException)
