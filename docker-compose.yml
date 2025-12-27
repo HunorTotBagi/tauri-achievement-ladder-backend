@@ -8,6 +8,11 @@ services:
     ports:
       - "5000:5000"
       - "5001:5001"
+    depends_on:
+      - achievementladder.database
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Database=Host=achievementladder.database;Port=5432;Database=achievement;Username=postgres;Password=postgres
 
   achievementladder.database:
     image: postgres:15
