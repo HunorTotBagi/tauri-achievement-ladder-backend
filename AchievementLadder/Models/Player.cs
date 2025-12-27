@@ -5,6 +5,7 @@ namespace AchievementLadder.Models
         public Guid Id { get; set; }
         public string Name { get; set; }
         public int Race { get; set; }
+        public int Gender { get; set; }
         public int Class { get; set; }
         public string Realm { get; set; }
         public string Guild { get; set; }

@@ -14,7 +14,16 @@ namespace AchievementLadder.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Player>()
-                .HasIndex(p => new { p.Name, p.Realm, p.SnapshotDate });
+                .HasIndex(p => new { 
+                    p.Name,
+                    p.Race,
+                    p.Gender,
+                    p.Class,
+                    p.Realm,
+                    p.Guild,
+                    p.AchievementPoints,
+                    p.HonorableKills,
+                    p.LastUpdated});
         }
     }
 }

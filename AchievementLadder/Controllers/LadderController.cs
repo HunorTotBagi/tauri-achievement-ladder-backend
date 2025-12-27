@@ -15,13 +15,6 @@ namespace AchievementLadder.Controllers
             _service = service;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<List<Player>>> Get([FromQuery] int limit = 100)
-        {
-            var ladder = await _service.GetLadderAsync(limit);
-            return Ok(ladder);
-        }
-
         [HttpPost("snapshot")]
         public async Task<IActionResult> Snapshot([FromBody] Dictionary<string, int> payload)
         {

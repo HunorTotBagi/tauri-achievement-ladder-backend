@@ -1,4 +1,4 @@
-using AchievementLadder.Models;
+﻿using AchievementLadder.Models;
 
 namespace AchievementLadder.Data
 {
@@ -6,11 +6,30 @@ namespace AchievementLadder.Data
     {
         public static IEnumerable<Player> Sample()
         {
-            return new[]
-            {
-                new Player { Name = "Test1", Realm = "Evermoon", Points = 100, SnapshotDate = DateTime.Today },
-                new Player { Name = "Test2", Realm = "Tauri", Points = 80, SnapshotDate = DateTime.Today }
-            };
+            return
+            [
+                new Player { 
+                    Name = "Xyhop",
+                    Race = 8,
+                    Gender = 1,
+                    Class = 5,
+                    Realm = "Evermoon",
+                    Guild = "beloved",
+                    AchievementPoints = 18580,
+                    HonorableKills = 57680,
+                    LastUpdated = DateTime.Now },
+
+                new Player {
+                    Name = "Langston",
+                    Race = 2,
+                    Gender = 1,
+                    Class = 3,
+                    Realm = "Evermoon",
+                    Guild = "Искатели легенд",
+                    AchievementPoints = 18760,
+                    HonorableKills = 48010,
+                    LastUpdated = DateTime.Now },
+            ];
         }
     }
 }
