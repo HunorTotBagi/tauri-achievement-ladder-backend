@@ -110,6 +110,7 @@ namespace AchievementLadder.Services
                     int gender = 0;
                     int @class = 0;
                     int playerHonorKills = 0;
+                    string faction = string.Empty;
                     string guildName = string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(responseString))
@@ -133,6 +134,9 @@ namespace AchievementLadder.Services
                             if (resp.TryGetProperty("playerHonorKills", out var playerHonorKillsProp) && ptsProp.ValueKind == JsonValueKind.Number)
                                 playerHonorKills = playerHonorKillsProp.GetInt32();
 
+                            if (resp.TryGetProperty("faction_string_class", out var factionProp) && factionProp.ValueKind == JsonValueKind.String)
+                                faction = factionProp.GetString() ?? string.Empty;
+
                             if (resp.TryGetProperty("guildName", out var guildNameProp) && guildNameProp.ValueKind == JsonValueKind.String)
                                 guildName = guildNameProp.GetString() ?? string.Empty;
                         }
@@ -148,6 +152,7 @@ namespace AchievementLadder.Services
                         Guild = guildName,
                         AchievementPoints = pts,
                         HonorableKills = playerHonorKills,
+                        Faction = faction,
                         LastUpdated = today
                     });
                 }
@@ -187,7 +192,8 @@ namespace AchievementLadder.Services
                 p.Realm,
                 p.Guild ?? string.Empty,
                 p.AchievementPoints,
-                p.HonorableKills
+                p.HonorableKills,
+                p.Faction
             )).ToList();
         }
     }

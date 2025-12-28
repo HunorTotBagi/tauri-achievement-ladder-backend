@@ -11,6 +11,7 @@ namespace AchievementLadder.Models
         public string Guild { get; set; }
         public int AchievementPoints { get; set; }
         public int HonorableKills { get; set; }
+        public string Faction { get; set; }
         public DateTime LastUpdated { get; set; }
     }
 }

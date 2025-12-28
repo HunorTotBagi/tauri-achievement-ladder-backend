@@ -39,6 +39,7 @@ namespace AchievementLadder.Repositories
                     existing.Race = p.Race;
                     existing.Gender = p.Gender;
                     existing.Class = p.Class;
+                    existing.Faction = p.Faction;
                 }
             }
 
