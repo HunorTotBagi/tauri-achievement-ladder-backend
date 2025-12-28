@@ -2,6 +2,8 @@
 using System.Text.Json;
 using AchievementLadder.Models;
 using AchievementLadder.Repositories;
+using AchievementLadder.Helpers;
+using AchievementLadder.Dtos;
 
 namespace AchievementLadder.Services;
 
@@ -25,52 +27,17 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
 
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
 
-        void LoadCharacters(string fileName, string apiRealm, string displayRealm)
-        {
-            var filePath = Path.Combine(
-                projectRoot,
-                "Data",
-                "CharacterCollection",
-                fileName);
+        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-achi.txt", "[EN] Evermoon", "Evermoon", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-hk.txt", "[EN] Evermoon", "Evermoon", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-playTime.txt", "[EN] Evermoon", "Evermoon", allCharacters);
 
-            if (!File.Exists(filePath))
-                return;
+        CharacterHelpers.LoadCharacters(projectRoot, "tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
 
-            var content = File.ReadAllText(filePath);
-            using var doc = JsonDocument.Parse(content);
-
-            var array = doc.RootElement
-                .EnumerateObject()
-                .First()
-                .Value;
-
-            foreach (var item in array.EnumerateArray())
-            {
-                if (item.TryGetProperty("name", out var nameProp))
-                {
-                    var name = nameProp.GetString();
-                    if (!string.IsNullOrWhiteSpace(name))
-                    {
-                        allCharacters.Add((name, apiRealm, displayRealm));
-                    }
-                }
-            }
-        }
-
-        // Evermoon
-        LoadCharacters("evermoon-achi.txt", "[EN] Evermoon", "Evermoon");
-        LoadCharacters("evermoon-hk.txt", "[EN] Evermoon", "Evermoon");
-        LoadCharacters("evermoon-playTime.txt", "[EN] Evermoon", "Evermoon");
-
-        // Tauri
-        LoadCharacters("tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri");
-        LoadCharacters("tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri");
-        LoadCharacters("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri");
-
-        // WoD
-        LoadCharacters("wod-achi.txt", "[HU] Warriors of Darkness", "WoD");
-        LoadCharacters("wod-hk.txt", "[HU] Warriors of Darkness", "WoD");
-        LoadCharacters("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD");
+        CharacterHelpers.LoadCharacters(projectRoot, "wod-achi.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
+        CharacterHelpers.LoadCharacters(projectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
 
         var targetGuilds = new[]
         {
@@ -107,17 +74,17 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         new { GuildName = "Endless",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" }
         };
 
-        foreach (var g in targetGuilds)
-        {
-            await LoadGuildMembersLevel100Async(
-                g.GuildName,
-                g.RealmApi,
-                g.RealmDisplay,
-                apiUrl,
-                secret,
-                allCharacters,
-                client);
-        }
+            foreach (var g in targetGuilds)
+            {
+                await CharacterHelpers.LoadGuildMembersLevel100Async(
+                    g.GuildName,
+                    g.RealmApi,
+                    g.RealmDisplay,
+                    apiUrl,
+                    secret,
+                    allCharacters,
+                    client);
+            }
 
         var distinctCharacters = allCharacters
             .Distinct()
@@ -237,61 +204,4 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             p.Faction ?? string.Empty
         )).ToList();
     }
-
-    private static async Task LoadGuildMembersLevel100Async(
-        string guildName,
-        string apiRealm,
-        string displayRealm,
-        string apiUrl,
-        string secret,
-        List<(string, string, string)> output,
-        HttpClient client)
-    {
-        var body = new
-        {
-            secret,
-            url = "guild-info",
-            @params = new { r = apiRealm, gn = guildName }
-        };
-
-        var jsonBody = JsonSerializer.Serialize(body);
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        try
-        {
-            var response = await client.PostAsync(apiUrl, content);
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            var guildInfo = JsonSerializer.Deserialize<GuildInfoResponse>(responseString);
-            if (guildInfo?.response?.guildList == null)
-                return;
-
-            foreach (var member in guildInfo.response.guildList.Values)
-            {
-                if (member.level == 100)
-                    output.Add((member.name, apiRealm, displayRealm));
-            }
-        }
-        catch { }
-    }
-}
-
-public class GuildInfoResponse
-{
-    public bool success { get; set; }
-    public int errorcode { get; set; }
-    public string errorstring { get; set; }
-    public GuildInfoInner response { get; set; }
-}
-
-public class GuildInfoInner
-{
-    public Dictionary<string, GuildMember> guildList { get; set; }
-}
-
-public class GuildMember
-{
-    public string name { get; set; }
-    public int level { get; set; }
-    public string realm { get; set; }
 }

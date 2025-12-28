@@ -1,4 +1,4 @@
-﻿using AchievementLadder.Models;
+﻿using AchievementLadder.Dtos;
 
 namespace AchievementLadder.Services;
 
