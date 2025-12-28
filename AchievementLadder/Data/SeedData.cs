@@ -17,6 +17,7 @@ namespace AchievementLadder.Data
                     Guild = "beloved",
                     AchievementPoints = 10,
                     HonorableKills = 20,
+                    Faction = "Horde",
                     LastUpdated = DateTime.UtcNow },
 
                 new Player {
@@ -28,6 +29,7 @@ namespace AchievementLadder.Data
                     Guild = "Искатели легенд",
                     AchievementPoints = 20,
                     HonorableKills = 30,
+                    Faction = "Alliance",
                     LastUpdated = DateTime.UtcNow },
             };
         }

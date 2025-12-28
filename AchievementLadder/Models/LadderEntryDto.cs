@@ -8,5 +8,6 @@ public sealed record LadderEntryDto(
     string Realm,
     string Guild,
     int AchievementPoints,
-    int HonorableKills
+    int HonorableKills,
+    string Faction
 );
