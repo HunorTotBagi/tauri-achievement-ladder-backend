@@ -3,13 +3,12 @@ using AchievementLadder.Repositories;
 using AchievementLadder.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-// Swagger (Swashbuckle)
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -19,8 +18,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<AchievementContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
 
-builder.Services.AddScoped<ILadderRepository, LadderRepository>();
-builder.Services.AddScoped<LadderService>();
+builder.Services.AddScoped<IPlayerService, PlayerService>();
+builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 
 builder.Services.AddCors(options =>
 {
@@ -41,7 +40,6 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-// Seed database if empty
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AchievementContext>();
@@ -56,7 +54,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 
-    // Enable Swagger UI in Development
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {

@@ -1,4 +1,4 @@
-﻿namespace AchievementLadder.Models;
+﻿namespace AchievementLadder.Dtos;
 
 public sealed record LadderEntryDto(
     string Name,

@@ -5,33 +5,26 @@ namespace AchievementLadder.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class LadderController : ControllerBase
+    public class LadderController(IPlayerService playerService) : ControllerBase
     {
-        private readonly LadderService _ladderService;
-
-        public LadderController(LadderService ladderService)
+        [HttpPost("syncData")]
+        public async Task<IActionResult> SyncData(CancellationToken cancellationToken = default)
         {
-            _ladderService = ladderService;
-        }
-
-        [HttpPost("import/evermoon")]
-        public async Task<IActionResult> ImportEvermoon()
-        {
-            await _ladderService.ImportCharactersFromFileAsync();
+            await playerService.SyncData(cancellationToken);
             return Accepted();
         }
 
         [HttpGet("sorted/achievements")]
-        public async Task<IActionResult> GetLadder([FromQuery] string? realm, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
+        public async Task<IActionResult> GetSortedByAchievements([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 500, CancellationToken cancellationToken = default)
         {
-            var result = await _ladderService.GetLadderAsync(realm, page, pageSize, ct);
+            var result = await playerService.GetSortedByAchievements(pageNumber, pageSize, cancellationToken);
             return Ok(result);
         }
 
         [HttpGet("sorted/honorableKills")]
-        public async Task<IActionResult> GetByHonorableKills([FromQuery] string? realm, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
+        public async Task<IActionResult> GetSortedByHonorableKills([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 500, CancellationToken cancellationToken = default)
         {
-            var result = await _ladderService.GetLadderByHonorableKillsAsync(realm, page, pageSize, ct);
+            var result = await playerService.GetSortedByHonorableKills(pageNumber, pageSize, cancellationToken);
             return Ok(result);
         }
     }
