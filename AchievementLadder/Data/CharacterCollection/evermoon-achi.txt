@@ -331,7 +331,7 @@
             "points": "17660"
         },
         {
-            "name": "Legendaryrog",
+            "name": "Dave",
             "guildName": "Ace Of Spades",
             "faction": "0",
             "race": "1",
