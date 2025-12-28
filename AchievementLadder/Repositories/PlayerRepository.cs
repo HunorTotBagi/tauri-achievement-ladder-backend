@@ -13,12 +13,6 @@ namespace AchievementLadder.Repositories
             _db = db;
         }
 
-        public async Task AddSnapshotAsync(IEnumerable<Player> players)
-        {
-            await _db.Players.AddRangeAsync(players);
-            await _db.SaveChangesAsync();
-        }
-
         public async Task UpsertPlayersAsync(IEnumerable<Player> players)
         {
             foreach (var p in players)
