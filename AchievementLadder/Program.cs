@@ -18,8 +18,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<AchievementContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
 
-builder.Services.AddScoped<ILadderRepository, LadderRepository>();
-builder.Services.AddScoped<LadderService>();
+builder.Services.AddScoped<IPlayerService, PlayerService>();
+builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 
 builder.Services.AddCors(options =>
 {
