@@ -105,8 +105,12 @@ namespace AchievementLadder.Services
                     var response = await client.PostAsync(apiUrl, content);
                     var responseString = await response.Content.ReadAsStringAsync();
 
+                    int race = 0;
                     int pts = 0;
-                    string guild = string.Empty;
+                    int gender = 0;
+                    int @class = 0;
+                    int playerHonorKills = 0;
+                    string guildName = string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(responseString))
                     {
@@ -114,24 +118,36 @@ namespace AchievementLadder.Services
                         var root = doc.RootElement;
                         if (root.TryGetProperty("response", out var resp) && resp.ValueKind == JsonValueKind.Object)
                         {
+                            if (resp.TryGetProperty("race", out var raceProp) && raceProp.ValueKind == JsonValueKind.Number)
+                                race = raceProp.GetInt32();
+
+                            if (resp.TryGetProperty("gender", out var genderProp) && genderProp.ValueKind == JsonValueKind.Number)
+                                gender = genderProp.GetInt32();
+
+                            if (resp.TryGetProperty("class", out var classProp) && classProp.ValueKind == JsonValueKind.Number)
+                                @class = classProp.GetInt32();
+
                             if (resp.TryGetProperty("pts", out var ptsProp) && ptsProp.ValueKind == JsonValueKind.Number)
                                 pts = ptsProp.GetInt32();
 
-                            if (resp.TryGetProperty("guild", out var guildProp) && guildProp.ValueKind == JsonValueKind.String)
-                                guild = guildProp.GetString() ?? string.Empty;
+                            if (resp.TryGetProperty("playerHonorKills", out var playerHonorKillsProp) && ptsProp.ValueKind == JsonValueKind.Number)
+                                playerHonorKills = playerHonorKillsProp.GetInt32();
+
+                            if (resp.TryGetProperty("guildName", out var guildNameProp) && guildNameProp.ValueKind == JsonValueKind.String)
+                                guildName = guildNameProp.GetString() ?? string.Empty;
                         }
                     }
 
                     players.Add(new Player
                     {
                         Name = name,
+                        Race = race,
+                        Gender = gender,
+                        Class = @class,
                         Realm = displayRealm,
+                        Guild = guildName,
                         AchievementPoints = pts,
-                        Guild = guild ?? string.Empty,
-                        Race = 0,
-                        Gender = 0,
-                        Class = 0,
-                        HonorableKills = 0,
+                        HonorableKills = playerHonorKills,
                         LastUpdated = today
                     });
                 }
@@ -165,10 +181,13 @@ namespace AchievementLadder.Services
 
             return players.Select(p => new LadderEntryDto(
                 p.Name,
+                p.Race,
+                p.Gender,
+                p.Class,
                 p.Realm,
-                p.AchievementPoints,
                 p.Guild ?? string.Empty,
-                p.LastUpdated
+                p.AchievementPoints,
+                p.HonorableKills
             )).ToList();
         }
     }

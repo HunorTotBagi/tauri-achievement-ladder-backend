@@ -9,25 +9,25 @@ namespace AchievementLadder.Data
             return new List<Player>
             {
                 new Player {
-                    Name = "Xyhop",
+                    Name = "RandomPlayer1",
                     Race = 8,
                     Gender = 1,
                     Class = 5,
                     Realm = "Evermoon",
                     Guild = "beloved",
-                    AchievementPoints = 18580,
-                    HonorableKills = 57680,
+                    AchievementPoints = 10,
+                    HonorableKills = 20,
                     LastUpdated = DateTime.UtcNow },
 
                 new Player {
-                    Name = "Langston",
+                    Name = "RandomPlayer2",
                     Race = 2,
                     Gender = 1,
                     Class = 3,
                     Realm = "Evermoon",
                     Guild = "Искатели легенд",
-                    AchievementPoints = 18760,
-                    HonorableKills = 48010,
+                    AchievementPoints = 20,
+                    HonorableKills = 30,
                     LastUpdated = DateTime.UtcNow },
             };
         }
