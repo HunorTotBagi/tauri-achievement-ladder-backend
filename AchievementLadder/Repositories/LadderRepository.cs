@@ -13,6 +13,26 @@ namespace AchievementLadder.Repositories
             _db = db;
         }
 
+        public async Task<IReadOnlyList<Player>> GetPlayersSortedByHonorableKillsAsync(
+            string? realm,
+            int take,
+            int skip,
+            CancellationToken ct = default)
+        {
+            var query = _db.Players.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(realm))
+                query = query.Where(p => p.Realm == realm);
+
+            return await query
+                .OrderByDescending(p => p.HonorableKills)
+                .ThenByDescending(p => p.AchievementPoints)
+                .ThenBy(p => p.Name)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(ct);
+        }
+
         public async Task AddSnapshotAsync(IEnumerable<Player> players)
         {
             await _db.Players.AddRangeAsync(players);
