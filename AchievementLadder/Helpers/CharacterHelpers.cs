@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using AchievementLadder.Dtos;
 
 namespace AchievementLadder.Helpers;
 
