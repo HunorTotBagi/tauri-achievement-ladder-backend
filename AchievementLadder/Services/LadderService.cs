@@ -66,16 +66,16 @@ namespace AchievementLadder.Services
             }
 
             LoadCharacters("evermoon-achi.txt", "[EN] Evermoon", "Evermoon");
-            //LoadCharacters("evermoon-hk.txt", "[EN] Evermoon", "Evermoon");
-            //LoadCharacters("evermoon-playTime.txt", "[EN] Evermoon", "Evermoon");
+            LoadCharacters("evermoon-hk.txt", "[EN] Evermoon", "Evermoon");
+            LoadCharacters("evermoon-playTime.txt", "[EN] Evermoon", "Evermoon");
 
-            //LoadCharacters("tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri");
-            //LoadCharacters("tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri");
-            //LoadCharacters("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri");
+            LoadCharacters("tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri");
+            LoadCharacters("tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri");
+            LoadCharacters("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri");
 
-            //LoadCharacters("wod-achi.txt", "[HU] Warriors of Darkness", "WoD");
-            //LoadCharacters("wod-hk.txt", "[HU] Warriors of Darkness", "WoD");
-            //LoadCharacters("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD");
+            LoadCharacters("wod-achi.txt", "[HU] Warriors of Darkness", "WoD");
+            LoadCharacters("wod-hk.txt", "[HU] Warriors of Darkness", "WoD");
+            LoadCharacters("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD");
 
             var distinctCharacters = allCharacters.Distinct().ToList();
 
