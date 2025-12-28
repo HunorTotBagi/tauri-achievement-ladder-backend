@@ -248,7 +248,37 @@ namespace AchievementLadder.Services
                 p.Guild ?? string.Empty,
                 p.AchievementPoints,
                 p.HonorableKills,
-                p.Faction
+                p.Faction ?? string.Empty
+            )).ToList();
+        }
+
+        public async Task<IReadOnlyList<LadderEntryDto>> GetLadderByHonorableKillsAsync(
+            string? realm,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
+
+            var skip = (page - 1) * pageSize;
+
+            var players = await _ladderRepository.GetPlayersSortedByHonorableKillsAsync(
+                realm,
+                take: pageSize,
+                skip: skip,
+                ct: ct);
+
+            return players.Select(p => new LadderEntryDto(
+                p.Name,
+                p.Race,
+                p.Gender,
+                p.Class,
+                p.Realm,
+                p.Guild ?? string.Empty,
+                p.AchievementPoints,
+                p.HonorableKills,
+                p.Faction ?? string.Empty
             )).ToList();
         }
 
