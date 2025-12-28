@@ -4,33 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AchievementLadder.Repositories
 {
-    public class LadderRepository : ILadderRepository
+    public class PlayerRepository : IPlayerRepository
     {
         private readonly AchievementContext _db;
 
-        public LadderRepository(AchievementContext db)
+        public PlayerRepository(AchievementContext db)
         {
             _db = db;
-        }
-
-        public async Task<IReadOnlyList<Player>> GetPlayersSortedByHonorableKillsAsync(
-            string? realm,
-            int take,
-            int skip,
-            CancellationToken ct = default)
-        {
-            var query = _db.Players.AsNoTracking();
-
-            if (!string.IsNullOrWhiteSpace(realm))
-                query = query.Where(p => p.Realm == realm);
-
-            return await query
-                .OrderByDescending(p => p.HonorableKills)
-                .ThenByDescending(p => p.AchievementPoints)
-                .ThenBy(p => p.Name)
-                .Skip(skip)
-                .Take(take)
-                .ToListAsync(ct);
         }
 
         public async Task AddSnapshotAsync(IEnumerable<Player> players)
@@ -43,8 +23,7 @@ namespace AchievementLadder.Repositories
         {
             foreach (var p in players)
             {
-                var existing = await _db.Players
-                    .FirstOrDefaultAsync(x => x.Name == p.Name && x.Realm == p.Realm);
+                var existing = await _db.Players.FirstOrDefaultAsync(x => x.Name == p.Name && x.Realm == p.Realm);
 
                 if (existing == null)
                 {
@@ -66,24 +45,26 @@ namespace AchievementLadder.Repositories
             await _db.SaveChangesAsync();
         }
 
-        public async Task<IReadOnlyList<Player>> GetPlayersSortedByAchievementPointsAsync(
-            string? realm,
-            int take,
-            int skip,
-            CancellationToken ct = default
-)
+        public async Task<IReadOnlyList<Player>> GetSortedByAchievements(int take, int skip, CancellationToken cancellationToken)
         {
             var query = _db.Players.AsNoTracking();
 
-            if (!string.IsNullOrWhiteSpace(realm))
-                query = query.Where(p => p.Realm == realm);
-
             return await query
                 .OrderByDescending(p => p.AchievementPoints)
-                .ThenBy(p => p.Name)
                 .Skip(skip)
                 .Take(take)
-                .ToListAsync(ct);
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Player>> GetSortedByHonorableKills(int take, int skip, CancellationToken cancellationToken)
+        {
+            var query = _db.Players.AsNoTracking();
+
+            return await query
+                .OrderByDescending(p => p.HonorableKills)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
         }
     }
 }
