@@ -1,15 +1,18 @@
+using System.Text.Json;
 using AchievementLadder.Models;
 using AchievementLadder.Repositories;
 
 namespace AchievementLadder.Services
 {
-    public class LadderService : ILadderService
+    public class LadderService
     {
         private readonly ILadderRepository _ladderRepository;
+        private readonly IWebHostEnvironment _env;
 
-        public LadderService(ILadderRepository ladderRepository)
+        public LadderService(ILadderRepository ladderRepository, IWebHostEnvironment env)
         {
             _ladderRepository = ladderRepository;
+            _env = env;
         }
 
         public async Task SaveSnapshotAsync(Dictionary<(string Name, string Realm), int> results)
@@ -25,43 +28,167 @@ namespace AchievementLadder.Services
             await _ladderRepository.AddSnapshotAsync(players);
         }
 
-        public async Task ImportCharactersFromFileAsync(string filePath, string apiRealm, string displayRealm)
+        public async Task ImportCharactersFromFileAsync()
         {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException(filePath);
+            var projectRoot = _env.ContentRootPath;
 
-            var content = await File.ReadAllTextAsync(filePath);
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            var root = doc.RootElement.EnumerateObject().First().Value;
+            var config = new ConfigurationBuilder()
+                .SetBasePath(projectRoot)
+                .AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true)
+                .Build();
 
-            var today = DateTime.UtcNow;
-            var players = new List<Player>();
+            string baseUrl = config["TauriApi:BaseUrl"] ?? string.Empty;
+            string apiKey = config["TauriApi:ApiKey"] ?? string.Empty;
+            string secret = config["TauriApi:Secret"] ?? string.Empty;
 
-            foreach (var item in root.EnumerateArray())
+            string apiUrl = $"{baseUrl}?apikey={apiKey}";
+
+            var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
+
+            void LoadCharacters(string fileName, string apiRealm, string displayRealm)
             {
-                var name = item.GetProperty("name").GetString();
-                var guild = item.TryGetProperty("guildName", out var g) ? g.GetString() ?? string.Empty : string.Empty;
-                var points = item.TryGetProperty("points", out var p) && int.TryParse(p.GetString(), out var pts) ? pts : 0;
-                var race = item.TryGetProperty("race", out var r) && int.TryParse(r.GetString(), out var rr) ? rr : 0;
-                var gender = item.TryGetProperty("gender", out var ge) && int.TryParse(ge.GetString(), out var gg) ? gg : 0;
-                var @class = item.TryGetProperty("class", out var c) && int.TryParse(c.GetString(), out var cc) ? cc : 0;
-                var hk = item.TryGetProperty("totalKills", out var hkElem) && int.TryParse(hkElem.GetString(), out var hkVal) ? hkVal : 0;
+                var filePath = Path.Combine(projectRoot, "Data", "CharacterCollection", fileName);
+                if (!File.Exists(filePath))
+                    return;
 
-                players.Add(new Player
+                var content = File.ReadAllText(filePath);
+                using var doc = JsonDocument.Parse(content);
+                var array = doc.RootElement.EnumerateObject().First().Value;
+
+                foreach (var item in array.EnumerateArray())
                 {
-                    Name = name,
-                    Realm = displayRealm,
-                    AchievementPoints = points,
-                    Guild = guild,
-                    Race = race,
-                    Gender = gender,
-                    Class = @class,
-                    HonorableKills = hk,
-                    LastUpdated = today
-                });
+                    if (item.TryGetProperty("name", out var nameProp))
+                    {
+                        var name = nameProp.GetString() ?? string.Empty;
+                        allCharacters.Add((name, apiRealm, displayRealm));
+                    }
+                }
+            }
+
+            LoadCharacters("evermoon-achi.txt", "[EN] Evermoon", "Evermoon");
+            LoadCharacters("evermoon-hk.txt", "[EN] Evermoon", "Evermoon");
+            LoadCharacters("evermoon-playTime.txt", "[EN] Evermoon", "Evermoon");
+
+            LoadCharacters("tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri");
+            LoadCharacters("tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri");
+            LoadCharacters("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri");
+
+            LoadCharacters("wod-achi.txt", "[HU] Warriors of Darkness", "WoD");
+            LoadCharacters("wod-hk.txt", "[HU] Warriors of Darkness", "WoD");
+            LoadCharacters("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD");
+
+            var distinctCharacters = allCharacters.Distinct().ToList();
+
+            using var client = new HttpClient();
+
+            var players = new List<Player>();
+            var today = DateTime.UtcNow;
+
+            foreach (var (name, apiRealm, displayRealm) in distinctCharacters)
+            {
+                var body = new
+                {
+                    secret = secret,
+                    url = "character-sheet",
+                    @params = new
+                    {
+                        r = apiRealm,
+                        n = name
+                    }
+                };
+
+                var jsonBody = JsonSerializer.Serialize(body);
+                var content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
+
+                try
+                {
+                    var response = await client.PostAsync(apiUrl, content);
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    int race = 0;
+                    int pts = 0;
+                    int gender = 0;
+                    int @class = 0;
+                    int playerHonorKills = 0;
+                    string guildName = string.Empty;
+
+                    if (!string.IsNullOrWhiteSpace(responseString))
+                    {
+                        using var doc = JsonDocument.Parse(responseString);
+                        var root = doc.RootElement;
+                        if (root.TryGetProperty("response", out var resp) && resp.ValueKind == JsonValueKind.Object)
+                        {
+                            if (resp.TryGetProperty("race", out var raceProp) && raceProp.ValueKind == JsonValueKind.Number)
+                                race = raceProp.GetInt32();
+
+                            if (resp.TryGetProperty("gender", out var genderProp) && genderProp.ValueKind == JsonValueKind.Number)
+                                gender = genderProp.GetInt32();
+
+                            if (resp.TryGetProperty("class", out var classProp) && classProp.ValueKind == JsonValueKind.Number)
+                                @class = classProp.GetInt32();
+
+                            if (resp.TryGetProperty("pts", out var ptsProp) && ptsProp.ValueKind == JsonValueKind.Number)
+                                pts = ptsProp.GetInt32();
+
+                            if (resp.TryGetProperty("playerHonorKills", out var playerHonorKillsProp) && ptsProp.ValueKind == JsonValueKind.Number)
+                                playerHonorKills = playerHonorKillsProp.GetInt32();
+
+                            if (resp.TryGetProperty("guildName", out var guildNameProp) && guildNameProp.ValueKind == JsonValueKind.String)
+                                guildName = guildNameProp.GetString() ?? string.Empty;
+                        }
+                    }
+
+                    players.Add(new Player
+                    {
+                        Name = name,
+                        Race = race,
+                        Gender = gender,
+                        Class = @class,
+                        Realm = displayRealm,
+                        Guild = guildName,
+                        AchievementPoints = pts,
+                        HonorableKills = playerHonorKills,
+                        LastUpdated = today
+                    });
+                }
+                catch
+                {
+                    // on any error skip this character
+                }
             }
 
             await _ladderRepository.UpsertPlayersAsync(players);
+        }
+
+        public async Task<IReadOnlyList<LadderEntryDto>> GetLadderAsync(
+            string? realm,
+            int page,
+            int pageSize,
+            CancellationToken ct = default
+        )
+        {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
+
+            var skip = (page - 1) * pageSize;
+
+            var players = await _ladderRepository.GetPlayersSortedByAchievementPointsAsync(
+                realm,
+                take: pageSize,
+                skip: skip,
+                ct: ct
+            );
+
+            return players.Select(p => new LadderEntryDto(
+                p.Name,
+                p.Race,
+                p.Gender,
+                p.Class,
+                p.Realm,
+                p.Guild ?? string.Empty,
+                p.AchievementPoints,
+                p.HonorableKills
+            )).ToList();
         }
     }
 }
