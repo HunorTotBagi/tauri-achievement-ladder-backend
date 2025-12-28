@@ -74,21 +74,19 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         new { GuildName = "Endless",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" }
         };
 
-            foreach (var g in targetGuilds)
-            {
-                await CharacterHelpers.LoadGuildMembersLevel100Async(
-                    g.GuildName,
-                    g.RealmApi,
-                    g.RealmDisplay,
-                    apiUrl,
-                    secret,
-                    allCharacters,
-                    client);
-            }
+        foreach (var g in targetGuilds)
+        {
+            await CharacterHelpers.LoadGuildMembersLevel100Async(
+                g.GuildName,
+                g.RealmApi,
+                g.RealmDisplay,
+                apiUrl,
+                secret,
+                allCharacters,
+                client);
+        }
 
-        var distinctCharacters = allCharacters
-            .Distinct()
-            .ToList();
+        var distinctCharacters = allCharacters.Distinct().ToList();
 
         var players = new List<Player>();
         var today = DateTime.UtcNow;
