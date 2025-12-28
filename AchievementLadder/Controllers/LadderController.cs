@@ -5,25 +5,21 @@ namespace AchievementLadder.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class LadderController(ILadderService ladderService) : ControllerBase
+    public class LadderController(LadderService ladderService) : ControllerBase
     {
 
         [HttpPost("import/evermoon")]
         public async Task<IActionResult> ImportEvermoon()
         {
-            try
-            {
-                await ladderService.ImportCharactersFromFileAsync();
-                return Accepted();
-            }
-            catch (FileNotFoundException)
-            {
-                return NotFound("evermoon-achi.txt not found");
-            }
-            catch (Exception ex)
-            {
-                return Problem(ex.Message);
-            }
+            await ladderService.ImportCharactersFromFileAsync();
+            return Accepted();
+        }
+
+        [HttpGet("sorted/achievements")]
+        public async Task<IActionResult> GetLadder([FromQuery] string? realm, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
+        {
+            var result = await ladderService.GetLadderAsync(realm, page, pageSize, ct);
+            return Ok(result);
         }
     }
 }

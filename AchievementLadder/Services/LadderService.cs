@@ -1,10 +1,10 @@
+using System.Text.Json;
 using AchievementLadder.Models;
 using AchievementLadder.Repositories;
-using System.Text.Json;
 
 namespace AchievementLadder.Services
 {
-    public class LadderService : ILadderService
+    public class LadderService
     {
         private readonly ILadderRepository _ladderRepository;
         private readonly IWebHostEnvironment _env;
@@ -142,6 +142,34 @@ namespace AchievementLadder.Services
             }
 
             await _ladderRepository.UpsertPlayersAsync(players);
+        }
+
+        public async Task<IReadOnlyList<LadderEntryDto>> GetLadderAsync(
+            string? realm,
+            int page,
+            int pageSize,
+            CancellationToken ct = default
+        )
+        {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
+
+            var skip = (page - 1) * pageSize;
+
+            var players = await _ladderRepository.GetPlayersSortedByAchievementPointsAsync(
+                realm,
+                take: pageSize,
+                skip: skip,
+                ct: ct
+            );
+
+            return players.Select(p => new LadderEntryDto(
+                p.Name,
+                p.Realm,
+                p.AchievementPoints,
+                p.Guild ?? string.Empty,
+                p.LastUpdated
+            )).ToList();
         }
     }
 }

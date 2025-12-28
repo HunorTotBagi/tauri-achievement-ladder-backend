@@ -20,7 +20,7 @@ builder.Services.AddDbContext<AchievementContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
 
 builder.Services.AddScoped<ILadderRepository, LadderRepository>();
-builder.Services.AddScoped<ILadderService, LadderService>();
+builder.Services.AddScoped<LadderService>();
 
 var app = builder.Build();
 

@@ -44,5 +44,25 @@ namespace AchievementLadder.Repositories
 
             await _db.SaveChangesAsync();
         }
+
+        public async Task<IReadOnlyList<Player>> GetPlayersSortedByAchievementPointsAsync(
+            string? realm,
+            int take,
+            int skip,
+            CancellationToken ct = default
+)
+        {
+            var query = _db.Players.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(realm))
+                query = query.Where(p => p.Realm == realm);
+
+            return await query
+                .OrderByDescending(p => p.AchievementPoints)
+                .ThenBy(p => p.Name)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(ct);
+        }
     }
 }
