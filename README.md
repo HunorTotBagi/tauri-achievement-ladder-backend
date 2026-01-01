@@ -6,7 +6,7 @@ The frontend application for this project is developed separately and can be fou
 
 ## Background & Motivation
 
-The website [ladder.tauriwow.com](https://ladder.tauriwow.com/) previously provided player rankings for the [Tauri World of Warcraft](https://tauriwow.com/) private server, displaying statistics such as achievement points and honorable kills. It allowed players to track their progression and compare their standing across the realm.
+The website [Tauri Ladder](https://ladder.tauriwow.com/) previously provided player rankings for the [Tauri World of Warcraft](https://tauriwow.com/) private server, displaying statistics such as achievement points and honorable kills. It allowed players to track their progression and compare their standing across the realm.
 
 After the release of the Legion expansion on 2025.Oct.01, the website stopped updating, leaving rankings outdated despite the introduction of many new achievements. As a result, players no longer had a reliable way to check their current position.
 
