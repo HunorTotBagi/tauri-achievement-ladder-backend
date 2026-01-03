@@ -331,17 +331,6 @@
             "points": "17660"
         },
         {
-            "name": "Dave",
-            "guildName": "Ace Of Spades",
-            "faction": "0",
-            "race": "1",
-            "class": "4",
-            "gender": "1",
-            "totalKills": "22632",
-            "totalTime": "13966965",
-            "points": "17570"
-        },
-        {
             "name": "Capitello",
             "guildName": "Zsibbadt egerek",
             "faction": "1",
