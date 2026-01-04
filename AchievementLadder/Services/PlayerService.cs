@@ -160,14 +160,14 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         await playerRepository.UpsertPlayersAsync(players);
     }
 
-    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByAchievements(int pageNumber, int pageSize, string? realm = null, string? faction = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByAchievements(int pageNumber, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
     {
         pageNumber = pageNumber < 1 ? 1 : pageNumber;
         pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
 
         var skip = (pageNumber - 1) * pageSize;
 
-        var players = await playerRepository.GetSortedByAchievements(pageSize, skip, realm, faction, cancellationToken);
+        var players = await playerRepository.GetSortedByAchievements(pageSize, skip, realm, faction, playerClass, cancellationToken);
 
         return players.Select(p => new LadderEntryDto(
             p.Name,
@@ -182,14 +182,14 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         )).ToList();
     }
 
-    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByHonorableKills(int pageNumber, int pageSize, string? realm = null, string? faction = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByHonorableKills(int pageNumber, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
     {
         pageNumber = pageNumber < 1 ? 1 : pageNumber;
         pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
 
         var skip = (pageNumber - 1) * pageSize;
 
-        var players = await playerRepository.GetSortedByHonorableKills(pageSize, skip, realm, faction, cancellationToken);
+        var players = await playerRepository.GetSortedByHonorableKills(pageSize, skip, realm, faction, playerClass, cancellationToken);
 
         return players.Select(p => new LadderEntryDto(
             p.Name,
