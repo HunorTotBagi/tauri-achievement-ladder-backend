@@ -39,7 +39,7 @@ namespace AchievementLadder.Repositories
             await _db.SaveChangesAsync();
         }
 
-        public async Task<IReadOnlyList<Player>> GetSortedByAchievements(int take, int skip, string? realm = null, string? faction = null, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Player>> GetSortedByAchievements(int take, int skip, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
         {
             var query = _db.Players.AsNoTracking();
 
@@ -48,6 +48,9 @@ namespace AchievementLadder.Repositories
 
             if (!string.IsNullOrWhiteSpace(faction))
                 query = query.Where(p => p.Faction == faction);
+
+            if (playerClass.HasValue)
+                query = query.Where(p => p.Class == playerClass.Value);
 
             return await query
                 .OrderByDescending(p => p.AchievementPoints)
@@ -56,7 +59,7 @@ namespace AchievementLadder.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Player>> GetSortedByHonorableKills(int take, int skip, string? realm = null, string? faction = null, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Player>> GetSortedByHonorableKills(int take, int skip, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
         {
             var query = _db.Players.AsNoTracking();
 
@@ -65,6 +68,9 @@ namespace AchievementLadder.Repositories
 
             if (!string.IsNullOrWhiteSpace(faction))
                 query = query.Where(p => p.Faction == faction);
+
+            if (playerClass.HasValue)
+                query = query.Where(p => p.Class == playerClass.Value);
 
             return await query
                 .OrderByDescending(p => p.HonorableKills)
