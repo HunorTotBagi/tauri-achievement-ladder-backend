@@ -265,6 +265,17 @@
             "points": "17890"
         },
         {
+            "name": "Dave",
+            "guildName": "",
+            "faction": "0",
+            "race": "3",
+            "class": "2",
+            "gender": "0",
+            "totalKills": "126655",
+            "totalTime": "43007480",
+            "points": "17890"
+        },
+        {
             "name": "Nudal",
             "guildName": "Vistustan",
             "faction": "1",

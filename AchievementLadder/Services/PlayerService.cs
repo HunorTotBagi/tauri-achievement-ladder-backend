@@ -41,38 +41,52 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
 
         var targetGuilds = new[]
         {
-        new { GuildName = "Competence Optional", RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 01
-        new { GuildName = "Skill Issue",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 02
-        new { GuildName = "Despair",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 03
-        new { GuildName = "Mythic",              RealmApi = "[HU] Warriors of Darkness", RealmDisplay = "WoD" },       // 04
-        new { GuildName = "Cara Máxima",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 05
-        new { GuildName = "Guild of Multiverse", RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },     // 06
-        new { GuildName = "Defiance",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 07
-        new { GuildName = "Vistustan",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 08
-        new { GuildName = "Yin Yang",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 09
-        new { GuildName = "Shadow Hunters",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 10
-        new { GuildName = "Infernum",            RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },     // 11
-        new { GuildName = "Thunder",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 12
-        new { GuildName = "Army of Divergent",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 13
-        new { GuildName = "Last Whisper",        RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 14
-        new { GuildName = "Punishers",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 15
-        new { GuildName = "Искатели легенд",     RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  // 16 
+            new { GuildName = "Competence Optional", RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Skill Issue",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Despair",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Mythic",              RealmApi = "[HU] Warriors of Darkness", RealmDisplay = "WoD" },
+            new { GuildName = "Cara Máxima",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Outlaws",             RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Guild of Multiverse", RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Defiance",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Thunder",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Army of Divergent",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Infernum",            RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Vistustan",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Yin Yang",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Impact",              RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Shadow Hunters",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Fekete Hold",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Last Whisper",        RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Punishers",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Искатели легенд",     RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },  
 
-        // Random guilds
-        new { GuildName = "Wipes on Tresh",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "beloved",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Outlaws",             RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
-        new { GuildName = "BOOSTED",             RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
-        new { GuildName = "Killepitsch",         RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
-        new { GuildName = "Fekete Hold",         RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Logic",               RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Ace Of Spades",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Ace Of Spadez",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Solo Leveling",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Last Try",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Rycerze Ortalionu",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Storm",               RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-        new { GuildName = "Endless",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" }
+            // Random guilds
+            new { GuildName = "Wipes on Tresh",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "beloved",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "BOOSTED",             RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Insane",              RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Killepitsch",         RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Lighting Darkness",   RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Logic",               RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Ace Of Spades",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Ace Of Spadez",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Solo Leveling",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Last Try",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Rycerze Ortalionu",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Storm",               RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Endless",             RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "CannabisCountryClub", RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Calamity",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Unicorns",            RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Crows at Midnight",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "The World Eaters",    RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Redemption",          RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Aurora",              RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Rosszcsontok",        RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "The Dark Exile",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Army of Divergent",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Nexxus",              RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
         };
 
         foreach (var g in targetGuilds)
@@ -94,6 +108,8 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
 
         foreach (var (name, apiRealm, displayRealm) in distinctCharacters)
         {
+            if (name.Contains("#")) continue;
+
             var body = new
             {
                 secret,
