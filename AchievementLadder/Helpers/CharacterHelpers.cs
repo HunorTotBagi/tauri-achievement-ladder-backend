@@ -33,7 +33,7 @@ public static class CharacterHelpers
         }
     }
 
-    public static async Task LoadGuildMembersLevel100Async(
+    public static async Task LoadGuildMembersLevel90Async(
         string guildName,
         string apiRealm,
         string displayRealm,
@@ -63,7 +63,7 @@ public static class CharacterHelpers
 
             foreach (var member in guildInfo.response.guildList.Values)
             {
-                if (member.level == 100)
+                if (member.level >= 90)
                     output.Add((member.name, apiRealm, displayRealm));
             }
         }

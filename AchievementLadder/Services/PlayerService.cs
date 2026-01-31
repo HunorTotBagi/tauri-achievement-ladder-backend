@@ -1,13 +1,14 @@
-﻿using System.Text;
+﻿using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
+using AchievementLadder.Dtos;
+using AchievementLadder.Helpers;
 using AchievementLadder.Models;
 using AchievementLadder.Repositories;
-using AchievementLadder.Helpers;
-using AchievementLadder.Dtos;
 
 namespace AchievementLadder.Services;
 
-public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironment webHostEnvironment) : IPlayerService
+public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironment webHostEnvironment, PlayerCsvStore csvStore) : IPlayerService
 {
     public async Task SyncData(CancellationToken cancellationToken)
     {
@@ -91,7 +92,7 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
 
         foreach (var g in targetGuilds)
         {
-            await CharacterHelpers.LoadGuildMembersLevel100Async(
+            await CharacterHelpers.LoadGuildMembersLevel90Async(
                 g.GuildName,
                 g.RealmApi,
                 g.RealmDisplay,
@@ -101,79 +102,112 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
                 client);
         }
 
-        var distinctCharacters = allCharacters.Distinct().ToList();
+        var distinctCharacters = allCharacters
+            .Where(x => !string.IsNullOrWhiteSpace(x.Name) && !x.Name.Contains('#'))
+            .Distinct()
+            .ToList();
 
-        var players = new List<Player>();
-        var today = DateTime.UtcNow;
+        var cetZone = TimeZoneInfo.FindSystemTimeZoneById(
+            RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? "Central European Standard Time" 
+                : "Europe/Belgrade"
+        );
 
-        foreach (var (name, apiRealm, displayRealm) in distinctCharacters)
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cetZone);
+
+        var players = new List<Player>(distinctCharacters.Count);
+
+        const int maxConcurrency = 20;
+        using var throttler = new SemaphoreSlim(maxConcurrency);
+
+        int done = 0;
+
+        var tasks = distinctCharacters.Select(async ch =>
         {
-            if (name.Contains("#")) continue;
-
-            var body = new
-            {
-                secret,
-                url = "character-sheet",
-                @params = new { r = apiRealm, n = name }
-            };
-
-            var jsonBody = JsonSerializer.Serialize(body);
-            var content = new StringContent(
-                jsonBody,
-                Encoding.UTF8,
-                "application/json");
-
+            await throttler.WaitAsync(cancellationToken);
             try
             {
-                var response = await client.PostAsync(apiUrl, content);
-                var responseString = await response.Content.ReadAsStringAsync();
+                var p = await FetchPlayerAsync(
+                    client, apiUrl, secret,
+                    ch.Name, ch.ApiRealm, ch.DisplayRealm,
+                    today,
+                    cancellationToken);
 
-                int race = 0;
-                int gender = 0;
-                int @class = 0;
-                int pts = 0;
-                int honorableKills = 0;
-                string faction = string.Empty;
-                string guild = string.Empty;
-
-                if (!string.IsNullOrWhiteSpace(responseString))
+                if (p is not null)
                 {
-                    using var doc = JsonDocument.Parse(responseString);
-                    var root = doc.RootElement;
-
-                    if (root.TryGetProperty("response", out var resp))
-                    {
-                        if (resp.TryGetProperty("race", out var v)) race = v.GetInt32();
-                        if (resp.TryGetProperty("gender", out v)) gender = v.GetInt32();
-                        if (resp.TryGetProperty("class", out v)) @class = v.GetInt32();
-                        if (resp.TryGetProperty("pts", out v)) pts = v.GetInt32();
-                        if (resp.TryGetProperty("playerHonorKills", out v)) honorableKills = v.GetInt32();
-                        if (resp.TryGetProperty("faction_string_class", out v)) faction = v.GetString() ?? "";
-                        if (resp.TryGetProperty("guildName", out v)) guild = v.GetString() ?? "";
-                    }
+                    lock (players) players.Add(p);
                 }
 
-                players.Add(new Player
+                var current = Interlocked.Increment(ref done);
+                if (current % 250 == 0)
                 {
-                    Name = name,
-                    Race = race,
-                    Gender = gender,
-                    Class = @class,
-                    Realm = displayRealm,
-                    Guild = guild,
-                    AchievementPoints = pts,
-                    HonorableKills = honorableKills,
-                    Faction = faction,
-                    LastUpdated = today
-                });
+                    Console.WriteLine($"Fetched {current}/{distinctCharacters.Count}");
+                }
             }
-            catch
+            finally
             {
-                // swallow individual character failures
+                throttler.Release();
             }
-        }
+        }).ToArray();
 
-        await playerRepository.UpsertPlayersAsync(players);
+        await Task.WhenAll(tasks);
+
+        await csvStore.WriteAsync(players, "Players.csv", cancellationToken);
+        await csvStore.WriteLastUpdatedAsync(today, cancellationToken);
+    }
+
+    private static async Task<Player?> FetchPlayerAsync(
+    HttpClient client,
+    string apiUrl,
+    string secret,
+    string name,
+    string apiRealm,
+    string displayRealm,
+    DateTime todayUtc,
+    CancellationToken ct)
+    {
+        var body = new
+        {
+            secret,
+            url = "character-sheet",
+            @params = new { r = apiRealm, n = name }
+        };
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(body),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await client.PostAsync(apiUrl, content, ct);
+        if (!response.IsSuccessStatusCode) return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("response", out var resp)) return null;
+
+        int race = resp.TryGetProperty("race", out var v) ? v.GetInt32() : 0;
+        int gender = resp.TryGetProperty("gender", out v) ? v.GetInt32() : 0;
+        int @class = resp.TryGetProperty("class", out v) ? v.GetInt32() : 0;
+        int pts = resp.TryGetProperty("pts", out v) ? v.GetInt32() : 0;
+        int hk = resp.TryGetProperty("playerHonorKills", out v) ? v.GetInt32() : 0;
+        string faction = resp.TryGetProperty("faction_string_class", out v) ? (v.GetString() ?? "") : "";
+        string guild = resp.TryGetProperty("guildName", out v) ? (v.GetString() ?? "") : "";
+
+        return new Player
+        {
+            Name = name,
+            Race = race,
+            Gender = gender,
+            Class = @class,
+            Realm = displayRealm,
+            Guild = guild,
+            AchievementPoints = pts,
+            HonorableKills = hk,
+            Faction = faction,
+            LastUpdated = todayUtc
+        };
     }
 
     public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByAchievements(int pageNumber, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)

@@ -1,4 +1,4 @@
-using AchievementLadder.Data;
+﻿using AchievementLadder.Data;
 using AchievementLadder.Repositories;
 using AchievementLadder.Services;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +20,7 @@ builder.Services.AddDbContext<AchievementContext>(
 
 builder.Services.AddScoped<IPlayerService, PlayerService>();
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
+builder.Services.AddScoped<PlayerCsvStore>();
 
 builder.Services.AddCors(options =>
 {
