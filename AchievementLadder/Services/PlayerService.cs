@@ -88,6 +88,15 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             new { GuildName = "The Dark Exile",      RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
             new { GuildName = "Army of Divergent",   RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
             new { GuildName = "Nexxus",              RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Ex Nihilo",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+
+            // Random Random Guilds
+            new { GuildName = "HiveFive",              RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Siege",                 RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "OID MORTALES",          RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Loktar Ogar",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Wanderers of Azeroth",  RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+
         };
 
         foreach (var g in targetGuilds)
