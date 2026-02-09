@@ -107,8 +107,6 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             new { GuildName = "Forgotten Society",   RealmApi = "[HU] Warriors of Darkness", RealmDisplay = "WoD" },
             new { GuildName = "Kawaii Pandas",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
             new { GuildName = "Muzykanci z Gruzji",  RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
-
-
         };
 
         foreach (var g in targetGuilds)
@@ -215,6 +213,7 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         int hk = resp.TryGetProperty("playerHonorKills", out v) ? v.GetInt32() : 0;
         string faction = resp.TryGetProperty("faction_string_class", out v) ? (v.GetString() ?? "") : "";
         string guild = resp.TryGetProperty("guildName", out v) ? (v.GetString() ?? "") : "";
+        int mountCount = await FetchMountCountAsync(client, apiUrl, secret, name, apiRealm, ct);
 
         return new Player
         {
@@ -227,7 +226,8 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             AchievementPoints = pts,
             HonorableKills = hk,
             Faction = faction,
-            LastUpdated = todayUtc
+            LastUpdated = todayUtc,
+            MountCount = mountCount
         };
     }
 
@@ -274,4 +274,40 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             p.Faction ?? string.Empty
         )).ToList();
     }
+
+    private static async Task<int> FetchMountCountAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string name,
+        string apiRealm,
+        CancellationToken ct)
+    {
+        var body = new
+        {
+            secret,
+            url = "character-mounts",
+            @params = new { r = apiRealm, n = name }
+        };
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(body),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await client.PostAsync(apiUrl, content, ct);
+        if (!response.IsSuccessStatusCode) return 0;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+        if (!doc.RootElement.TryGetProperty("response", out var resp)) return 0;
+
+        // mounts is at response.mounts
+        if (!resp.TryGetProperty("mounts", out var mountsEl)) return 0;
+        if (mountsEl.ValueKind != JsonValueKind.Array) return 0;
+
+        return mountsEl.GetArrayLength();
+    }
+
 }

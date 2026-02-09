@@ -39,3 +39,6 @@ This project aims to recreate and modernize the original ladder system, restorin
 - `page` (default: 1)
 - `pageSize` (default: 100)
 - `realm` (optional, e.g. `Evermoon`)
+
+## Migration script
+dotnet ef migrations add AddMountCount --project .\AchievementLadder\AchievementLadder.csproj --startup-project .\AchievementLadder\AchievementLadder.csproj

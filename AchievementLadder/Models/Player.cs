@@ -13,5 +13,6 @@ namespace AchievementLadder.Models
         public int HonorableKills { get; set; }
         public string Faction { get; set; }
         public DateTime LastUpdated { get; set; }
+        public int MountCount { get; set; }
     }
 }

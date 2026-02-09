@@ -34,14 +34,17 @@ public sealed class PlayerCsvStore
         await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
         await using (var writer = new StreamWriter(stream, utf8))
         {
-            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"LastUpdated\",\"Faction\"");
+            await writer.WriteLineAsync(
+                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"MountCount\",\"LastUpdated\",\"Faction\""
+            );
 
             foreach (var p in players)
             {
                 ct.ThrowIfCancellationRequested();
 
                 var lastUpdated = ToDateTimeOffsetUtc(p.LastUpdated);
-                var lastUpdatedStr = lastUpdated.ToString("yyyy-MM-dd HH:mm:ss.ffffffK", CultureInfo.InvariantCulture)
+                var lastUpdatedStr = lastUpdated
+                    .ToString("yyyy-MM-dd HH:mm:ss.ffffffK", CultureInfo.InvariantCulture)
                     .Replace("Z", "+00");
 
                 static string Q(string? s) => $"\"{(s ?? string.Empty).Replace("\"", "\"\"")}\"";
@@ -55,12 +58,14 @@ public sealed class PlayerCsvStore
                     Q(p.Guild),
                     p.AchievementPoints.ToString(CultureInfo.InvariantCulture),
                     p.HonorableKills.ToString(CultureInfo.InvariantCulture),
+                    p.MountCount.ToString(CultureInfo.InvariantCulture),
                     Q(lastUpdatedStr),
                     Q(p.Faction)
                 );
 
                 await writer.WriteLineAsync(line);
             }
+
         }
 
         File.Move(tmpPath, fullPath, overwrite: true);
