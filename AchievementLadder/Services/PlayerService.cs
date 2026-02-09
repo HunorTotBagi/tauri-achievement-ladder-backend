@@ -97,6 +97,18 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             new { GuildName = "Loktar Ogar",           RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
             new { GuildName = "Wanderers of Azeroth",  RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
 
+            // Old guilds from Tauri Progress
+            new { GuildName = "Bad Choice",          RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Dark Synergy",        RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Conclusion",          RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Reunited",            RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Pandemonium",         RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
+            new { GuildName = "Crøwd Cøntrøll",      RealmApi = "[HU] Warriors of Darkness", RealmDisplay = "WoD" },
+            new { GuildName = "Forgotten Society",   RealmApi = "[HU] Warriors of Darkness", RealmDisplay = "WoD" },
+            new { GuildName = "Kawaii Pandas",       RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+            new { GuildName = "Muzykanci z Gruzji",  RealmApi = "[EN] Evermoon",             RealmDisplay = "Evermoon" },
+
+
         };
 
         foreach (var g in targetGuilds)
