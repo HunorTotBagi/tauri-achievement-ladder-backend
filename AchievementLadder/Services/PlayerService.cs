@@ -40,23 +40,14 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         CharacterHelpers.LoadCharacters(projectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
         CharacterHelpers.LoadCharacters(projectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
 
-        var targetGuilds = new[]
-        {
-            // LOAD GUILDS
-            new { GuildName = "The Invictus",          RealmApi = "[HU] Tauri WoW Server",     RealmDisplay = "Tauri" },
-        };
-
-        foreach (var g in targetGuilds)
-        {
-            await CharacterHelpers.LoadGuildMembersLevel90Async(
-                g.GuildName,
-                g.RealmApi,
-                g.RealmDisplay,
-                apiUrl,
-                secret,
-                allCharacters,
-                client);
-        }
+        await GuildHelpers.LoadGuildMembersFromFilesAsync(
+            projectRoot,
+            apiUrl,
+            secret,
+            client,
+            allCharacters,
+            cancellationToken,
+            maxConcurrency: 4);
 
         var distinctCharacters = allCharacters
             .Where(x => !string.IsNullOrWhiteSpace(x.Name) && !x.Name.Contains('#'))
@@ -113,14 +104,14 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
     }
 
     private static async Task<Player?> FetchPlayerAsync(
-    HttpClient client,
-    string apiUrl,
-    string secret,
-    string name,
-    string apiRealm,
-    string displayRealm,
-    DateTime todayUtc,
-    CancellationToken ct)
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string name,
+        string apiRealm,
+        string displayRealm,
+        DateTime todayUtc,
+        CancellationToken ct)
     {
         var body = new
         {
@@ -245,6 +236,77 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         if (mountsEl.ValueKind != JsonValueKind.Array) return 0;
 
         return mountsEl.GetArrayLength();
+    }
+
+    public static class GuildHelpers
+    {
+        public static IEnumerable<(string GuildName, string ApiRealm, string DisplayRealm)> LoadGuilds(
+            string projectRoot,
+            string fileName,
+            string apiRealm,
+            string displayRealm)
+        {
+            var path = Path.Combine(projectRoot + "\\Data\\Guilds", fileName);
+            if (!File.Exists(path)) yield break;
+
+            foreach (var raw in File.ReadLines(path))
+            {
+                var line = raw?.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                yield return (line, apiRealm, displayRealm);
+            }
+        }
+
+        public static async Task LoadGuildMembersFromFilesAsync(
+            string projectRoot,
+            string apiUrl,
+            string secret,
+            HttpClient client,
+            List<(string Name, string ApiRealm, string DisplayRealm)> allCharacters,
+            CancellationToken ct,
+            int maxConcurrency = 4)
+        {
+            var guilds = new List<(string GuildName, string ApiRealm, string DisplayRealm)>();
+
+            guilds.AddRange(LoadGuilds(projectRoot, "evermoon-guilds.txt", "[EN] Evermoon", "Evermoon"));
+            guilds.AddRange(LoadGuilds(projectRoot, "tauri-guilds.txt", "[HU] Tauri WoW Server", "Tauri"));
+            guilds.AddRange(LoadGuilds(projectRoot, "wod-guilds.txt", "[HU] Warriors of Darkness", "WoD"));
+
+            // de-dupe guilds (same realm + same name)
+            var distinctGuilds = guilds
+                .DistinctBy(g => (g.GuildName.ToLowerInvariant(), g.ApiRealm))
+                .ToList();
+
+            using var throttler = new SemaphoreSlim(maxConcurrency);
+            int done = 0;
+
+            var tasks = distinctGuilds.Select(async g =>
+            {
+                await throttler.WaitAsync(ct);
+                try
+                {
+                    await CharacterHelpers.LoadGuildMembersLevel90Async(
+                        g.GuildName,
+                        g.ApiRealm,
+                        g.DisplayRealm,
+                        apiUrl,
+                        secret,
+                        allCharacters,
+                        client);
+
+                    var current = Interlocked.Increment(ref done);
+                    if (current % 25 == 0)
+                        Console.WriteLine($"Loaded guilds {current}/{distinctGuilds.Count}");
+                }
+                finally
+                {
+                    throttler.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+        }
     }
 
 }
