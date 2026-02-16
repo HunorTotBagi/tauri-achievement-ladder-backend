@@ -5,4 +5,5 @@ public class GuildMember
     public string name { get; set; }
     public int level { get; set; }
     public string realm { get; set; }
+    public int @class { get; set; }
 }

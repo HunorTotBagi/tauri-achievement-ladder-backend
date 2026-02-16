@@ -27,5 +27,19 @@ namespace AchievementLadder.Controllers
             var result = await playerService.GetSortedByHonorableKills(pageNumber, pageSize, realm, faction, playerClass, cancellationToken);
             return Ok(result);
         }
+
+        [HttpPost("scan/items")]
+        public async Task<IActionResult> ScanItems(CancellationToken cancellationToken = default)
+        {
+            var result = await playerService.ScanItems(cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpPost("scan/achievements")]
+        public async Task<IActionResult> ScanAchievements(CancellationToken cancellationToken = default)
+        {
+            var result = await playerService.ScanAchievements(cancellationToken);
+            return Ok(result);
+        }
     }
 }

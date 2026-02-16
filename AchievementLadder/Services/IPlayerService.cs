@@ -7,4 +7,6 @@ public interface IPlayerService
     Task SyncData(CancellationToken cancellationToken);
     Task<IReadOnlyList<LadderEntryDto>> GetSortedByAchievements(int page, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LadderEntryDto>> GetSortedByHonorableKills(int page, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ItemScanResultDto>> ScanItems(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AchievementScanResultDto>> ScanAchievements(CancellationToken cancellationToken = default);
 }

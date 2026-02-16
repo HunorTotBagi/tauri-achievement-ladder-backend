@@ -6,7 +6,13 @@ namespace AchievementLadder.Helpers;
 
 public static class CharacterHelpers
 {
-    public static void LoadCharacters(string projectRoot, string fileName, string apiRealm, string displayRealm, List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    public static void LoadCharacters(
+        string projectRoot,
+        string fileName,
+        string apiRealm,
+        string displayRealm,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output,
+        IDictionary<string, int>? classByCharacter = null)
     {
         var filePath = Path.Combine(projectRoot, "Data", "CharacterCollection", fileName);
         if (!File.Exists(filePath))
@@ -27,7 +33,20 @@ public static class CharacterHelpers
                 var name = nameProp.GetString();
                 if (!string.IsNullOrWhiteSpace(name))
                 {
-                    output.Add((name, apiRealm, displayRealm));
+                    lock (output)
+                    {
+                        output.Add((name, apiRealm, displayRealm));
+                    }
+
+                    if (classByCharacter is not null && TryReadClass(item, out var classId))
+                    {
+                        var key = CreateCharacterKey(name, displayRealm);
+                        lock (classByCharacter)
+                        {
+                            if (!classByCharacter.ContainsKey(key))
+                                classByCharacter[key] = classId;
+                        }
+                    }
                 }
             }
         }
@@ -40,7 +59,8 @@ public static class CharacterHelpers
         string apiUrl,
         string secret,
         List<(string, string, string)> output,
-        HttpClient client)
+        HttpClient client,
+        IDictionary<string, int>? classByCharacter = null)
     {
         var body = new
         {
@@ -64,9 +84,43 @@ public static class CharacterHelpers
             foreach (var member in guildInfo.response.guildList.Values)
             {
                 if (member.level >= 90)
-                    output.Add((member.name, apiRealm, displayRealm));
+                {
+                    lock (output)
+                    {
+                        output.Add((member.name, apiRealm, displayRealm));
+                    }
+
+                    if (classByCharacter is not null && member.@class > 0)
+                    {
+                        var key = CreateCharacterKey(member.name, displayRealm);
+                        lock (classByCharacter)
+                        {
+                            if (!classByCharacter.ContainsKey(key))
+                                classByCharacter[key] = member.@class;
+                        }
+                    }
+                }
             }
         }
         catch { }
+    }
+
+    public static string CreateCharacterKey(string name, string displayRealm)
+        => $"{name.Trim().ToLowerInvariant()}::{displayRealm.Trim().ToLowerInvariant()}";
+
+    private static bool TryReadClass(JsonElement item, out int classId)
+    {
+        classId = 0;
+        if (!item.TryGetProperty("class", out var classEl))
+            return false;
+
+        if (classEl.ValueKind == JsonValueKind.Number)
+            return classEl.TryGetInt32(out classId);
+
+        if (classEl.ValueKind == JsonValueKind.String &&
+            int.TryParse(classEl.GetString(), out classId))
+            return true;
+
+        return false;
     }
 }
