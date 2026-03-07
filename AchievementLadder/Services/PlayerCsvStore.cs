@@ -54,12 +54,22 @@ public sealed class PlayerCsvStore
         return fullPath;
     }
 
-    public void DeleteIfExists(string relativePath)
+    public async Task<string> WriteTextAsync(string relativePath, string content, CancellationToken ct = default)
     {
+        Directory.CreateDirectory(_outputDirectory);
+
         var fullPath = Path.Combine(_outputDirectory, relativePath);
-        if (File.Exists(fullPath))
+        var tmpPath = fullPath + ".tmp";
+        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024, useAsync: true))
+        await using (var writer = new StreamWriter(stream, utf8))
         {
-            File.Delete(fullPath);
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteAsync(content);
         }
+
+        File.Move(tmpPath, fullPath, overwrite: true);
+        return fullPath;
     }
 }

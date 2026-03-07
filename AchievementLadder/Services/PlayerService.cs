@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
 using AchievementLadder.Models;
@@ -8,6 +9,9 @@ namespace AchievementLadder.Services;
 
 public class PlayerService(string projectRoot, TauriApiOptions apiOptions, PlayerCsvStore csvStore)
 {
+    private const int ProgressInterval = 250;
+    private const int ProgressBarWidth = 30;
+
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
         using var client = new HttpClient();
@@ -15,31 +19,19 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string secret = apiOptions.Secret;
 
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
-
-        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-achi.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-hk.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "evermoon-playTime.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-
-        CharacterHelpers.LoadCharacters(projectRoot, "tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-
-        CharacterHelpers.LoadCharacters(projectRoot, "wod-achi.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
-        CharacterHelpers.LoadCharacters(projectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
-
-        await GuildHelpers.LoadGuildMembersFromFilesAsync(
-            projectRoot,
-            apiUrl,
-            secret,
-            client,
-            allCharacters,
-            cancellationToken);
+        LoadCharacterSources(allCharacters);
 
         var distinctCharacters = allCharacters
-            .Where(x => !string.IsNullOrWhiteSpace(x.Name) && !x.Name.Contains('#'))
+            .Where(x =>
+                !string.IsNullOrWhiteSpace(x.Name) &&
+                !x.Name.Contains('#') &&
+                !string.IsNullOrWhiteSpace(x.ApiRealm) &&
+                !string.IsNullOrWhiteSpace(x.DisplayRealm))
             .Distinct()
             .ToList();
+
+        Console.WriteLine($"Scanning {distinctCharacters.Count} characters...");
+        WriteProgress(0, distinctCharacters.Count);
 
         var players = new List<Player>(distinctCharacters.Count);
         int done = 0;
@@ -61,10 +53,15 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             }
 
             done++;
-            if (done % 250 == 0)
+            if (done % ProgressInterval == 0 || done == distinctCharacters.Count)
             {
-                Console.WriteLine($"Fetched {done}/{distinctCharacters.Count}");
+                WriteProgress(done, distinctCharacters.Count);
             }
+        }
+
+        if (distinctCharacters.Count > 0)
+        {
+            Console.WriteLine();
         }
 
         var orderedPlayers = players
@@ -75,9 +72,29 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             .ToList();
 
         var playersCsvPath = await csvStore.WriteAsync(orderedPlayers, "Players.csv", cancellationToken);
-        csvStore.DeleteIfExists("lastUpdated.txt");
+        var lastUpdatedPath = await csvStore.WriteTextAsync(
+            "lastUpdated.txt",
+            DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            cancellationToken);
 
-        return new SyncResult(orderedPlayers.Count, playersCsvPath);
+        return new SyncResult(orderedPlayers.Count, playersCsvPath, lastUpdatedPath);
+
+        void LoadCharacterSources(List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        {
+            CharacterHelpers.LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
+
+            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-achi.txt", "[EN] Evermoon", "Evermoon", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-hk.txt", "[EN] Evermoon", "Evermoon", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-playTime.txt", "[EN] Evermoon", "Evermoon", output);
+
+            CharacterHelpers.LoadCharacters(projectRoot, "tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri", output);
+
+            CharacterHelpers.LoadCharacters(projectRoot, "wod-achi.txt", "[HU] Warriors of Darkness", "WoD", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", output);
+            CharacterHelpers.LoadCharacters(projectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", output);
+        }
     }
 
     private static async Task<Player?> FetchPlayerAsync(
@@ -144,70 +161,18 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
     }
 
-    public static class GuildHelpers
+    private static void WriteProgress(int processed, int total)
     {
-        public static IEnumerable<(string GuildName, string ApiRealm, string DisplayRealm)> LoadGuilds(
-            string projectRoot,
-            string fileName,
-            string apiRealm,
-            string displayRealm)
+        if (total <= 0)
         {
-            var path = Path.Combine(projectRoot, "Data", "Guilds", fileName);
-            if (!File.Exists(path))
-            {
-                yield break;
-            }
-
-            foreach (var raw in File.ReadLines(path))
-            {
-                var line = raw?.Trim();
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    continue;
-                }
-
-                yield return (line, apiRealm, displayRealm);
-            }
+            Console.WriteLine("Progress: [------------------------------] 0/0 (100.0%)");
+            return;
         }
 
-        public static async Task LoadGuildMembersFromFilesAsync(
-            string projectRoot,
-            string apiUrl,
-            string secret,
-            HttpClient client,
-            List<(string Name, string ApiRealm, string DisplayRealm)> allCharacters,
-            CancellationToken ct)
-        {
-            var guilds = new List<(string GuildName, string ApiRealm, string DisplayRealm)>();
+        var ratio = (double)processed / total;
+        var filledWidth = Math.Min(ProgressBarWidth, (int)Math.Round(ratio * ProgressBarWidth, MidpointRounding.AwayFromZero));
+        var bar = new string('#', filledWidth) + new string('-', ProgressBarWidth - filledWidth);
 
-            guilds.AddRange(LoadGuilds(projectRoot, "evermoon-guilds.txt", "[EN] Evermoon", "Evermoon"));
-            guilds.AddRange(LoadGuilds(projectRoot, "tauri-guilds.txt", "[HU] Tauri WoW Server", "Tauri"));
-            guilds.AddRange(LoadGuilds(projectRoot, "wod-guilds.txt", "[HU] Warriors of Darkness", "WoD"));
-
-            var distinctGuilds = guilds
-                .DistinctBy(guild => (guild.GuildName.ToLowerInvariant(), guild.ApiRealm))
-                .ToList();
-
-            int done = 0;
-
-            foreach (var guild in distinctGuilds)
-            {
-                await CharacterHelpers.LoadGuildMembersLevel90Async(
-                    guild.GuildName,
-                    guild.ApiRealm,
-                    guild.DisplayRealm,
-                    apiUrl,
-                    secret,
-                    allCharacters,
-                    client,
-                    ct);
-
-                done++;
-                if (done % 25 == 0)
-                {
-                    Console.WriteLine($"Loaded guilds {done}/{distinctGuilds.Count}");
-                }
-            }
-        }
+        Console.Write($"\rProgress: [{bar}] {processed}/{total} ({ratio:P1})");
     }
 }

@@ -32,6 +32,7 @@ internal static class Program
 
             Console.WriteLine($"Generated {result.PlayerCount} player rows.");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
+            Console.WriteLine($"lastUpdated.txt: {result.LastUpdatedPath}");
 
             return 0;
         }

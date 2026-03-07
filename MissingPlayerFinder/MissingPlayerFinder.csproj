@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AchievementLadder\Configuration\AppSettings.cs" Link="Configuration\AppSettings.cs" />
+    <Compile Include="..\AchievementLadder\Configuration\TauriApiOptions.cs" Link="Configuration\TauriApiOptions.cs" />
+    <Compile Include="..\AchievementLadder\Helpers\CharacterHelpers.cs" Link="Helpers\CharacterHelpers.cs" />
+    <Compile Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs" Link="Infrastructure\ProjectPaths.cs" />
+    <Compile Include="..\AchievementLadder\Models\Player.cs" Link="Models\Player.cs" />
+  </ItemGroup>
+
+</Project>

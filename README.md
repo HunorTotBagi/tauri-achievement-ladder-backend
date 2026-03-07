@@ -27,3 +27,9 @@ dotnet run --project GuildCharacterExporter
 ```
 
 `GuildCharacterExporter` reuses the API settings from `AchievementLadder/appsettings.json`.
+
+To compare the current source inputs against `Players.csv`, fetch the missing characters from the Tauri API, append any successful lookups to `Players.csv`, and write any still-missing retries into `MissingPlayersToScan.txt`, run:
+
+```bash
+dotnet run --project MissingPlayerFinder
+```

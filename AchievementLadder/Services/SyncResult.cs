@@ -2,4 +2,5 @@ namespace AchievementLadder.Services;
 
 public sealed record SyncResult(
     int PlayerCount,
-    string PlayersCsvPath);
+    string PlayersCsvPath,
+    string LastUpdatedPath);

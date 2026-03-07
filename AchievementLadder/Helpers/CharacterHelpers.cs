@@ -1,16 +1,24 @@
-using System.Text;
 using System.Text.Json;
-using AchievementLadder.Dtos;
 
 namespace AchievementLadder.Helpers;
 
 public static class CharacterHelpers
 {
+    private static readonly Dictionary<string, (string ApiRealm, string DisplayRealm)> Realms =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Evermoon"] = ("[EN] Evermoon", "Evermoon"),
+            ["Tauri"] = ("[HU] Tauri WoW Server", "Tauri"),
+            ["WoD"] = ("[HU] Warriors of Darkness", "WoD")
+        };
+
     public static void LoadCharacters(string projectRoot, string fileName, string apiRealm, string displayRealm, List<(string Name, string ApiRealm, string DisplayRealm)> output)
     {
         var filePath = Path.Combine(projectRoot, "Data", "CharacterCollection", fileName);
         if (!File.Exists(filePath))
+        {
             return;
+        }
 
         var content = File.ReadAllText(filePath);
         using var doc = JsonDocument.Parse(content);
@@ -33,45 +41,44 @@ public static class CharacterHelpers
         }
     }
 
-    public static async Task LoadGuildMembersLevel90Async(
-        string guildName,
-        string apiRealm,
-        string displayRealm,
-        string apiUrl,
-        string secret,
-        List<(string, string, string)> output,
-        HttpClient client,
-        CancellationToken cancellationToken = default)
+    public static void LoadGuildCharacters(
+        string projectRoot,
+        string fileName,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output)
     {
-        var body = new
+        var filePath = Path.Combine(projectRoot, "Data", "GuildCharacters", fileName);
+        if (!File.Exists(filePath))
         {
-            secret = secret,
-            url = "guild-info",
-            @params = new { r = apiRealm, gn = guildName }
-        };
+            throw new FileNotFoundException($"Could not find guild character source file: {filePath}", filePath);
+        }
 
-        var jsonBody = JsonSerializer.Serialize(body);
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        try
+        foreach (var rawLine in File.ReadLines(filePath))
         {
-            var response = await client.PostAsync(apiUrl, content, cancellationToken);
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            var guildInfo = JsonSerializer.Deserialize<GuildInfoResponse>(responseString);
-            if (guildInfo?.response?.guildList == null)
-                return;
-
-            foreach (var member in guildInfo.response.guildList.Values)
+            var line = rawLine?.Trim();
+            if (string.IsNullOrWhiteSpace(line))
             {
-                if (member.level >= 90)
-                    output.Add((member.name, apiRealm, displayRealm));
+                continue;
             }
+
+            var separatorIndex = line.LastIndexOf('-');
+            if (separatorIndex <= 0 || separatorIndex == line.Length - 1)
+            {
+                continue;
+            }
+
+            var name = line[..separatorIndex].Trim();
+            var realmText = line[(separatorIndex + 1)..].Trim();
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(realmText))
+            {
+                continue;
+            }
+
+            if (!Realms.TryGetValue(realmText, out var realm))
+            {
+                continue;
+            }
+
+            output.Add((name, realm.ApiRealm, realm.DisplayRealm));
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch { }
     }
 }
