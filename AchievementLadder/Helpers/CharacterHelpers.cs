@@ -40,7 +40,8 @@ public static class CharacterHelpers
         string apiUrl,
         string secret,
         List<(string, string, string)> output,
-        HttpClient client)
+        HttpClient client,
+        CancellationToken cancellationToken = default)
     {
         var body = new
         {
@@ -54,7 +55,7 @@ public static class CharacterHelpers
 
         try
         {
-            var response = await client.PostAsync(apiUrl, content);
+            var response = await client.PostAsync(apiUrl, content, cancellationToken);
             var responseString = await response.Content.ReadAsStringAsync();
 
             var guildInfo = JsonSerializer.Deserialize<GuildInfoResponse>(responseString);
@@ -66,6 +67,10 @@ public static class CharacterHelpers
                 if (member.level >= 90)
                     output.Add((member.name, apiRealm, displayRealm));
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch { }
     }

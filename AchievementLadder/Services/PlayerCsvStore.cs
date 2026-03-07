@@ -6,46 +6,31 @@ namespace AchievementLadder.Services;
 
 public sealed class PlayerCsvStore
 {
-    private readonly IWebHostEnvironment _env;
+    private readonly string _outputDirectory;
 
-    public PlayerCsvStore(IWebHostEnvironment env)
+    public PlayerCsvStore(string outputDirectory)
     {
-        _env = env;
+        _outputDirectory = Path.GetFullPath(outputDirectory);
     }
 
-    public async Task WriteAsync(IEnumerable<Player> players, string relativePath, CancellationToken ct = default)
+    public async Task<string> WriteAsync(IEnumerable<Player> players, string relativePath, CancellationToken ct = default)
     {
-        var projectRoot = _env.ContentRootPath;
-        var outputDir = Path.GetFullPath(Path.Combine(
-            projectRoot,
-            "..", "..", "..",
-            "tauriachievements.github.io",
-            "src"
-        ));
+        Directory.CreateDirectory(_outputDirectory);
 
-        Directory.CreateDirectory(outputDir);
-
-        var fullPath = Path.Combine(outputDir, relativePath);
-
+        var fullPath = Path.Combine(_outputDirectory, relativePath);
         var tmpPath = fullPath + ".tmp";
-
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
         await using (var writer = new StreamWriter(stream, utf8))
         {
             await writer.WriteLineAsync(
-                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"MountCount\",\"LastUpdated\",\"Faction\""
+                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\""
             );
 
             foreach (var p in players)
             {
                 ct.ThrowIfCancellationRequested();
-
-                var lastUpdated = ToDateTimeOffsetUtc(p.LastUpdated);
-                var lastUpdatedStr = lastUpdated
-                    .ToString("yyyy-MM-dd HH:mm:ss.ffffffK", CultureInfo.InvariantCulture)
-                    .Replace("Z", "+00");
 
                 static string Q(string? s) => $"\"{(s ?? string.Empty).Replace("\"", "\"\"")}\"";
 
@@ -58,44 +43,23 @@ public sealed class PlayerCsvStore
                     Q(p.Guild),
                     p.AchievementPoints.ToString(CultureInfo.InvariantCulture),
                     p.HonorableKills.ToString(CultureInfo.InvariantCulture),
-                    p.MountCount.ToString(CultureInfo.InvariantCulture),
-                    Q(lastUpdatedStr),
                     Q(p.Faction)
                 );
 
                 await writer.WriteLineAsync(line);
             }
-
         }
 
         File.Move(tmpPath, fullPath, overwrite: true);
+        return fullPath;
     }
 
-    private static DateTimeOffset ToDateTimeOffsetUtc(DateTime dt)
+    public void DeleteIfExists(string relativePath)
     {
-        if (dt.Kind == DateTimeKind.Utc) return new DateTimeOffset(dt, TimeSpan.Zero);
-        if (dt.Kind == DateTimeKind.Local) return new DateTimeOffset(dt).ToUniversalTime();
-        return new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
-    }
-
-    public async Task WriteLastUpdatedAsync(DateTime utcNow, CancellationToken ct = default)
-    {
-        var projectRoot = _env.ContentRootPath;
-        var outputDir = Path.GetFullPath(Path.Combine(
-            projectRoot,
-            "..", "..", "..",
-            "tauriachievements.github.io",
-            "src"
-        ));
-
-        Directory.CreateDirectory(outputDir);
-
-        var filePath = Path.Combine(outputDir, "lastUpdated.txt");
-        var tmpPath = filePath + ".tmp";
-        var content = utcNow.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
-
-        await File.WriteAllTextAsync(tmpPath, content, Encoding.UTF8, ct);
-
-        File.Move(tmpPath, filePath, overwrite: true);
+        var fullPath = Path.Combine(_outputDirectory, relativePath);
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
     }
 }

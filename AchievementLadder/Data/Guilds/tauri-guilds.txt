@@ -111,7 +111,6 @@ patient
 CENZORED
 The Unforgiven
 Victorious Secret
-The Predatorsnew
 Rémálom Az Elf Utcában
 The Executioners Of Sargeras
 HATERS ARE NOT WELCOME
@@ -625,7 +624,6 @@ Toxic Souls
 Tropic Thunder
 Twink of the Alliance
 Unbound
-Underdogs
 Underworlds
 Unga Bunga
 Union of the Horde
@@ -673,4 +671,3 @@ Evil Knights
 Eternal
 Polgár Jenõ
 Order Of The Warriors
-The Predatorsnew

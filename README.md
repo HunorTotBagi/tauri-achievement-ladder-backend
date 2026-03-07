@@ -1,44 +1,29 @@
-# Tauri Achievement Ladder (Backend)
+# Tauri Achievement Ladder
 
-A small .NET 9 Web API that imports character data from local JSON files and a remote Tauri API, stores snapshots in PostgreSQL and exposes endpoints for retrieving sorted leaderboards.
+This repository is now a plain `.NET 9` console app. It reads the local character and guild source files, fetches fresh character details from the Tauri API, and writes `Players.csv` to the repository root.
 
-The frontend application for this project can be found here: [Tauri Achievement Ladder - Frontend](https://github.com/HunorTotBagi/tauri-achievement-ladder-frontend)
+There is no database, no EF Core migration flow, and no Docker setup anymore.
 
-## Background & Motivation
+## Configuration
 
-The website [Tauri Ladder](https://ladder.tauriwow.com/) previously provided player rankings for the [Tauri World of Warcraft](https://tauriwow.com/) private server, displaying statistics such as achievement points and honorable kills. It allowed players to track their progression and compare their standing across the realm.
+Set real Tauri API credentials in `AchievementLadder/appsettings.json` or override them with environment variables:
 
-After the release of the Legion expansion the website stopped updating, leaving rankings outdated despite the introduction of many new achievements. As a result, players no longer had a reliable way to check their current position.
+- `TAURI_API_BASEURL`
+- `TAURI_API_APIKEY`
+- `TAURI_API_SECRET`
 
-This project aims to recreate and modernize the original ladder system, restoring accurate and up-to-date rankings for the Tauri WoW community.
+## Run
 
-## Features
+```bash
+dotnet run --project AchievementLadder
+```
 
-- Import and synchronize character data (upsert) from:
-  - Local JSON files
-  - Remote Tauri API
-- Leaderboard endpoints:
-  - Sorted by **achievement points**
-  - Sorted by **honorable kills**
-- PostgreSQL persistence using **EF Core (Npgsql)**
-- Swagger UI enabled in Development
-- CORS configured for Angular frontend (`http://localhost:4200`)
-- Docker Compose support for local development
+On success the app prints the absolute path for `Players.csv`.
 
----
+To export guild members as `Character-Realm` rows into `GuildCharacters.txt`, run:
 
-## API Endpoints
+```bash
+dotnet run --project GuildCharacterExporter
+```
 
-| Method | Endpoint | Description |
-|------|--------|------------|
-| POST | `/api/ladder/import/evermoon` | Import / sync character data |
-| GET | `/api/ladder/sorted/achievements` | Paginated ladder by achievement points |
-| GET | `/api/ladder/sorted/honorableKills` | Paginated ladder by honorable kills |
-
-**Query parameters**
-- `page` (default: 1)
-- `pageSize` (default: 100)
-- `realm` (optional, e.g. `Evermoon`)
-
-## Migration script
-dotnet ef migrations add AddMountCount --project .\AchievementLadder\AchievementLadder.csproj --startup-project .\AchievementLadder\AchievementLadder.csproj
+`GuildCharacterExporter` reuses the API settings from `AchievementLadder/appsettings.json`.

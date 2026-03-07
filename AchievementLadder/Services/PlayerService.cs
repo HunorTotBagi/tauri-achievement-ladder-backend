@@ -1,30 +1,18 @@
-﻿using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using AchievementLadder.Dtos;
+using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
 using AchievementLadder.Models;
-using AchievementLadder.Repositories;
 
 namespace AchievementLadder.Services;
 
-public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironment webHostEnvironment, PlayerCsvStore csvStore) : IPlayerService
+public class PlayerService(string projectRoot, TauriApiOptions apiOptions, PlayerCsvStore csvStore)
 {
-    public async Task SyncData(CancellationToken cancellationToken)
+    public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
-        var projectRoot = webHostEnvironment.ContentRootPath;
         using var client = new HttpClient();
-
-        var config = new ConfigurationBuilder()
-            .SetBasePath(projectRoot)
-            .AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true)
-            .Build();
-
-        string baseUrl = config["TauriApi:BaseUrl"] ?? string.Empty;
-        string apiKey = config["TauriApi:ApiKey"] ?? string.Empty;
-        string secret = config["TauriApi:Secret"] ?? string.Empty;
-
-        string apiUrl = $"{baseUrl}?apikey={apiKey}";
+        string apiUrl = BuildApiUrl(apiOptions.BaseUrl, apiOptions.ApiKey);
+        string secret = apiOptions.Secret;
 
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
 
@@ -46,61 +34,50 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             secret,
             client,
             allCharacters,
-            cancellationToken,
-            maxConcurrency: 4);
+            cancellationToken);
 
         var distinctCharacters = allCharacters
             .Where(x => !string.IsNullOrWhiteSpace(x.Name) && !x.Name.Contains('#'))
             .Distinct()
             .ToList();
 
-        var cetZone = TimeZoneInfo.FindSystemTimeZoneById(
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? "Central European Standard Time" 
-                : "Europe/Belgrade"
-        );
-
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cetZone);
-
         var players = new List<Player>(distinctCharacters.Count);
-
-        const int maxConcurrency = 20;
-        using var throttler = new SemaphoreSlim(maxConcurrency);
-
         int done = 0;
 
-        var tasks = distinctCharacters.Select(async ch =>
+        foreach (var character in distinctCharacters)
         {
-            await throttler.WaitAsync(cancellationToken);
-            try
+            var player = await FetchPlayerAsync(
+                client,
+                apiUrl,
+                secret,
+                character.Name,
+                character.ApiRealm,
+                character.DisplayRealm,
+                cancellationToken);
+
+            if (player is not null)
             {
-                var p = await FetchPlayerAsync(
-                    client, apiUrl, secret,
-                    ch.Name, ch.ApiRealm, ch.DisplayRealm,
-                    today,
-                    cancellationToken);
-
-                if (p is not null)
-                {
-                    lock (players) players.Add(p);
-                }
-
-                var current = Interlocked.Increment(ref done);
-                if (current % 250 == 0)
-                {
-                    Console.WriteLine($"Fetched {current}/{distinctCharacters.Count}");
-                }
+                players.Add(player);
             }
-            finally
+
+            done++;
+            if (done % 250 == 0)
             {
-                throttler.Release();
+                Console.WriteLine($"Fetched {done}/{distinctCharacters.Count}");
             }
-        }).ToArray();
+        }
 
-        await Task.WhenAll(tasks);
+        var orderedPlayers = players
+            .OrderByDescending(player => player.AchievementPoints)
+            .ThenByDescending(player => player.HonorableKills)
+            .ThenBy(player => player.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(player => player.Realm, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        await csvStore.WriteAsync(players, "Players.csv", cancellationToken);
-        await csvStore.WriteLastUpdatedAsync(today, cancellationToken);
+        var playersCsvPath = await csvStore.WriteAsync(orderedPlayers, "Players.csv", cancellationToken);
+        csvStore.DeleteIfExists("lastUpdated.txt");
+
+        return new SyncResult(orderedPlayers.Count, playersCsvPath);
     }
 
     private static async Task<Player?> FetchPlayerAsync(
@@ -110,7 +87,6 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
         string name,
         string apiRealm,
         string displayRealm,
-        DateTime todayUtc,
         CancellationToken ct)
     {
         var body = new
@@ -126,22 +102,27 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             "application/json");
 
         using var response = await client.PostAsync(apiUrl, content, ct);
-        if (!response.IsSuccessStatusCode) return null;
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
 
         var root = doc.RootElement;
-        if (!root.TryGetProperty("response", out var resp)) return null;
+        if (!root.TryGetProperty("response", out var responseElement))
+        {
+            return null;
+        }
 
-        int race = resp.TryGetProperty("race", out var v) ? v.GetInt32() : 0;
-        int gender = resp.TryGetProperty("gender", out v) ? v.GetInt32() : 0;
-        int @class = resp.TryGetProperty("class", out v) ? v.GetInt32() : 0;
-        int pts = resp.TryGetProperty("pts", out v) ? v.GetInt32() : 0;
-        int hk = resp.TryGetProperty("playerHonorKills", out v) ? v.GetInt32() : 0;
-        string faction = resp.TryGetProperty("faction_string_class", out v) ? (v.GetString() ?? "") : "";
-        string guild = resp.TryGetProperty("guildName", out v) ? (v.GetString() ?? "") : "";
-        int mountCount = await FetchMountCountAsync(client, apiUrl, secret, name, apiRealm, ct);
+        int race = responseElement.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
+        int gender = responseElement.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
+        int @class = responseElement.TryGetProperty("class", out value) ? value.GetInt32() : 0;
+        int achievementPoints = responseElement.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
+        int honorableKills = responseElement.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
+        string faction = responseElement.TryGetProperty("faction_string_class", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
+        string guild = responseElement.TryGetProperty("guildName", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
 
         return new Player
         {
@@ -151,91 +132,16 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             Class = @class,
             Realm = displayRealm,
             Guild = guild,
-            AchievementPoints = pts,
-            HonorableKills = hk,
-            Faction = faction,
-            LastUpdated = todayUtc,
-            MountCount = mountCount
+            AchievementPoints = achievementPoints,
+            HonorableKills = honorableKills,
+            Faction = faction
         };
     }
 
-    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByAchievements(int pageNumber, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
+    private static string BuildApiUrl(string baseUrl, string apiKey)
     {
-        pageNumber = pageNumber < 1 ? 1 : pageNumber;
-        pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
-
-        var skip = (pageNumber - 1) * pageSize;
-
-        var players = await playerRepository.GetSortedByAchievements(pageSize, skip, realm, faction, playerClass, cancellationToken);
-
-        return players.Select(p => new LadderEntryDto(
-            p.Name,
-            p.Race,
-            p.Gender,
-            p.Class,
-            p.Realm,
-            p.Guild ?? string.Empty,
-            p.AchievementPoints,
-            p.HonorableKills,
-            p.Faction ?? string.Empty
-        )).ToList();
-    }
-
-    public async Task<IReadOnlyList<LadderEntryDto>> GetSortedByHonorableKills(int pageNumber, int pageSize, string? realm = null, string? faction = null, int? playerClass = null, CancellationToken cancellationToken = default)
-    {
-        pageNumber = pageNumber < 1 ? 1 : pageNumber;
-        pageSize = pageSize is < 1 or > 500 ? 100 : pageSize;
-
-        var skip = (pageNumber - 1) * pageSize;
-
-        var players = await playerRepository.GetSortedByHonorableKills(pageSize, skip, realm, faction, playerClass, cancellationToken);
-
-        return players.Select(p => new LadderEntryDto(
-            p.Name,
-            p.Race,
-            p.Gender,
-            p.Class,
-            p.Realm,
-            p.Guild ?? string.Empty,
-            p.AchievementPoints,
-            p.HonorableKills,
-            p.Faction ?? string.Empty
-        )).ToList();
-    }
-
-    private static async Task<int> FetchMountCountAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
-        string name,
-        string apiRealm,
-        CancellationToken ct)
-    {
-        var body = new
-        {
-            secret,
-            url = "character-mounts",
-            @params = new { r = apiRealm, n = name }
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json");
-
-        using var response = await client.PostAsync(apiUrl, content, ct);
-        if (!response.IsSuccessStatusCode) return 0;
-
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-
-        if (!doc.RootElement.TryGetProperty("response", out var resp)) return 0;
-
-        // mounts is at response.mounts
-        if (!resp.TryGetProperty("mounts", out var mountsEl)) return 0;
-        if (mountsEl.ValueKind != JsonValueKind.Array) return 0;
-
-        return mountsEl.GetArrayLength();
+        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
     }
 
     public static class GuildHelpers
@@ -246,13 +152,19 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             string apiRealm,
             string displayRealm)
         {
-            var path = Path.Combine(projectRoot + "\\Data\\Guilds", fileName);
-            if (!File.Exists(path)) yield break;
+            var path = Path.Combine(projectRoot, "Data", "Guilds", fileName);
+            if (!File.Exists(path))
+            {
+                yield break;
+            }
 
             foreach (var raw in File.ReadLines(path))
             {
                 var line = raw?.Trim();
-                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
 
                 yield return (line, apiRealm, displayRealm);
             }
@@ -264,8 +176,7 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             string secret,
             HttpClient client,
             List<(string Name, string ApiRealm, string DisplayRealm)> allCharacters,
-            CancellationToken ct,
-            int maxConcurrency = 4)
+            CancellationToken ct)
         {
             var guilds = new List<(string GuildName, string ApiRealm, string DisplayRealm)>();
 
@@ -273,40 +184,30 @@ public class PlayerService(IPlayerRepository playerRepository, IWebHostEnvironme
             guilds.AddRange(LoadGuilds(projectRoot, "tauri-guilds.txt", "[HU] Tauri WoW Server", "Tauri"));
             guilds.AddRange(LoadGuilds(projectRoot, "wod-guilds.txt", "[HU] Warriors of Darkness", "WoD"));
 
-            // de-dupe guilds (same realm + same name)
             var distinctGuilds = guilds
-                .DistinctBy(g => (g.GuildName.ToLowerInvariant(), g.ApiRealm))
+                .DistinctBy(guild => (guild.GuildName.ToLowerInvariant(), guild.ApiRealm))
                 .ToList();
 
-            using var throttler = new SemaphoreSlim(maxConcurrency);
             int done = 0;
 
-            var tasks = distinctGuilds.Select(async g =>
+            foreach (var guild in distinctGuilds)
             {
-                await throttler.WaitAsync(ct);
-                try
-                {
-                    await CharacterHelpers.LoadGuildMembersLevel90Async(
-                        g.GuildName,
-                        g.ApiRealm,
-                        g.DisplayRealm,
-                        apiUrl,
-                        secret,
-                        allCharacters,
-                        client);
+                await CharacterHelpers.LoadGuildMembersLevel90Async(
+                    guild.GuildName,
+                    guild.ApiRealm,
+                    guild.DisplayRealm,
+                    apiUrl,
+                    secret,
+                    allCharacters,
+                    client,
+                    ct);
 
-                    var current = Interlocked.Increment(ref done);
-                    if (current % 25 == 0)
-                        Console.WriteLine($"Loaded guilds {current}/{distinctGuilds.Count}");
-                }
-                finally
+                done++;
+                if (done % 25 == 0)
                 {
-                    throttler.Release();
+                    Console.WriteLine($"Loaded guilds {done}/{distinctGuilds.Count}");
                 }
-            });
-
-            await Task.WhenAll(tasks);
+            }
         }
     }
-
 }

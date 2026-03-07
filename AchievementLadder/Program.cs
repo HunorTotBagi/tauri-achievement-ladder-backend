@@ -1,70 +1,49 @@
-﻿using AchievementLadder.Data;
-using AchievementLadder.Repositories;
+using AchievementLadder.Configuration;
+using AchievementLadder.Infrastructure;
 using AchievementLadder.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace AchievementLadder;
 
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+internal static class Program
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "AchievementLadder API", Version = "v1" });
-});
-
-builder.Services.AddDbContext<AchievementContext>(
-    options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
-
-builder.Services.AddScoped<IPlayerService, PlayerService>();
-builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
-builder.Services.AddScoped<PlayerCsvStore>();
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
+    public static async Task<int> Main(string[] args)
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
+        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "AchievementLadder.csproj");
+        var repoRoot = ProjectPaths.FindSolutionRoot(projectRoot);
+        var settingsPath = Path.Combine(projectRoot, "appsettings.json");
 
-var app = builder.Build();
+        using var cancellationTokenSource = new CancellationTokenSource();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AchievementContext>();
-    db.Database.Migrate();
-}
+        Console.CancelKeyPress += (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            cancellationTokenSource.Cancel();
+        };
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AchievementContext>();
-    if (!db.Players.Any())
-    {
-        db.Players.AddRange(SeedData.Sample());
-        db.SaveChanges();
+        try
+        {
+            var settings = AppSettings.Load(settingsPath);
+            var csvStore = new PlayerCsvStore(repoRoot);
+            var playerService = new PlayerService(projectRoot, settings.TauriApi, csvStore);
+
+            Console.WriteLine("Starting player sync...");
+
+            var result = await playerService.SyncDataAsync(cancellationTokenSource.Token);
+
+            Console.WriteLine($"Generated {result.PlayerCount} player rows.");
+            Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
+
+            return 0;
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("Sync cancelled.");
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Sync failed: {ex.Message}");
+            return 1;
+        }
     }
 }
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "AchievementLadder v1");
-        c.RoutePrefix = "swagger";
-    });
-}
-
-app.UseCors("AllowFrontend");
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
