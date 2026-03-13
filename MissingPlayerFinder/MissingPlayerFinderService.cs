@@ -15,7 +15,7 @@ public sealed class MissingPlayerFinderService(
 {
     private static readonly CharacterKeyComparer CharacterComparer = new();
     private const int ProgressInterval = 100;
-    private const int MaxDegreeOfParallelism = 8;
+    private const int MaxDegreeOfParallelism = 20;
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly string _achievementLadderProjectRoot = Path.GetFullPath(achievementLadderProjectRoot);
