@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Globalization;
@@ -11,6 +12,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 {
     private const int ProgressInterval = 250;
     private const int ProgressBarWidth = 30;
+    private const int MaxDegreeOfParallelism = 20;
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
@@ -33,33 +35,45 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         Console.WriteLine($"Scanning {distinctCharacters.Count} characters...");
         WriteProgress(0, distinctCharacters.Count);
 
-        var players = new List<Player>(distinctCharacters.Count);
-        int done = 0;
+        var players = new ConcurrentBag<Player>();
+        var totalCharacters = distinctCharacters.Count;
+        var done = 0;
+        var progressLock = new Lock();
 
-        foreach (var character in distinctCharacters)
-        {
-            var player = await FetchPlayerAsync(
-                client,
-                apiUrl,
-                secret,
-                character.Name,
-                character.ApiRealm,
-                character.DisplayRealm,
-                cancellationToken);
-
-            if (player is not null)
+        await Parallel.ForEachAsync(
+            distinctCharacters,
+            new ParallelOptions
             {
-                players.Add(player);
-            }
-
-            done++;
-            if (done % ProgressInterval == 0 || done == distinctCharacters.Count)
+                MaxDegreeOfParallelism = MaxDegreeOfParallelism,
+                CancellationToken = cancellationToken
+            },
+            async (character, ct) =>
             {
-                WriteProgress(done, distinctCharacters.Count);
-            }
-        }
+                var player = await FetchPlayerAsync(
+                    client,
+                    apiUrl,
+                    secret,
+                    character.Name,
+                    character.ApiRealm,
+                    character.DisplayRealm,
+                    ct);
 
-        if (distinctCharacters.Count > 0)
+                if (player is not null)
+                {
+                    players.Add(player);
+                }
+
+                var processed = Interlocked.Increment(ref done);
+                if (processed % ProgressInterval == 0 || processed == totalCharacters)
+                {
+                    lock (progressLock)
+                    {
+                        WriteProgress(processed, totalCharacters);
+                    }
+                }
+            });
+
+        if (totalCharacters > 0)
         {
             Console.WriteLine();
         }
