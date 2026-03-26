@@ -11000,5 +11000,16 @@
             "totalTime": "2002163",
             "points": "12535"
         }
+        {
+            "name": "Dave",
+            "guildName": "",
+            "faction": "1",
+            "race": "10",
+            "class": "6",
+            "gender": "0",
+            "totalKills": "529",
+            "totalTime": "2002163",
+            "points": "12535"
+        }
     ]
 }
