@@ -9,7 +9,8 @@ internal static class Program
     public static async Task<int> Main(string[] args)
     {
         var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "AchievementLadder.csproj");
-        var repoRoot = ProjectPaths.FindSolutionRoot(projectRoot);
+        var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
+        var exportDirectory = ProjectPaths.GetFrontendSrcDirectory(solutionRoot);
         var settingsPath = Path.Combine(projectRoot, "appsettings.json");
 
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -23,7 +24,7 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
-            var csvStore = new PlayerCsvStore(repoRoot);
+            var csvStore = new PlayerCsvStore(exportDirectory);
             var playerService = new PlayerService(projectRoot, settings.TauriApi, csvStore);
 
             Console.WriteLine("Starting player sync...");

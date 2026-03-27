@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text;
 using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
+using AchievementLadder.Infrastructure;
 using AchievementLadder.Models;
 
 namespace MissingPlayerFinder;
@@ -29,7 +30,7 @@ public sealed class MissingPlayerFinderService(
                 $"Could not find AchievementLadder project folder: {_achievementLadderProjectRoot}");
         }
 
-        var playersCsvPath = Path.Combine(_solutionRoot, "Players.csv");
+        var playersCsvPath = Path.Combine(ProjectPaths.GetFrontendSrcDirectory(_solutionRoot), "Players.csv");
         if (!File.Exists(playersCsvPath))
         {
             throw new FileNotFoundException($"Could not find Players.csv at {playersCsvPath}", playersCsvPath);

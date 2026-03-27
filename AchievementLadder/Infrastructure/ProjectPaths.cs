@@ -36,4 +36,12 @@ public static class ProjectPaths
 
         return startDirectory;
     }
+
+    public static string GetFrontendSrcDirectory(string solutionRoot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(solutionRoot);
+
+        return Path.GetFullPath(
+            Path.Combine(solutionRoot, "..", "tauriachievements.github.io", "src"));
+    }
 }
