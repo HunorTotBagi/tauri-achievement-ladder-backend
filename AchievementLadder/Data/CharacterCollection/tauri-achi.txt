@@ -10999,7 +10999,7 @@
             "totalKills": "529",
             "totalTime": "2002163",
             "points": "12535"
-        }
+        },
         {
             "name": "Dave",
             "guildName": "",
