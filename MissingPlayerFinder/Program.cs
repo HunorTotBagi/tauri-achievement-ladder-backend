@@ -38,6 +38,10 @@ internal static class Program
             Console.WriteLine($"Characters appended: {result.AppendedCharacterCount}");
             Console.WriteLine($"Characters still missing: {result.RemainingMissingCharacterCount}");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
+            if (result.LastUpdatedPath is not null)
+            {
+                Console.WriteLine($"lastUpdated.txt: {result.LastUpdatedPath}");
+            }
             Console.WriteLine($"MissingPlayersToScan.txt: {result.MissingOutputPath}");
 
             return 0;

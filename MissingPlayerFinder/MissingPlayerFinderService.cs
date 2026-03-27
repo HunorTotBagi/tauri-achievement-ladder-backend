@@ -30,7 +30,9 @@ public sealed class MissingPlayerFinderService(
                 $"Could not find AchievementLadder project folder: {_achievementLadderProjectRoot}");
         }
 
-        var playersCsvPath = Path.Combine(ProjectPaths.GetFrontendSrcDirectory(_solutionRoot), "Players.csv");
+        var frontendSrcDirectory = ProjectPaths.GetFrontendSrcDirectory(_solutionRoot);
+        var playersCsvPath = Path.Combine(frontendSrcDirectory, "Players.csv");
+        var lastUpdatedPath = Path.Combine(frontendSrcDirectory, "lastUpdated.txt");
         if (!File.Exists(playersCsvPath))
         {
             throw new FileNotFoundException($"Could not find Players.csv at {playersCsvPath}", playersCsvPath);
@@ -99,6 +101,7 @@ public sealed class MissingPlayerFinderService(
             .ToList();
 
         await AppendPlayersAsync(playersCsvPath, orderedPlayers, cancellationToken);
+        var refreshedLastUpdatedPath = await RefreshLastUpdatedAsync(lastUpdatedPath, orderedPlayers.Count, cancellationToken);
 
         var remainingCharacters = unresolvedCharacters
             .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
@@ -115,6 +118,7 @@ public sealed class MissingPlayerFinderService(
             orderedPlayers.Count,
             remainingCharacters.Count,
             playersCsvPath,
+            refreshedLastUpdatedPath,
             outputPath);
     }
 
@@ -396,6 +400,37 @@ public sealed class MissingPlayerFinderService(
         }
 
         File.Move(tempPath, outputPath, overwrite: true);
+    }
+
+    private static async Task<string?> RefreshLastUpdatedAsync(
+        string lastUpdatedPath,
+        int appendedPlayerCount,
+        CancellationToken cancellationToken)
+    {
+        if (appendedPlayerCount <= 0)
+        {
+            return null;
+        }
+
+        var directory = Path.GetDirectoryName(lastUpdatedPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = lastUpdatedPath + ".tmp";
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var content = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+
+        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024, useAsync: true))
+        await using (var writer = new StreamWriter(stream, encoding))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await writer.WriteAsync(content);
+        }
+
+        File.Move(tempPath, lastUpdatedPath, overwrite: true);
+        return lastUpdatedPath;
     }
 
     private static string BuildCsvLine(Player player)

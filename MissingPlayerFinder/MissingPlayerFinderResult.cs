@@ -7,4 +7,5 @@ public sealed record MissingPlayerFinderResult(
     int AppendedCharacterCount,
     int RemainingMissingCharacterCount,
     string PlayersCsvPath,
+    string? LastUpdatedPath,
     string MissingOutputPath);
