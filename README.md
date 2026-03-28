@@ -52,4 +52,10 @@ To scan every member of one guild, pass `--guild` and `--realm`:
 dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
 ```
 
+To scan a custom batch from a text file, pass `--names-file` and `--realm`. The file can contain one character name per line or raw lines such as `[22191791]-Fluffy|186,Mining;...`:
+
+```bash
+dotnet run --project RareAchiAndItemScan -- --names-file .\RareAchiAndItemScan\Input\tauri-ban-list.txt --realm Tauri
+```
+
 By default the scan writes a JSON report under `RareAchiAndItemScan/Output`. You can limit the scan scope with `--scan achievements`, `--scan items`, `--scan mounts`, or any comma-separated combination such as `--scan achievements,items`.

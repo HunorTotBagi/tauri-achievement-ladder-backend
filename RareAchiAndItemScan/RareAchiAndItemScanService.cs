@@ -143,6 +143,11 @@ public sealed class RareAchiAndItemScanService(
                 cancellationToken);
         }
 
+        if (options.HasNamesFile)
+        {
+            return LoadCharactersFromNamesFile(options.NamesFilePath!, options.Realm!, cancellationToken);
+        }
+
         return LoadSourceCharacters(cancellationToken);
     }
 
@@ -208,6 +213,40 @@ public sealed class RareAchiAndItemScanService(
         return new CharacterToScan(name.Trim(), source.ApiRealm, source.DisplayRealm);
     }
 
+    private List<CharacterToScan> LoadCharactersFromNamesFile(
+        string namesFilePath,
+        string realm,
+        CancellationToken cancellationToken)
+    {
+        var realmSource = ResolveRealmSource(realm);
+        var resolvedPath = Path.GetFullPath(namesFilePath, _projectRoot);
+
+        if (!File.Exists(resolvedPath))
+        {
+            throw new FileNotFoundException(
+                $"Could not find names file: {resolvedPath}",
+                resolvedPath);
+        }
+
+        var characters = new HashSet<CharacterToScan>(new CharacterToScanComparer());
+
+        foreach (var rawLine in File.ReadLines(resolvedPath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!TryExtractCharacterName(rawLine, out var name))
+            {
+                continue;
+            }
+
+            characters.Add(new CharacterToScan(name, realmSource.ApiRealm, realmSource.DisplayRealm));
+        }
+
+        return characters
+            .OrderBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private static RealmSource ResolveRealmSource(string realm)
     {
         foreach (var source in RealmSources)
@@ -221,6 +260,43 @@ public sealed class RareAchiAndItemScanService(
 
         throw new InvalidOperationException(
             $"Unknown realm '{realm}'. Use Tauri, Evermoon, WoD, or a full API realm name.");
+    }
+
+    private static bool TryExtractCharacterName(string? rawLine, out string name)
+    {
+        name = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawLine))
+        {
+            return false;
+        }
+
+        var line = rawLine.Trim();
+        if (line.StartsWith('#'))
+        {
+            return false;
+        }
+
+        var candidate = line;
+        var pipeIndex = line.IndexOf('|');
+
+        if (pipeIndex > 0)
+        {
+            var dashIndex = line.LastIndexOf('-', pipeIndex - 1, pipeIndex);
+            if (dashIndex >= 0 && dashIndex < pipeIndex - 1)
+            {
+                candidate = line[(dashIndex + 1)..pipeIndex];
+            }
+        }
+
+        candidate = candidate.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('#', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        name = candidate;
+        return true;
     }
 
     private static async Task<List<CharacterToScan>> LoadGuildMembersAsync(
@@ -581,6 +657,11 @@ public sealed class RareAchiAndItemScanService(
         {
             fileName +=
                 $"-guild-{SanitizeFileSegment(options.GuildName!)}-{SanitizeFileSegment(options.Realm!)}";
+        }
+        else if (options.HasNamesFile)
+        {
+            fileName +=
+                $"-batch-{SanitizeFileSegment(Path.GetFileNameWithoutExtension(options.NamesFilePath!))}-{SanitizeFileSegment(options.Realm!)}";
         }
 
         return $"{fileName}.json";

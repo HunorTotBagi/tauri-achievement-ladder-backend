@@ -13,12 +13,14 @@ public enum ScanTarget
 public sealed record ScanOptions(
     string? CharacterName,
     string? GuildName,
+    string? NamesFilePath,
     string? Realm,
     ScanTarget Targets,
     string? OutputPath)
 {
     public bool HasSpecificCharacter => !string.IsNullOrWhiteSpace(CharacterName);
     public bool HasSpecificGuild => !string.IsNullOrWhiteSpace(GuildName);
+    public bool HasNamesFile => !string.IsNullOrWhiteSpace(NamesFilePath);
 
     public static string UsageText =>
         """
@@ -26,13 +28,15 @@ public sealed record ScanOptions(
           dotnet run --project RareAchiAndItemScan
           dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
+          dotnet run --project RareAchiAndItemScan -- --names-file .\Input\tauri-ban-list.txt --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --scan achievements,items
           dotnet run --project RareAchiAndItemScan -- --scan mounts --output .\reports\rare-mounts.json
 
         Options:
           --name <character>    Scan a single character instead of all source characters.
           --guild <name>        Scan every member of one guild on the selected realm.
-          --realm <realm>       Required with --name or --guild. Accepts Tauri, Evermoon, WoD, or the full API realm name.
+          --names-file <path>   Scan characters listed in a text file. Supports one name per line or raw [id]-Name|... lines.
+          --realm <realm>       Required with --name, --guild, or --names-file. Accepts Tauri, Evermoon, WoD, or the full API realm name.
           --scan <targets>      Comma-separated: achievements, items, mounts, or all. Default: all.
           --output <path>       Optional output file path. Relative paths are resolved from RareAchiAndItemScan.
           --help                Show this help text.
@@ -44,6 +48,8 @@ public sealed record ScanOptions(
             ? $"{CharacterName} on {Realm}"
             : HasSpecificGuild
                 ? $"guild {GuildName} on {Realm}"
+                : HasNamesFile
+                    ? $"characters from {Path.GetFileName(NamesFilePath)} on {Realm}"
                 : "all source characters";
     }
 
@@ -111,6 +117,7 @@ public sealed record ScanOptions(
 
         string? characterName = null;
         string? guildName = null;
+        string? namesFilePath = null;
         string? realm = null;
         string? outputPath = null;
         var targets = ScanTarget.All;
@@ -151,6 +158,14 @@ public sealed record ScanOptions(
 
                     break;
 
+                case "--names-file":
+                    if (!TryReadValue(args, ref index, argument, out namesFilePath, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    break;
+
                 case "--scan":
                     if (!TryReadValue(args, ref index, argument, out var rawTargets, out errorMessage))
                     {
@@ -184,24 +199,50 @@ public sealed record ScanOptions(
             return false;
         }
 
-        if (( !string.IsNullOrWhiteSpace(characterName) || !string.IsNullOrWhiteSpace(guildName)) &&
+        var selectorCount = 0;
+        if (!string.IsNullOrWhiteSpace(characterName))
+        {
+            selectorCount++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(guildName))
+        {
+            selectorCount++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(namesFilePath))
+        {
+            selectorCount++;
+        }
+
+        if (selectorCount > 1)
+        {
+            errorMessage = "Only one of --name, --guild, or --names-file can be used at a time.";
+            return false;
+        }
+
+        if (( !string.IsNullOrWhiteSpace(characterName) ||
+              !string.IsNullOrWhiteSpace(guildName) ||
+              !string.IsNullOrWhiteSpace(namesFilePath)) &&
             string.IsNullOrWhiteSpace(realm))
         {
-            errorMessage = "--realm is required when --name or --guild is provided.";
+            errorMessage = "--realm is required when --name, --guild, or --names-file is provided.";
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(characterName) &&
             string.IsNullOrWhiteSpace(guildName) &&
+            string.IsNullOrWhiteSpace(namesFilePath) &&
             !string.IsNullOrWhiteSpace(realm))
         {
-            errorMessage = "--realm can only be used together with --name or --guild.";
+            errorMessage = "--realm can only be used together with --name, --guild, or --names-file.";
             return false;
         }
 
         options = new ScanOptions(
             characterName?.Trim(),
             guildName?.Trim(),
+            namesFilePath?.Trim(),
             realm?.Trim(),
             targets,
             outputPath?.Trim());
