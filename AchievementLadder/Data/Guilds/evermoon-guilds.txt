@@ -183,6 +183,7 @@ Fekete Hold
 Feláldozhatók
 fevecerose
 FireDragons
+Firelords
 Flyíng Whales
 FORGOTTEN SHADOWS
 ForTheAlliance
@@ -384,6 +385,7 @@ Sombras Da Horda
 Sons of Anarchy
 Soulflame Syndicate
 Spaghetti Stealers
+Stellaris
 Speedkillers
 Spellbound
 Spirits of Elune
