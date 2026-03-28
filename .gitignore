@@ -364,3 +364,4 @@ FodyWeavers.xsd
 /AchievementLadder/appsettings.Development.json
 /AchievementLadder/appsettings.Secrets.json
 /.dotnet/
+/RareAchiAndItemScan/Output/

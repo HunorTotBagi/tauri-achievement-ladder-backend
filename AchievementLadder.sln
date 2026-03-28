@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuildCharacterExporter", "G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MissingPlayerFinder", "MissingPlayerFinder\MissingPlayerFinder.csproj", "{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RareAchiAndItemScan", "RareAchiAndItemScan\RareAchiAndItemScan.csproj", "{181067F1-1786-4214-996E-F08DD522494C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{181067F1-1786-4214-996E-F08DD522494C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{181067F1-1786-4214-996E-F08DD522494C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{181067F1-1786-4214-996E-F08DD522494C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{181067F1-1786-4214-996E-F08DD522494C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

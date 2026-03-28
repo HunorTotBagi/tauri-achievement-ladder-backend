@@ -33,3 +33,23 @@ To compare the current source inputs against `Players.csv`, fetch the missing ch
 ```bash
 dotnet run --project MissingPlayerFinder
 ```
+
+To scan for rare achievements, target items, and rare mounts, run:
+
+```bash
+dotnet run --project RareAchiAndItemScan
+```
+
+To scan just one character, pass `--name` and `--realm`:
+
+```bash
+dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
+```
+
+To scan every member of one guild, pass `--guild` and `--realm`:
+
+```bash
+dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
+```
+
+By default the scan writes a JSON report under `RareAchiAndItemScan/Output`. You can limit the scan scope with `--scan achievements`, `--scan items`, `--scan mounts`, or any comma-separated combination such as `--scan achievements,items`.
