@@ -11,6 +11,54 @@ public static class CharacterHelpers
             ["Tauri"] = ("[HU] Tauri WoW Server", "Tauri"),
             ["WoD"] = ("[HU] Warriors of Darkness", "WoD")
         };
+    private static readonly (string FileName, string ApiRealm, string DisplayRealm)[] CharacterCollectionSources =
+    [
+        ("evermoon-achi.txt", "[EN] Evermoon", "Evermoon"),
+        ("evermoon-hk.txt", "[EN] Evermoon", "Evermoon"),
+        ("evermoon-playTime.txt", "[EN] Evermoon", "Evermoon"),
+        ("tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri"),
+        ("tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri"),
+        ("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri"),
+        ("wod-achi.txt", "[HU] Warriors of Darkness", "WoD"),
+        ("wod-hk.txt", "[HU] Warriors of Darkness", "WoD"),
+        ("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD")
+    ];
+    private static readonly (string RelativePath, string ApiRealm, string DisplayRealm)[] AdditionalTextSources =
+    [
+        (Path.Combine("..", "RareAchiAndItemScan", "Input", "tauri-ban-list.txt"), "[HU] Tauri WoW Server", "Tauri"),
+        (Path.Combine("..", "RareAchiAndItemScan", "Input", "vengeful.txt"), "[HU] Tauri WoW Server", "Tauri")
+    ];
+
+    public static void LoadDefaultCharacterSources(
+        string projectRoot,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output,
+        bool ignoreMissingGuildCharacters = false)
+    {
+        if (ignoreMissingGuildCharacters)
+        {
+            try
+            {
+                LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
+            }
+            catch (FileNotFoundException)
+            {
+            }
+        }
+        else
+        {
+            LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
+        }
+
+        foreach (var source in CharacterCollectionSources)
+        {
+            LoadCharacters(projectRoot, source.FileName, source.ApiRealm, source.DisplayRealm, output);
+        }
+
+        foreach (var source in AdditionalTextSources)
+        {
+            LoadCharactersFromTextFile(projectRoot, source.RelativePath, source.ApiRealm, source.DisplayRealm, output);
+        }
+    }
 
     public static void LoadCharacters(string projectRoot, string fileName, string apiRealm, string displayRealm, List<(string Name, string ApiRealm, string DisplayRealm)> output)
     {
@@ -37,6 +85,28 @@ public static class CharacterHelpers
                 {
                     output.Add((name, apiRealm, displayRealm));
                 }
+            }
+        }
+    }
+
+    public static void LoadCharactersFromTextFile(
+        string projectRoot,
+        string relativePath,
+        string apiRealm,
+        string displayRealm,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    {
+        var filePath = Path.GetFullPath(relativePath, projectRoot);
+        if (!File.Exists(filePath))
+        {
+            return;
+        }
+
+        foreach (var rawLine in File.ReadLines(filePath))
+        {
+            if (TryExtractCharacterName(rawLine, out var name))
+            {
+                output.Add((name, apiRealm, displayRealm));
             }
         }
     }
@@ -80,5 +150,42 @@ public static class CharacterHelpers
 
             output.Add((name, realm.ApiRealm, realm.DisplayRealm));
         }
+    }
+
+    public static bool TryExtractCharacterName(string? rawLine, out string name)
+    {
+        name = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawLine))
+        {
+            return false;
+        }
+
+        var line = rawLine.Trim();
+        if (line.StartsWith('#'))
+        {
+            return false;
+        }
+
+        var candidate = line;
+        var pipeIndex = line.IndexOf('|');
+
+        if (pipeIndex > 0)
+        {
+            var dashIndex = line.LastIndexOf('-', pipeIndex - 1, pipeIndex);
+            if (dashIndex >= 0 && dashIndex < pipeIndex - 1)
+            {
+                candidate = line[(dashIndex + 1)..pipeIndex];
+            }
+        }
+
+        candidate = candidate.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('#', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        name = candidate;
+        return true;
     }
 }

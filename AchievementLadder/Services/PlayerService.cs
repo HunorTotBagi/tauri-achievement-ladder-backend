@@ -95,19 +95,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         void LoadCharacterSources(List<(string Name, string ApiRealm, string DisplayRealm)> output)
         {
-            CharacterHelpers.LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
-
-            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-achi.txt", "[EN] Evermoon", "Evermoon", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-hk.txt", "[EN] Evermoon", "Evermoon", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "evermoon-playTime.txt", "[EN] Evermoon", "Evermoon", output);
-
-            CharacterHelpers.LoadCharacters(projectRoot, "tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri", output);
-
-            CharacterHelpers.LoadCharacters(projectRoot, "wod-achi.txt", "[HU] Warriors of Darkness", "WoD", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", output);
-            CharacterHelpers.LoadCharacters(projectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", output);
+            CharacterHelpers.LoadDefaultCharacterSources(projectRoot, output);
         }
     }
 

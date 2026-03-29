@@ -2,6 +2,15 @@
 
 This repository is now a plain `.NET 9` console app. It reads the local character and guild source files, fetches fresh character details from the Tauri API, and writes `Players.csv` plus `lastUpdated.txt` to `../tauriachievements.github.io/src`.
 
+`AchievementLadder` loads characters from:
+
+- `AchievementLadder/Data/CharacterCollection/*.txt`
+- `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
+- `RareAchiAndItemScan/Input/tauri-ban-list.txt`
+- `RareAchiAndItemScan/Input/vengeful.txt`
+
+The two `RareAchiAndItemScan/Input` files are treated as additional `Tauri` character sources.
+
 There is no database, no EF Core migration flow, and no Docker setup anymore.
 
 ## Configuration

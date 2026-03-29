@@ -126,19 +126,7 @@ public sealed class MissingPlayerFinderService(
     {
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
 
-        CharacterHelpers.LoadGuildCharacters(_achievementLadderProjectRoot, "GuildCharacters.txt", allCharacters);
-
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "evermoon-achi.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "evermoon-hk.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "evermoon-playTime.txt", "[EN] Evermoon", "Evermoon", allCharacters);
-
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "tauri-achi.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "tauri-hk.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri", allCharacters);
-
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "wod-achi.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "wod-hk.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
-        CharacterHelpers.LoadCharacters(_achievementLadderProjectRoot, "wod-playTime.txt", "[HU] Warriors of Darkness", "WoD", allCharacters);
+        CharacterHelpers.LoadDefaultCharacterSources(_achievementLadderProjectRoot, allCharacters);
 
         var result = new HashSet<CharacterToScan>(new CharacterToScanComparer());
 

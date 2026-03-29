@@ -160,26 +160,10 @@ public sealed class RareAchiAndItemScanService(
         }
 
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
-
-        try
-        {
-            CharacterHelpers.LoadGuildCharacters(_achievementLadderProjectRoot, "GuildCharacters.txt", allCharacters);
-        }
-        catch (FileNotFoundException ex)
-        {
-            Console.Error.WriteLine($"Skipping GuildCharacters.txt: {ex.Message}");
-        }
-
-        foreach (var source in RealmSources)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            CharacterHelpers.LoadCharacters(
-                _achievementLadderProjectRoot,
-                source.FileName,
-                source.ApiRealm,
-                source.DisplayRealm,
-                allCharacters);
-        }
+        CharacterHelpers.LoadDefaultCharacterSources(
+            _achievementLadderProjectRoot,
+            allCharacters,
+            ignoreMissingGuildCharacters: true);
 
         var characters = new HashSet<CharacterToScan>(new CharacterToScanComparer());
 
@@ -234,7 +218,7 @@ public sealed class RareAchiAndItemScanService(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!TryExtractCharacterName(rawLine, out var name))
+            if (!CharacterHelpers.TryExtractCharacterName(rawLine, out var name))
             {
                 continue;
             }
@@ -260,43 +244,6 @@ public sealed class RareAchiAndItemScanService(
 
         throw new InvalidOperationException(
             $"Unknown realm '{realm}'. Use Tauri, Evermoon, WoD, or a full API realm name.");
-    }
-
-    private static bool TryExtractCharacterName(string? rawLine, out string name)
-    {
-        name = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(rawLine))
-        {
-            return false;
-        }
-
-        var line = rawLine.Trim();
-        if (line.StartsWith('#'))
-        {
-            return false;
-        }
-
-        var candidate = line;
-        var pipeIndex = line.IndexOf('|');
-
-        if (pipeIndex > 0)
-        {
-            var dashIndex = line.LastIndexOf('-', pipeIndex - 1, pipeIndex);
-            if (dashIndex >= 0 && dashIndex < pipeIndex - 1)
-            {
-                candidate = line[(dashIndex + 1)..pipeIndex];
-            }
-        }
-
-        candidate = candidate.Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('#', StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        name = candidate;
-        return true;
     }
 
     private static async Task<List<CharacterToScan>> LoadGuildMembersAsync(
