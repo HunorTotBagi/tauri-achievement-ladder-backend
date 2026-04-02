@@ -10999,6 +10999,17 @@
             "totalKills": "535",
             "totalTime": "2459293",
             "points": "10290"
+        },
+        {
+            "name": "Ärtemîsz",
+            "guildName": "Nainport Export",
+            "faction": "0",
+            "race": "3",
+            "class": "5",
+            "gender": "1",
+            "totalKills": "535",
+            "totalTime": "2459293",
+            "points": "10290"
         }
     ]
 }
