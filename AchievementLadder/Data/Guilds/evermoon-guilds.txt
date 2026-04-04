@@ -406,7 +406,6 @@ The 100
 The Asylum
 The Carnivorous Snigels
 The Chosen One
-The Dark Exile
 THE EARTH IS FLAT
 The Echoes
 THE ELEGANCE
@@ -490,3 +489,4 @@ The Three Amigos
 Hollywood Undead
 Escuadrón Zero
 SPARTAN II Halo
+HAVANA CLÚB
