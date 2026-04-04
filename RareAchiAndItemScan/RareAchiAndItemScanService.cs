@@ -42,6 +42,7 @@ public sealed class RareAchiAndItemScanService(
     {
         using var client = new HttpClient();
         var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
+        var targetItems = ResolveTargetItems(options);
         var characters = await ResolveCharactersAsync(options, client, apiUrl, _apiOptions.Secret, cancellationToken);
         var scanResults = new ConcurrentBag<RareCharacterScanResult>();
         var failures = new ConcurrentBag<string>();
@@ -58,7 +59,14 @@ public sealed class RareAchiAndItemScanService(
             {
                 try
                 {
-                    var result = await ScanCharacterAsync(client, apiUrl, _apiOptions.Secret, character, options.Targets, ct);
+                    var result = await ScanCharacterAsync(
+                        client,
+                        apiUrl,
+                        _apiOptions.Secret,
+                        character,
+                        options.Targets,
+                        targetItems,
+                        ct);
                     if (result is not null)
                     {
                         scanResults.Add(result);
@@ -118,6 +126,23 @@ public sealed class RareAchiAndItemScanService(
             orderedResults.Sum(result => result.Items.Count),
             orderedResults.Sum(result => result.Mounts.Count),
             outputPath);
+    }
+
+    private static IReadOnlyDictionary<int, string> ResolveTargetItems(ScanOptions options)
+    {
+        if (!options.Targets.HasFlag(ScanTarget.Items))
+        {
+            return new Dictionary<int, string>();
+        }
+
+        if (!options.HasCustomItemIds)
+        {
+            return RareScanCatalog.TargetItems;
+        }
+
+        return options.ItemIds.ToDictionary(
+            itemId => itemId,
+            RareScanCatalog.ItemNameFromId);
     }
 
     private async Task<List<CharacterToScan>> ResolveCharactersAsync(
@@ -304,6 +329,7 @@ public sealed class RareAchiAndItemScanService(
         string secret,
         CharacterToScan character,
         ScanTarget targets,
+        IReadOnlyDictionary<int, string> targetItems,
         CancellationToken cancellationToken)
     {
         var achievementsTask = targets.HasFlag(ScanTarget.Achievements)
@@ -311,7 +337,7 @@ public sealed class RareAchiAndItemScanService(
             : Task.FromResult<IReadOnlyList<RareAchievementMatch>>(Array.Empty<RareAchievementMatch>());
 
         var itemsTask = targets.HasFlag(ScanTarget.Items)
-            ? FetchOwnedMatchingItemsAsync(client, apiUrl, secret, character, cancellationToken)
+            ? FetchOwnedMatchingItemsAsync(client, apiUrl, secret, character, targetItems, cancellationToken)
             : Task.FromResult<IReadOnlyList<RareItemMatch>>(Array.Empty<RareItemMatch>());
 
         var mountsTask = targets.HasFlag(ScanTarget.Mounts)
@@ -360,7 +386,7 @@ public sealed class RareAchiAndItemScanService(
 
         if (items.Count > 0)
         {
-            fragments.Add($"items: {string.Join(", ", items.Select(match => match.Name))}");
+            fragments.Add($"items: {string.Join(", ", items.Select(FormatItemMatch))}");
         }
 
         if (mounts.Count > 0)
@@ -376,6 +402,14 @@ public sealed class RareAchiAndItemScanService(
             Console.ForegroundColor = previousColor;
             Console.WriteLine(string.Join(" | ", fragments));
         }
+    }
+
+    private static string FormatItemMatch(RareItemMatch match)
+    {
+        var fallbackName = $"Item {match.ItemId}";
+        return string.Equals(match.Name, fallbackName, StringComparison.OrdinalIgnoreCase)
+            ? fallbackName
+            : $"{match.Name} ({match.ItemId})";
     }
 
     private static async Task<IReadOnlyList<RareAchievementMatch>> FetchMatchingAchievementsAsync(
@@ -416,8 +450,14 @@ public sealed class RareAchiAndItemScanService(
         string apiUrl,
         string secret,
         CharacterToScan character,
+        IReadOnlyDictionary<int, string> targetItems,
         CancellationToken cancellationToken)
     {
+        if (targetItems.Count == 0)
+        {
+            return Array.Empty<RareItemMatch>();
+        }
+
         var response = await FetchResponseElementAsync(
             client,
             apiUrl,
@@ -456,7 +496,7 @@ public sealed class RareAchiAndItemScanService(
 
                 var itemId = ReadInt(itemElement, "itemid");
                 if (itemId <= 0 ||
-                    !RareScanCatalog.TargetItems.TryGetValue(itemId, out var itemName))
+                    !targetItems.TryGetValue(itemId, out var itemName))
                 {
                     continue;
                 }

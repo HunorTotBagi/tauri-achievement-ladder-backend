@@ -244,4 +244,14 @@ internal static class RareScanCatalog
 
         return classId > 0 ? $"Class {classId}" : "Unknown";
     }
+
+    public static string ItemNameFromId(int itemId)
+    {
+        if (TargetItems.TryGetValue(itemId, out var itemName))
+        {
+            return itemName;
+        }
+
+        return $"Item {itemId}";
+    }
 }

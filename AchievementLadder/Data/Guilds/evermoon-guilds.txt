@@ -26,7 +26,6 @@ Endless
 CannabisCountryClub
 Calamity
 Unicorns
-Crows at Midnight
 The World Eaters
 Redemption
 Aurora
@@ -82,7 +81,6 @@ Anxiety Attack
 Aqours
 Aranytoll
 Arco Latinos
-Army of Divergent
 Art of Light
 Artificial Evolution
 Astral Walkers
@@ -168,7 +166,6 @@ Even More Bags
 Eventide
 Evergreen
 Evermoons Inn
-Ex Nihilo
 Exaltado con el piso
 Exodia
 Exodus
@@ -359,7 +356,6 @@ Rezes banda
 Riders of Apocalypse
 RippeR
 Rosszcsontok
-Rycerze Ortalionu
 S A R M A
 Sakura Empire
 SavageHabbits
@@ -490,3 +486,7 @@ Mancos Sin Fronteras
 Aen Seidhe
 Pampangas Best
 Last Whisper
+The Three Amigos
+Hollywood Undead
+Escuadrón Zero
+SPARTAN II Halo

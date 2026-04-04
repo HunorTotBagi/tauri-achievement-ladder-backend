@@ -43,11 +43,36 @@ To compare the current source inputs against `Players.csv`, fetch the missing ch
 dotnet run --project MissingPlayerFinder
 ```
 
+To scan item appearances for specific item IDs, save a JSON report, and write unresolved retry characters into `MissingItemCharactersToScan.txt`, run:
+
+```bash
+dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710"
+```
+
+To scan a single character for those items:
+
+```bash
+dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710" --name Larahh --realm Tauri
+```
+
+To rerun only the unresolved characters from the retry file, pass it back in as `--names-file`:
+
+```bash
+dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710" --names-file .\MissingItemCharactersToScan.txt
+```
+
 To scan for rare achievements, target items, and rare mounts, run:
 
 ```bash
 dotnet run --project RareAchiAndItemScan
 ```
+
+The default source scan already combines:
+
+- `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
+- `RareAchiAndItemScan/Input/tauri-ban-list.txt`
+- `RareAchiAndItemScan/Input/vengeful.txt`
+- `AchievementLadder/Data/CharacterCollection/*.txt`
 
 To scan just one character, pass `--name` and `--realm`:
 
@@ -68,3 +93,9 @@ dotnet run --project RareAchiAndItemScan -- --names-file .\RareAchiAndItemScan\I
 ```
 
 By default the scan writes a JSON report under `RareAchiAndItemScan/Output`. You can limit the scan scope with `--scan achievements`, `--scan items`, `--scan mounts`, or any comma-separated combination such as `--scan achievements,items`.
+
+To scan the item-appearance endpoint only for specific item IDs across all default source characters, pass `--item-ids`:
+
+```bash
+dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
+```

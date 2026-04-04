@@ -111,7 +111,6 @@ Nightmare
 Falka
 patient
 CENZORED
-The Unforgiven
 Victorious Secret
 Rémálom Az Elf Utcában
 The Executioners Of Sargeras
@@ -539,7 +538,6 @@ Sanitarium
 Sapped girls cant say no
 Scarlet Crusade
 Second Chance
-Seekers of the Self
 Senior Tauri Squad
 Serenity
 Servants of God
@@ -673,3 +671,4 @@ Evil Knights
 Eternal
 Polgár Jenõ
 Order Of The Warriors
+Mulatósok

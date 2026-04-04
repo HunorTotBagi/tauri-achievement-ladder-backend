@@ -143,13 +143,87 @@ public static class CharacterHelpers
                 continue;
             }
 
-            if (!Realms.TryGetValue(realmText, out var realm))
+            if (!TryResolveRealm(realmText, out var apiRealm, out var displayRealm))
             {
                 continue;
             }
 
-            output.Add((name, realm.ApiRealm, realm.DisplayRealm));
+            output.Add((name, apiRealm, displayRealm));
         }
+    }
+
+    public static bool TryResolveRealm(
+        string? rawRealm,
+        out string apiRealm,
+        out string displayRealm)
+    {
+        apiRealm = string.Empty;
+        displayRealm = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawRealm))
+        {
+            return false;
+        }
+
+        var realm = rawRealm.Trim();
+
+        foreach (var entry in Realms)
+        {
+            if (!string.Equals(realm, entry.Key, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(realm, entry.Value.ApiRealm, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(realm, entry.Value.DisplayRealm, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            apiRealm = entry.Value.ApiRealm;
+            displayRealm = entry.Value.DisplayRealm;
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryExtractCharacterWithRealm(
+        string? rawLine,
+        out string name,
+        out string apiRealm,
+        out string displayRealm)
+    {
+        name = string.Empty;
+        apiRealm = string.Empty;
+        displayRealm = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawLine))
+        {
+            return false;
+        }
+
+        var line = rawLine.Trim();
+        if (line.StartsWith('#'))
+        {
+            return false;
+        }
+
+        var separatorIndex = line.LastIndexOf('-');
+        if (separatorIndex <= 0 || separatorIndex == line.Length - 1)
+        {
+            return false;
+        }
+
+        var candidateName = line[..separatorIndex].Trim();
+        var rawRealm = line[(separatorIndex + 1)..].Trim();
+
+        if (string.IsNullOrWhiteSpace(candidateName) ||
+            candidateName.Contains('#', StringComparison.Ordinal) ||
+            !TryResolveRealm(rawRealm, out apiRealm, out displayRealm))
+        {
+            name = string.Empty;
+            return false;
+        }
+
+        name = candidateName;
+        return true;
     }
 
     public static bool TryExtractCharacterName(string? rawLine, out string name)

@@ -16,11 +16,13 @@ public sealed record ScanOptions(
     string? NamesFilePath,
     string? Realm,
     ScanTarget Targets,
+    IReadOnlyList<int> ItemIds,
     string? OutputPath)
 {
     public bool HasSpecificCharacter => !string.IsNullOrWhiteSpace(CharacterName);
     public bool HasSpecificGuild => !string.IsNullOrWhiteSpace(GuildName);
     public bool HasNamesFile => !string.IsNullOrWhiteSpace(NamesFilePath);
+    public bool HasCustomItemIds => ItemIds.Count > 0;
 
     public static string UsageText =>
         """
@@ -29,6 +31,7 @@ public sealed record ScanOptions(
           dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --names-file .\Input\tauri-ban-list.txt --realm Tauri
+          dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
           dotnet run --project RareAchiAndItemScan -- --scan achievements,items
           dotnet run --project RareAchiAndItemScan -- --scan mounts --output .\reports\rare-mounts.json
 
@@ -37,6 +40,7 @@ public sealed record ScanOptions(
           --guild <name>        Scan every member of one guild on the selected realm.
           --names-file <path>   Scan characters listed in a text file. Supports one name per line or raw [id]-Name|... lines.
           --realm <realm>       Required with --name, --guild, or --names-file. Accepts Tauri, Evermoon, WoD, or the full API realm name.
+          --item-ids <ids>      Comma-separated item IDs to match. When provided without --scan, the scan becomes item-only.
           --scan <targets>      Comma-separated: achievements, items, mounts, or all. Default: all.
           --output <path>       Optional output file path. Relative paths are resolved from RareAchiAndItemScan.
           --help                Show this help text.
@@ -55,7 +59,7 @@ public sealed record ScanOptions(
 
     public string DescribeTargets()
     {
-        if (Targets == ScanTarget.All)
+        if (Targets == ScanTarget.All && !HasCustomItemIds)
         {
             return "achievements, items, and mounts";
         }
@@ -68,7 +72,9 @@ public sealed record ScanOptions(
 
         if (Targets.HasFlag(ScanTarget.Items))
         {
-            parts.Add("items");
+            parts.Add(HasCustomItemIds
+                ? $"items ({string.Join(", ", ItemIds)})"
+                : "items");
         }
 
         if (Targets.HasFlag(ScanTarget.Mounts))
@@ -81,7 +87,7 @@ public sealed record ScanOptions(
 
     public string GetTargetFileSegment()
     {
-        if (Targets == ScanTarget.All)
+        if (Targets == ScanTarget.All && !HasCustomItemIds)
         {
             return "all";
         }
@@ -94,7 +100,7 @@ public sealed record ScanOptions(
 
         if (Targets.HasFlag(ScanTarget.Items))
         {
-            parts.Add("items");
+            parts.Add(HasCustomItemIds ? "items-custom" : "items");
         }
 
         if (Targets.HasFlag(ScanTarget.Mounts))
@@ -120,7 +126,9 @@ public sealed record ScanOptions(
         string? namesFilePath = null;
         string? realm = null;
         string? outputPath = null;
+        IReadOnlyList<int> itemIds = Array.Empty<int>();
         var targets = ScanTarget.All;
+        var scanSpecified = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -166,12 +174,27 @@ public sealed record ScanOptions(
 
                     break;
 
+                case "--item-ids":
+                case "--item-id":
+                    if (!TryReadValue(args, ref index, argument, out var rawItemIds, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    if (!TryParseItemIds(rawItemIds!, out itemIds, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    break;
+
                 case "--scan":
                     if (!TryReadValue(args, ref index, argument, out var rawTargets, out errorMessage))
                     {
                         return false;
                     }
 
+                    scanSpecified = true;
                     if (!TryParseTargets(rawTargets!, out targets, out errorMessage))
                     {
                         return false;
@@ -239,12 +262,26 @@ public sealed record ScanOptions(
             return false;
         }
 
+        if (itemIds.Count > 0)
+        {
+            if (!scanSpecified)
+            {
+                targets = ScanTarget.Items;
+            }
+            else if (!targets.HasFlag(ScanTarget.Items))
+            {
+                errorMessage = "--item-ids requires --scan items or another scan selection that includes items.";
+                return false;
+            }
+        }
+
         options = new ScanOptions(
             characterName?.Trim(),
             guildName?.Trim(),
             namesFilePath?.Trim(),
             realm?.Trim(),
             targets,
+            itemIds,
             outputPath?.Trim());
 
         return true;
@@ -267,6 +304,51 @@ public sealed record ScanOptions(
         }
 
         value = args[++index];
+        return true;
+    }
+
+    private static bool TryParseItemIds(
+        string rawItemIds,
+        out IReadOnlyList<int> itemIds,
+        out string? errorMessage)
+    {
+        itemIds = Array.Empty<int>();
+        errorMessage = null;
+
+        var tokens = rawItemIds.Split(
+            [',', ';', '|', ' '],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (tokens.Length == 0)
+        {
+            errorMessage = "At least one item ID must be provided.";
+            return false;
+        }
+
+        var results = new List<int>(tokens.Length);
+        var seen = new HashSet<int>();
+
+        foreach (var token in tokens)
+        {
+            if (!int.TryParse(token, out var itemId) || itemId <= 0)
+            {
+                errorMessage = $"Invalid item ID: {token}";
+                return false;
+            }
+
+            if (seen.Add(itemId))
+            {
+                results.Add(itemId);
+            }
+        }
+
+        if (results.Count == 0)
+        {
+            errorMessage = "At least one valid item ID must be provided.";
+            return false;
+        }
+
+        itemIds = results;
         return true;
     }
 
