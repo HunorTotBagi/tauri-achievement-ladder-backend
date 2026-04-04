@@ -23,7 +23,6 @@ Last Try
 Rycerze Ortalionu
 Storm
 Endless
-CannabisCountryClub
 Calamity
 Unicorns
 The World Eaters
@@ -100,9 +99,12 @@ Blakk
 Blank Souls
 Blessings
 boats n hoes
+Shadow of Mordor
+Light of the Immortals
 BrazilianStorm
 Brodate Drzewa
 Buccaneers Federated
+Bekarty Przymierza
 Bun Babylon Bun
 Calamity
 CannabisCountryClub
@@ -466,7 +468,6 @@ WHERE THE DODGE BEGINS
 Who Cares
 Winterfall
 Wipe Happens
-Wipes on Tresh
 Wolhaiksong
 wololo
 Wonkru Hun
