@@ -2828,17 +2828,6 @@
             "points": "14320"
         },
         {
-            "name": "Flatbus",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "13149",
-            "totalTime": "19990623",
-            "points": "14315"
-        },
-        {
             "name": "Olafson",
             "guildName": "Artificial Evolution",
             "faction": "1",
@@ -8273,17 +8262,6 @@
             "points": "11170"
         },
         {
-            "name": "Dumthicc",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "28599",
-            "totalTime": "20666764",
-            "points": "11170"
-        },
-        {
             "name": "Notoriousxo",
             "guildName": "",
             "faction": "0",
@@ -8501,17 +8479,6 @@
             "gender": "1",
             "totalKills": "3184",
             "totalTime": "5224870",
-            "points": "11100"
-        },
-        {
-            "name": "Furyenjoyer",
-            "guildName": "Momentum",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "1535",
-            "totalTime": "6041099",
             "points": "11100"
         },
         {
@@ -8876,17 +8843,6 @@
             "totalKills": "985",
             "totalTime": "13111350",
             "points": "10970"
-        },
-        {
-            "name": "Danielbc",
-            "guildName": "Alian\u00e7a Das Pa\u00e7ocas",
-            "faction": "0",
-            "race": "11",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "792",
-            "totalTime": "7245505",
-            "points": "10965"
         },
         {
             "name": "Firemagic",
@@ -9956,17 +9912,6 @@
             "points": "10580"
         },
         {
-            "name": "Galadrielcat",
-            "guildName": "Llama Rub\u00ed",
-            "faction": "1",
-            "race": "10",
-            "class": "6",
-            "gender": "1",
-            "totalKills": "1611",
-            "totalTime": "4820897",
-            "points": "10575"
-        },
-        {
             "name": "Cyberpanda",
             "guildName": "Darkness Falls",
             "faction": "0",
@@ -10570,17 +10515,6 @@
             "totalKills": "908",
             "totalTime": "5851111",
             "points": "10385"
-        },
-        {
-            "name": "Clearnight",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "8834",
-            "totalTime": "12471605",
-            "points": "10375"
         },
         {
             "name": "Haelyn",

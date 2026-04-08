@@ -1695,17 +1695,6 @@
             "points": "4010"
         },
         {
-            "name": "Dumthicc",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "28599",
-            "totalTime": "20666764",
-            "points": "11170"
-        },
-        {
             "name": "Sensis",
             "guildName": "The Asylum",
             "faction": "0",
@@ -1869,17 +1858,6 @@
             "totalKills": "54058",
             "totalTime": "20068447",
             "points": "11130"
-        },
-        {
-            "name": "Flatbus",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "13149",
-            "totalTime": "19990623",
-            "points": "14315"
         },
         {
             "name": "Swagerlikeus",
@@ -6346,17 +6324,6 @@
             "totalKills": "11166",
             "totalTime": "12472462",
             "points": "16340"
-        },
-        {
-            "name": "Clearnight",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "8834",
-            "totalTime": "12471605",
-            "points": "10375"
         },
         {
             "name": "Session",

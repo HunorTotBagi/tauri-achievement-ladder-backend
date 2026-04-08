@@ -5688,17 +5688,6 @@
             "points": "7750"
         },
         {
-            "name": "Dumthicc",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "28599",
-            "totalTime": "20666764",
-            "points": "11170"
-        },
-        {
             "name": "K\u00f6cs\u00f6gdar\u00e1zs",
             "guildName": "",
             "faction": "0",
@@ -6016,17 +6005,6 @@
             "totalKills": "27769",
             "totalTime": "12749348",
             "points": "6745"
-        },
-        {
-            "name": "Garretta",
-            "guildName": "A Murder of Crows",
-            "faction": "1",
-            "race": "2",
-            "class": "4",
-            "gender": "1",
-            "totalKills": "27744",
-            "totalTime": "8587904",
-            "points": "8185"
         },
         {
             "name": "Cazzoguardi",
