@@ -37,6 +37,14 @@ dotnet run --project GuildCharacterExporter
 
 `GuildCharacterExporter` reuses the API settings from `AchievementLadder/appsettings.json`.
 
+To export the `Endless` guild on `Tauri` into a real Excel workbook with one row per character plus class, race, and profession columns when the character endpoint exposes them, run:
+
+```bash
+dotnet run --project EndlessGuildExporter
+```
+
+The default workbook path is `artifacts/EndlessGuildExporter/Endless-Tauri-members.xlsx`. You can override it with `--output`.
+
 To compare the current source inputs against `Players.csv`, fetch the missing characters from the Tauri API, append any successful lookups to `../tauriachievements.github.io/src/Players.csv`, and write any still-missing retries into `MissingPlayersToScan.txt`, run:
 
 ```bash
