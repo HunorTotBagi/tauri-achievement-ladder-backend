@@ -1068,17 +1068,6 @@
             "points": "14325"
         },
         {
-            "name": "Buszos",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "79923",
-            "totalTime": "24500939",
-            "points": "16830"
-        },
-        {
             "name": "Captnkrunch",
             "guildName": "S\u00dbP\u00caR SERI\u00d8US TRYHAR\u00d0",
             "faction": "0",
@@ -1726,17 +1715,6 @@
             "totalKills": "5863",
             "totalTime": "20652191",
             "points": "10900"
-        },
-        {
-            "name": "Chaosophia",
-            "guildName": "Chimken and the Nuggies",
-            "faction": "0",
-            "race": "1",
-            "class": "9",
-            "gender": "0",
-            "totalKills": "64884",
-            "totalTime": "20609759",
-            "points": "12840"
         },
         {
             "name": "Fixloggen",
@@ -4181,17 +4159,6 @@
             "points": "7590"
         },
         {
-            "name": "Celindros",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "10",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "17392",
-            "totalTime": "14979094",
-            "points": "15330"
-        },
-        {
             "name": "Talmane",
             "guildName": "",
             "faction": "1",
@@ -4278,17 +4245,6 @@
             "totalKills": "8339",
             "totalTime": "14834675",
             "points": "3980"
-        },
-        {
-            "name": "Aizenfald",
-            "guildName": "Crows at Midnight",
-            "faction": "0",
-            "race": "4",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "91381",
-            "totalTime": "14807135",
-            "points": "9660"
         },
         {
             "name": "Galbatrosz",
@@ -6401,17 +6357,6 @@
             "totalKills": "8834",
             "totalTime": "12471605",
             "points": "10375"
-        },
-        {
-            "name": "Aznodt",
-            "guildName": "A Murder of Crows",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "54827",
-            "totalTime": "12461801",
-            "points": "6290"
         },
         {
             "name": "Session",

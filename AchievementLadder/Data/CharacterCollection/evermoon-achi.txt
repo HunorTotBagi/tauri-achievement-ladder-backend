@@ -716,17 +716,6 @@
             "points": "16850"
         },
         {
-            "name": "Buszos",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "79923",
-            "totalTime": "24500939",
-            "points": "16830"
-        },
-        {
             "name": "Bartosh",
             "guildName": "Warlords of Destruction",
             "faction": "1",
@@ -1803,17 +1792,6 @@
             "totalKills": "3536",
             "totalTime": "19801403",
             "points": "15365"
-        },
-        {
-            "name": "Celindros",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "10",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "17392",
-            "totalTime": "14979094",
-            "points": "15330"
         },
         {
             "name": "Arsis",
@@ -3090,17 +3068,6 @@
             "totalKills": "7128",
             "totalTime": "31745302",
             "points": "14120"
-        },
-        {
-            "name": "Aganezza",
-            "guildName": "Ex Nihilo",
-            "faction": "0",
-            "race": "4",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "1489",
-            "totalTime": "6190663",
-            "points": "14115"
         },
         {
             "name": "Ethiriel",
@@ -4740,17 +4707,6 @@
             "totalKills": "6853",
             "totalTime": "8226285",
             "points": "12855"
-        },
-        {
-            "name": "Chaosophia",
-            "guildName": "Chimken and the Nuggies",
-            "faction": "0",
-            "race": "1",
-            "class": "9",
-            "gender": "0",
-            "totalKills": "64884",
-            "totalTime": "20609759",
-            "points": "12840"
         },
         {
             "name": "Trollnut",
@@ -7820,17 +7776,6 @@
             "totalKills": "566",
             "totalTime": "7187218",
             "points": "11365"
-        },
-        {
-            "name": "Chaosbirnger",
-            "guildName": "",
-            "faction": "0",
-            "race": "22",
-            "class": "9",
-            "gender": "0",
-            "totalKills": "855",
-            "totalTime": "6785723",
-            "points": "11360"
         },
         {
             "name": "Mutt",

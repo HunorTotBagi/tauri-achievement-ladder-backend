@@ -617,17 +617,6 @@
             "points": "7115"
         },
         {
-            "name": "Aizenfald",
-            "guildName": "Crows at Midnight",
-            "faction": "0",
-            "race": "4",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "91381",
-            "totalTime": "14807135",
-            "points": "9660"
-        },
-        {
             "name": "Y\u00f8lk\u00f8",
             "guildName": "Ace Of Spades",
             "faction": "0",
@@ -802,17 +791,6 @@
             "totalKills": "80059",
             "totalTime": "13012888",
             "points": "14755"
-        },
-        {
-            "name": "Buszos",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "79923",
-            "totalTime": "24500939",
-            "points": "16830"
         },
         {
             "name": "Dusk",
@@ -1321,17 +1299,6 @@
             "points": "14520"
         },
         {
-            "name": "Chaosophia",
-            "guildName": "Chimken and the Nuggies",
-            "faction": "0",
-            "race": "1",
-            "class": "9",
-            "gender": "0",
-            "totalKills": "64884",
-            "totalTime": "20609759",
-            "points": "12840"
-        },
-        {
             "name": "Xelu",
             "guildName": "",
             "faction": "1",
@@ -1748,17 +1715,6 @@
             "totalKills": "54989",
             "totalTime": "14607591",
             "points": "6745"
-        },
-        {
-            "name": "Aznodt",
-            "guildName": "A Murder of Crows",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "54827",
-            "totalTime": "12461801",
-            "points": "6290"
         },
         {
             "name": "Jyzletotem",
@@ -5908,17 +5864,6 @@
             "points": "18165"
         },
         {
-            "name": "Altcraft",
-            "guildName": "Minecraft Youtubers",
-            "faction": "0",
-            "race": "1",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "28206",
-            "totalTime": "6427625",
-            "points": "4290"
-        },
-        {
             "name": "Treyxy",
             "guildName": "",
             "faction": "0",
@@ -8964,17 +8909,6 @@
             "totalKills": "21407",
             "totalTime": "3817764",
             "points": "5495"
-        },
-        {
-            "name": "Ariyndra",
-            "guildName": "Tribunes of the Light",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "21406",
-            "totalTime": "4188066",
-            "points": "2525"
         },
         {
             "name": "Sixto",
