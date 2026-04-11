@@ -36,8 +36,13 @@ internal static class Program
             Console.WriteLine($"Players.csv characters before append: {result.CsvCharacterCount}");
             Console.WriteLine($"Missing characters at start: {result.MissingCharacterCount}");
             Console.WriteLine($"Characters appended: {result.AppendedCharacterCount}");
+            Console.WriteLine($"Rare achievement entries merged: {result.RareAchievementEntryCount}");
             Console.WriteLine($"Characters still missing: {result.RemainingMissingCharacterCount}");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
+            if (result.RareAchievementsPath is not null)
+            {
+                Console.WriteLine($"RareAchievements.json: {result.RareAchievementsPath}");
+            }
             if (result.LastUpdatedPath is not null)
             {
                 Console.WriteLine($"lastUpdated.txt: {result.LastUpdatedPath}");

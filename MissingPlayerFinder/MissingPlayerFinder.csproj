@@ -12,7 +12,11 @@
     <Compile Include="..\AchievementLadder\Configuration\TauriApiOptions.cs" Link="Configuration\TauriApiOptions.cs" />
     <Compile Include="..\AchievementLadder\Helpers\CharacterHelpers.cs" Link="Helpers\CharacterHelpers.cs" />
     <Compile Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs" Link="Infrastructure\ProjectPaths.cs" />
+    <Compile Include="..\AchievementLadder\Infrastructure\RareAchievementExtractor.cs" Link="Infrastructure\RareAchievementExtractor.cs" />
+    <Compile Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs" Link="Infrastructure\TauriApiClient.cs" />
     <Compile Include="..\AchievementLadder\Models\Player.cs" Link="Models\Player.cs" />
+    <Compile Include="..\AchievementLadder\Models\RareAchievementExport.cs" Link="Models\RareAchievementExport.cs" />
+    <Compile Include="..\RareAchiAndItemScan\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
   </ItemGroup>
 
 </Project>

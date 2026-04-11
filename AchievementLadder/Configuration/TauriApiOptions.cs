@@ -4,10 +4,18 @@ public sealed class TauriApiOptions
 {
     private const string PlaceholderApiKey = "YOUR_REAL_API_KEY_HERE";
     private const string PlaceholderSecret = "YOUR_REAL_SECRET_HERE";
+    private const int DefaultMaxConcurrentRequests = 8;
+    private const int DefaultRequestTimeoutSeconds = 30;
+    private const int DefaultMaxRetryAttempts = 5;
+    private const int DefaultInitialRetryDelayMilliseconds = 750;
 
     public string BaseUrl { get; set; } = string.Empty;
     public string ApiKey { get; set; } = string.Empty;
     public string Secret { get; set; } = string.Empty;
+    public int MaxConcurrentRequests { get; set; } = DefaultMaxConcurrentRequests;
+    public int RequestTimeoutSeconds { get; set; } = DefaultRequestTimeoutSeconds;
+    public int MaxRetryAttempts { get; set; } = DefaultMaxRetryAttempts;
+    public int InitialRetryDelayMilliseconds { get; set; } = DefaultInitialRetryDelayMilliseconds;
 
     public void ApplyEnvironmentOverrides()
     {
@@ -25,6 +33,30 @@ public sealed class TauriApiOptions
             Environment.GetEnvironmentVariable("TAURI_API_SECRET"),
             Environment.GetEnvironmentVariable("TauriApi__Secret"),
             Secret);
+
+        MaxConcurrentRequests = FirstPositiveInt(
+            Environment.GetEnvironmentVariable("TAURI_API_MAX_CONCURRENT_REQUESTS"),
+            Environment.GetEnvironmentVariable("TauriApi__MaxConcurrentRequests"),
+            MaxConcurrentRequests,
+            DefaultMaxConcurrentRequests);
+
+        RequestTimeoutSeconds = FirstPositiveInt(
+            Environment.GetEnvironmentVariable("TAURI_API_REQUEST_TIMEOUT_SECONDS"),
+            Environment.GetEnvironmentVariable("TauriApi__RequestTimeoutSeconds"),
+            RequestTimeoutSeconds,
+            DefaultRequestTimeoutSeconds);
+
+        MaxRetryAttempts = FirstPositiveInt(
+            Environment.GetEnvironmentVariable("TAURI_API_MAX_RETRY_ATTEMPTS"),
+            Environment.GetEnvironmentVariable("TauriApi__MaxRetryAttempts"),
+            MaxRetryAttempts,
+            DefaultMaxRetryAttempts);
+
+        InitialRetryDelayMilliseconds = FirstPositiveInt(
+            Environment.GetEnvironmentVariable("TAURI_API_INITIAL_RETRY_DELAY_MS"),
+            Environment.GetEnvironmentVariable("TauriApi__InitialRetryDelayMilliseconds"),
+            InitialRetryDelayMilliseconds,
+            DefaultInitialRetryDelayMilliseconds);
     }
 
     public void Validate()
@@ -43,6 +75,26 @@ public sealed class TauriApiOptions
         {
             throw new InvalidOperationException("Missing a real TauriApi.Secret. Update appsettings.json or set TAURI_API_SECRET.");
         }
+
+        if (MaxConcurrentRequests <= 0)
+        {
+            throw new InvalidOperationException("TauriApi.MaxConcurrentRequests must be greater than zero.");
+        }
+
+        if (RequestTimeoutSeconds <= 0)
+        {
+            throw new InvalidOperationException("TauriApi.RequestTimeoutSeconds must be greater than zero.");
+        }
+
+        if (MaxRetryAttempts <= 0)
+        {
+            throw new InvalidOperationException("TauriApi.MaxRetryAttempts must be greater than zero.");
+        }
+
+        if (InitialRetryDelayMilliseconds <= 0)
+        {
+            throw new InvalidOperationException("TauriApi.InitialRetryDelayMilliseconds must be greater than zero.");
+        }
     }
 
     private static string FirstNonEmpty(params string?[] values)
@@ -56,5 +108,24 @@ public sealed class TauriApiOptions
         }
 
         return string.Empty;
+    }
+
+    private static int FirstPositiveInt(
+        string? environmentValue,
+        string? configurationValue,
+        int currentValue,
+        int fallbackValue)
+    {
+        foreach (var value in new[] { environmentValue, configurationValue })
+        {
+            if (!string.IsNullOrWhiteSpace(value) &&
+                int.TryParse(value.Trim(), out var parsedValue) &&
+                parsedValue > 0)
+            {
+                return parsedValue;
+            }
+        }
+
+        return currentValue > 0 ? currentValue : fallbackValue;
     }
 }

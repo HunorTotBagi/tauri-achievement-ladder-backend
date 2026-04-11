@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
 using System.Globalization;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
 using AchievementLadder.Infrastructure;
 using AchievementLadder.Models;
+using RareAchiAndItemScan;
 
 namespace MissingPlayerFinder;
 
@@ -15,12 +16,20 @@ public sealed class MissingPlayerFinderService(
     TauriApiOptions apiOptions)
 {
     private static readonly CharacterKeyComparer CharacterComparer = new();
+    private static readonly JsonSerializerOptions FrontendJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions = RareScanCatalog.RareAchievementNames
+        .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
+        .ToList();
     private const int ProgressInterval = 100;
-    private const int MaxDegreeOfParallelism = 20;
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly string _achievementLadderProjectRoot = Path.GetFullPath(achievementLadderProjectRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly int _characterWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
 
     public async Task<MissingPlayerFinderResult> GenerateAsync(CancellationToken cancellationToken)
     {
@@ -32,94 +41,122 @@ public sealed class MissingPlayerFinderService(
 
         var frontendSrcDirectory = ProjectPaths.GetFrontendSrcDirectory(_solutionRoot);
         var playersCsvPath = Path.Combine(frontendSrcDirectory, "Players.csv");
+        var rareAchievementsPath = Path.Combine(frontendSrcDirectory, "RareAchievements.json");
         var lastUpdatedPath = Path.Combine(frontendSrcDirectory, "lastUpdated.txt");
+        var retryOutputPath = Path.Combine(_solutionRoot, "MissingPlayersToScan.txt");
+
         if (!File.Exists(playersCsvPath))
         {
             throw new FileNotFoundException($"Could not find Players.csv at {playersCsvPath}", playersCsvPath);
         }
 
         var sourceCharacters = LoadSourceCharacters(cancellationToken);
-        var csvCharacters = LoadCsvCharacters(playersCsvPath, cancellationToken);
+        var csvPlayers = LoadCsvPlayers(playersCsvPath, cancellationToken);
+        var retryCharacters = LoadRetryCharacters(retryOutputPath, cancellationToken);
+        var targets = BuildBackfillTargets(sourceCharacters, csvPlayers, retryCharacters);
 
-        var missingCharacters = sourceCharacters
-            .Where(character => !csvCharacters.Contains(new CharacterKey(character.Name, character.DisplayRealm)))
-            .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        Console.WriteLine($"Missing characters at start: {targets.Count}");
+        Console.WriteLine(
+            $"API settings: concurrency={_apiOptions.MaxConcurrentRequests}, timeout={_apiOptions.RequestTimeoutSeconds}s, retries={_apiOptions.MaxRetryAttempts}");
 
-        Console.WriteLine($"Missing characters at start: {missingCharacters.Count}");
-
-        var fetchedPlayers = new ConcurrentBag<Player>();
+        var playersToAppend = new ConcurrentBag<Player>();
+        var rareAchievementEntries = new ConcurrentBag<CharacterRareAchievementEntry>();
         var unresolvedCharacters = new ConcurrentBag<CharacterToScan>();
-        var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
-
-        using var client = new HttpClient();
         var processedCount = 0;
 
+        using var apiClient = new TauriApiClient(_apiOptions);
+
         await Parallel.ForEachAsync(
-            missingCharacters,
+            targets,
             new ParallelOptions
             {
-                MaxDegreeOfParallelism = MaxDegreeOfParallelism,
+                MaxDegreeOfParallelism = _characterWorkerCount,
                 CancellationToken = cancellationToken
             },
-            async (character, ct) =>
+            async (target, ct) =>
             {
-                var player = await FetchPlayerAsync(
-                    client,
-                    apiUrl,
-                    _apiOptions.Secret,
-                    character,
-                    ct);
+                var result = await FetchBackfillAsync(apiClient, target, ct);
 
-                if (player is null)
+                if (target.RequiresPlayerBackfill && result.Player is { } fetchedPlayer)
                 {
-                    unresolvedCharacters.Add(character);
+                    playersToAppend.Add(fetchedPlayer);
                 }
-                else
+
+                if (target.RequiresRareAchievementBackfill &&
+                    result.RareAchievementsSucceeded &&
+                    result.RareAchievements.Count > 0)
                 {
-                    fetchedPlayers.Add(player);
+                    var metadataPlayer = result.Player ?? GetExistingCsvPlayer(csvPlayers, target.Character);
+                    if (metadataPlayer is not null)
+                    {
+                        rareAchievementEntries.Add(new CharacterRareAchievementEntry(
+                            metadataPlayer.Name,
+                            metadataPlayer.Realm,
+                            metadataPlayer.Race,
+                            metadataPlayer.Gender,
+                            metadataPlayer.Class,
+                            metadataPlayer.Guild,
+                            result.RareAchievements));
+                    }
+                }
+
+                if (!result.IsFullySuccessful)
+                {
+                    unresolvedCharacters.Add(target.Character);
                 }
 
                 var processed = Interlocked.Increment(ref processedCount);
-                if (processed % ProgressInterval == 0 || processed == missingCharacters.Count)
+                if (processed % ProgressInterval == 0 || processed == targets.Count)
                 {
-                    Console.Write($"\rBackfill progress: {processed}/{missingCharacters.Count}");
+                    Console.Write($"\rBackfill progress: {processed}/{targets.Count}");
                 }
             });
 
-        if (missingCharacters.Count > 0)
+        if (targets.Count > 0)
         {
             Console.WriteLine();
         }
 
-        var orderedPlayers = fetchedPlayers
+        var orderedPlayers = playersToAppend
             .OrderByDescending(player => player.AchievementPoints)
             .ThenByDescending(player => player.HonorableKills)
             .ThenBy(player => player.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(player => player.Realm, StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-        await AppendPlayersAsync(playersCsvPath, orderedPlayers, cancellationToken);
-        var refreshedLastUpdatedPath = await RefreshLastUpdatedAsync(lastUpdatedPath, orderedPlayers.Count, cancellationToken);
-
+        var orderedRareEntries = rareAchievementEntries
+            .Distinct(new RareAchievementEntryComparer())
+            .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Realm, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var remainingCharacters = unresolvedCharacters
+            .Distinct(new CharacterToScanComparer())
             .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
             .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var outputPath = Path.Combine(_solutionRoot, "MissingPlayersToScan.txt");
-        await WriteMissingCharactersAsync(outputPath, remainingCharacters, cancellationToken);
+        await AppendPlayersAsync(playersCsvPath, orderedPlayers, cancellationToken);
+        var updatedRareAchievementsPath = await MergeRareAchievementsAsync(
+            rareAchievementsPath,
+            orderedRareEntries,
+            cancellationToken);
+        var refreshedLastUpdatedPath = await RefreshLastUpdatedAsync(
+            lastUpdatedPath,
+            orderedPlayers.Count > 0 || updatedRareAchievementsPath is not null,
+            cancellationToken);
+
+        await WriteMissingCharactersAsync(retryOutputPath, remainingCharacters, cancellationToken);
 
         return new MissingPlayerFinderResult(
             sourceCharacters.Count,
-            csvCharacters.Count,
-            missingCharacters.Count,
+            csvPlayers.Count,
+            targets.Count,
             orderedPlayers.Count,
+            orderedRareEntries.Count,
             remainingCharacters.Count,
             playersCsvPath,
+            updatedRareAchievementsPath,
             refreshedLastUpdatedPath,
-            outputPath);
+            retryOutputPath);
     }
 
     private HashSet<CharacterToScan> LoadSourceCharacters(CancellationToken cancellationToken)
@@ -153,12 +190,12 @@ public sealed class MissingPlayerFinderService(
         return result;
     }
 
-    private HashSet<CharacterKey> LoadCsvCharacters(string playersCsvPath, CancellationToken cancellationToken)
+    private Dictionary<CharacterKey, Player> LoadCsvPlayers(string playersCsvPath, CancellationToken cancellationToken)
     {
         using var lines = File.ReadLines(playersCsvPath).GetEnumerator();
         if (!lines.MoveNext())
         {
-            return new HashSet<CharacterKey>(CharacterComparer);
+            return new Dictionary<CharacterKey, Player>(CharacterComparer);
         }
 
         var header = ParseCsvLine(lines.Current);
@@ -170,7 +207,15 @@ public sealed class MissingPlayerFinderService(
             throw new InvalidDataException("Players.csv must contain Name and Realm columns.");
         }
 
-        var result = new HashSet<CharacterKey>(CharacterComparer);
+        var raceIndex = FindColumnIndex(header, "Race");
+        var genderIndex = FindColumnIndex(header, "Gender");
+        var classIndex = FindColumnIndex(header, "Class");
+        var guildIndex = FindColumnIndex(header, "Guild");
+        var achievementPointsIndex = FindColumnIndex(header, "AchievementPoints");
+        var honorableKillsIndex = FindColumnIndex(header, "HonorableKills");
+        var factionIndex = FindColumnIndex(header, "Faction");
+
+        var result = new Dictionary<CharacterKey, Player>(CharacterComparer);
 
         while (lines.MoveNext())
         {
@@ -196,10 +241,354 @@ public sealed class MissingPlayerFinderService(
                 continue;
             }
 
-            result.Add(new CharacterKey(name, realm));
+            var player = new Player
+            {
+                Name = name,
+                Realm = realm,
+                Race = ReadIntValue(values, raceIndex),
+                Gender = ReadIntValue(values, genderIndex),
+                Class = ReadIntValue(values, classIndex),
+                Guild = ReadStringValue(values, guildIndex),
+                AchievementPoints = ReadIntValue(values, achievementPointsIndex),
+                HonorableKills = ReadIntValue(values, honorableKillsIndex),
+                Faction = ReadStringValue(values, factionIndex)
+            };
+
+            result[new CharacterKey(name, realm)] = player;
         }
 
         return result;
+    }
+
+    private List<BackfillTarget> BuildBackfillTargets(
+        HashSet<CharacterToScan> sourceCharacters,
+        Dictionary<CharacterKey, Player> csvPlayers,
+        IReadOnlyList<CharacterToScan> retryCharacters)
+    {
+        var targetMap = new Dictionary<CharacterToScan, ScanRequirements>(new CharacterToScanComparer());
+
+        foreach (var character in sourceCharacters)
+        {
+            if (!csvPlayers.ContainsKey(new CharacterKey(character.Name, character.DisplayRealm)))
+            {
+                UpsertTarget(character, requiresPlayerBackfill: true, requiresRareAchievementBackfill: true);
+            }
+        }
+
+        foreach (var retryCharacter in retryCharacters)
+        {
+            var requiresPlayerBackfill = !csvPlayers.ContainsKey(new CharacterKey(retryCharacter.Name, retryCharacter.DisplayRealm));
+            UpsertTarget(retryCharacter, requiresPlayerBackfill, requiresRareAchievementBackfill: true);
+        }
+
+        return targetMap
+            .Select(entry => new BackfillTarget(
+                entry.Key,
+                entry.Value.RequiresPlayerBackfill,
+                entry.Value.RequiresRareAchievementBackfill))
+            .OrderBy(target => target.Character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(target => target.Character.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        void UpsertTarget(
+            CharacterToScan character,
+            bool requiresPlayerBackfill,
+            bool requiresRareAchievementBackfill)
+        {
+            if (!targetMap.TryGetValue(character, out var requirements))
+            {
+                requirements = new ScanRequirements();
+                targetMap[character] = requirements;
+            }
+
+            requirements.RequiresPlayerBackfill |= requiresPlayerBackfill;
+            requirements.RequiresRareAchievementBackfill |= requiresRareAchievementBackfill;
+        }
+    }
+
+    private static List<CharacterToScan> LoadRetryCharacters(string retryOutputPath, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(retryOutputPath))
+        {
+            return [];
+        }
+
+        var result = new List<CharacterToScan>();
+
+        foreach (var line in File.ReadLines(retryOutputPath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!CharacterHelpers.TryExtractCharacterWithRealm(line, out var name, out var apiRealm, out var displayRealm))
+            {
+                continue;
+            }
+
+            result.Add(new CharacterToScan(name, apiRealm, displayRealm));
+        }
+
+        return result;
+    }
+
+    private static async Task<CharacterBackfillResult> FetchBackfillAsync(
+        TauriApiClient apiClient,
+        BackfillTarget target,
+        CancellationToken cancellationToken)
+    {
+        var playerTask = target.RequiresPlayerBackfill
+            ? FetchPlayerAsync(apiClient, target.Character, cancellationToken)
+            : Task.FromResult(PlayerFetchResult.Skipped());
+
+        var rareAchievementTask = target.RequiresRareAchievementBackfill
+            ? FetchRareAchievementsAsync(apiClient, target.Character, cancellationToken)
+            : Task.FromResult(RareAchievementFetchResult.Skipped());
+
+        await Task.WhenAll(playerTask, rareAchievementTask);
+
+        var playerResult = await playerTask;
+        var rareAchievementResult = await rareAchievementTask;
+
+        return new CharacterBackfillResult(
+            playerResult.Player,
+            playerResult.Succeeded,
+            rareAchievementResult.Achievements,
+            rareAchievementResult.Succeeded);
+    }
+
+    private static async Task<PlayerFetchResult> FetchPlayerAsync(
+        TauriApiClient apiClient,
+        CharacterToScan character,
+        CancellationToken cancellationToken)
+    {
+        var responseResult = await apiClient.FetchResponseElementAsync(
+            "character-sheet",
+            new
+            {
+                r = character.ApiRealm,
+                n = character.Name
+            },
+            $"{character.Name}-{character.DisplayRealm}",
+            cancellationToken);
+
+        if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
+        {
+            return PlayerFetchResult.Failure();
+        }
+
+        int race = response.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
+        int gender = response.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
+        int @class = response.TryGetProperty("class", out value) ? value.GetInt32() : 0;
+        int achievementPoints = response.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
+        int honorableKills = response.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
+        string faction = response.TryGetProperty("faction_string_class", out value)
+            ? (value.GetString() ?? string.Empty)
+            : string.Empty;
+        string guild = response.TryGetProperty("guildName", out value)
+            ? (value.GetString() ?? string.Empty)
+            : string.Empty;
+
+        return PlayerFetchResult.Success(new Player
+        {
+            Name = character.Name,
+            Race = race,
+            Gender = gender,
+            Class = @class,
+            Realm = character.DisplayRealm,
+            Guild = guild,
+            AchievementPoints = achievementPoints,
+            HonorableKills = honorableKills,
+            Faction = faction
+        });
+    }
+
+    private static async Task<RareAchievementFetchResult> FetchRareAchievementsAsync(
+        TauriApiClient apiClient,
+        CharacterToScan character,
+        CancellationToken cancellationToken)
+    {
+        var responseResult = await apiClient.FetchResponseElementAsync(
+            "character-achievements",
+            new
+            {
+                r = character.ApiRealm,
+                n = character.Name
+            },
+            $"{character.Name}-{character.DisplayRealm}",
+            cancellationToken);
+
+        if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
+        {
+            return RareAchievementFetchResult.Failure();
+        }
+
+        return RareAchievementFetchResult.Success(
+            RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions));
+    }
+
+    private static Player? GetExistingCsvPlayer(
+        Dictionary<CharacterKey, Player> csvPlayers,
+        CharacterToScan character)
+    {
+        csvPlayers.TryGetValue(new CharacterKey(character.Name, character.DisplayRealm), out var player);
+        return player;
+    }
+
+    private static async Task AppendPlayersAsync(
+        string playersCsvPath,
+        IReadOnlyList<Player> players,
+        CancellationToken cancellationToken)
+    {
+        if (players.Count == 0)
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(playersCsvPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var writeHeader = !File.Exists(playersCsvPath) || new FileInfo(playersCsvPath).Length == 0;
+        var needsLeadingNewLine = !writeHeader && NeedsLeadingNewLine(playersCsvPath);
+
+        await using var stream = new FileStream(playersCsvPath, FileMode.Append, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
+        await using var writer = new StreamWriter(stream, encoding);
+
+        if (writeHeader)
+        {
+            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\"");
+        }
+        else if (needsLeadingNewLine)
+        {
+            await writer.WriteLineAsync();
+        }
+
+        foreach (var player in players)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(BuildCsvLine(player));
+        }
+    }
+
+    private static async Task<string?> MergeRareAchievementsAsync(
+        string rareAchievementsPath,
+        IReadOnlyList<CharacterRareAchievementEntry> entries,
+        CancellationToken cancellationToken)
+    {
+        if (entries.Count == 0)
+        {
+            return null;
+        }
+
+        RareAchievementExport existingExport;
+        if (File.Exists(rareAchievementsPath))
+        {
+            await using var readStream = new FileStream(rareAchievementsPath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, useAsync: true);
+            existingExport = await JsonSerializer.DeserializeAsync<RareAchievementExport>(
+                                 readStream,
+                                 FrontendJsonOptions,
+                                 cancellationToken)
+                             ?? throw new InvalidDataException($"Could not deserialize RareAchievements.json at {rareAchievementsPath}.");
+        }
+        else
+        {
+            existingExport = new RareAchievementExport(
+                DateTimeOffset.UtcNow,
+                RareAchievementDefinitions,
+                []);
+        }
+
+        var entryKeys = entries
+            .Select(entry => new CharacterKey(entry.Name, entry.Realm))
+            .ToHashSet(CharacterComparer);
+
+        var mergedCharacters = existingExport.Characters
+            .Where(entry => !entryKeys.Contains(new CharacterKey(entry.Name, entry.Realm)))
+            .Concat(entries)
+            .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Realm, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var updatedExport = new RareAchievementExport(
+            DateTimeOffset.UtcNow,
+            RareAchievementDefinitions,
+            mergedCharacters);
+
+        var directory = Path.GetDirectoryName(rareAchievementsPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = rareAchievementsPath + ".tmp";
+        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await JsonSerializer.SerializeAsync(stream, updatedExport, FrontendJsonOptions, cancellationToken);
+        }
+
+        File.Move(tempPath, rareAchievementsPath, overwrite: true);
+        return rareAchievementsPath;
+    }
+
+    private static async Task WriteMissingCharactersAsync(
+        string outputPath,
+        IReadOnlyList<CharacterToScan> missingCharacters,
+        CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = outputPath + ".tmp";
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        await using (var writer = new StreamWriter(stream, encoding))
+        {
+            foreach (var character in missingCharacters)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await writer.WriteLineAsync($"{character.Name}-{character.DisplayRealm}");
+            }
+        }
+
+        File.Move(tempPath, outputPath, overwrite: true);
+    }
+
+    private static async Task<string?> RefreshLastUpdatedAsync(
+        string lastUpdatedPath,
+        bool hasExportUpdates,
+        CancellationToken cancellationToken)
+    {
+        if (!hasExportUpdates)
+        {
+            return null;
+        }
+
+        var directory = Path.GetDirectoryName(lastUpdatedPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = lastUpdatedPath + ".tmp";
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var content = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+
+        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024, useAsync: true))
+        await using (var writer = new StreamWriter(stream, encoding))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await writer.WriteAsync(content);
+        }
+
+        File.Move(tempPath, lastUpdatedPath, overwrite: true);
+        return lastUpdatedPath;
     }
 
     private static int FindColumnIndex(IReadOnlyList<string> header, string columnName)
@@ -252,176 +641,26 @@ public sealed class MissingPlayerFinderService(
         return values;
     }
 
-    private static async Task<Player?> FetchPlayerAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
-        CharacterToScan character,
-        CancellationToken cancellationToken)
+    private static int ReadIntValue(IReadOnlyList<string> values, int index)
     {
-        var body = new
+        if (index < 0 || index >= values.Count)
         {
-            secret,
-            url = "character-sheet",
-            @params = new
-            {
-                r = character.ApiRealm,
-                n = character.Name
-            }
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json");
-
-        try
-        {
-            using var response = await client.PostAsync(apiUrl, content, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("response", out var responseElement))
-            {
-                return null;
-            }
-
-            int race = responseElement.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
-            int gender = responseElement.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
-            int @class = responseElement.TryGetProperty("class", out value) ? value.GetInt32() : 0;
-            int achievementPoints = responseElement.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
-            int honorableKills = responseElement.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
-            string faction = responseElement.TryGetProperty("faction_string_class", out value)
-                ? (value.GetString() ?? string.Empty)
-                : string.Empty;
-            string guild = responseElement.TryGetProperty("guildName", out value)
-                ? (value.GetString() ?? string.Empty)
-                : string.Empty;
-
-            return new Player
-            {
-                Name = character.Name,
-                Race = race,
-                Gender = gender,
-                Class = @class,
-                Realm = character.DisplayRealm,
-                Guild = guild,
-                AchievementPoints = achievementPoints,
-                HonorableKills = honorableKills,
-                Faction = faction
-            };
+            return 0;
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch
-        {
-            return null;
-        }
+
+        return int.TryParse(values[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue)
+            ? parsedValue
+            : 0;
     }
 
-    private static async Task AppendPlayersAsync(
-        string playersCsvPath,
-        IReadOnlyList<Player> players,
-        CancellationToken cancellationToken)
+    private static string ReadStringValue(IReadOnlyList<string> values, int index)
     {
-        if (players.Count == 0)
+        if (index < 0 || index >= values.Count)
         {
-            return;
+            return string.Empty;
         }
 
-        var directory = Path.GetDirectoryName(playersCsvPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        var writeHeader = !File.Exists(playersCsvPath) || new FileInfo(playersCsvPath).Length == 0;
-        var needsLeadingNewLine = !writeHeader && NeedsLeadingNewLine(playersCsvPath);
-
-        await using var stream = new FileStream(playersCsvPath, FileMode.Append, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
-        await using var writer = new StreamWriter(stream, encoding);
-
-        if (writeHeader)
-        {
-            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\"");
-        }
-        else if (needsLeadingNewLine)
-        {
-            await writer.WriteLineAsync();
-        }
-
-        foreach (var player in players)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await writer.WriteLineAsync(BuildCsvLine(player));
-        }
-    }
-
-    private static async Task WriteMissingCharactersAsync(
-        string outputPath,
-        IReadOnlyList<CharacterToScan> missingCharacters,
-        CancellationToken cancellationToken)
-    {
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        var tempPath = outputPath + ".tmp";
-        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
-        await using (var writer = new StreamWriter(stream, encoding))
-        {
-            foreach (var character in missingCharacters)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await writer.WriteLineAsync($"{character.Name}-{character.DisplayRealm}");
-            }
-        }
-
-        File.Move(tempPath, outputPath, overwrite: true);
-    }
-
-    private static async Task<string?> RefreshLastUpdatedAsync(
-        string lastUpdatedPath,
-        int appendedPlayerCount,
-        CancellationToken cancellationToken)
-    {
-        if (appendedPlayerCount <= 0)
-        {
-            return null;
-        }
-
-        var directory = Path.GetDirectoryName(lastUpdatedPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        var tempPath = lastUpdatedPath + ".tmp";
-        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        var content = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
-
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024, useAsync: true))
-        await using (var writer = new StreamWriter(stream, encoding))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await writer.WriteAsync(content);
-        }
-
-        File.Move(tempPath, lastUpdatedPath, overwrite: true);
-        return lastUpdatedPath;
+        return values[index].Trim();
     }
 
     private static string BuildCsvLine(Player player)
@@ -453,15 +692,53 @@ public sealed class MissingPlayerFinderService(
         return lastByte is not '\n';
     }
 
-    private static string BuildApiUrl(string baseUrl, string apiKey)
+    private sealed class ScanRequirements
     {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
+        public bool RequiresPlayerBackfill { get; set; }
+
+        public bool RequiresRareAchievementBackfill { get; set; }
     }
 
     private readonly record struct CharacterKey(string Name, string Realm);
 
     private readonly record struct CharacterToScan(string Name, string ApiRealm, string DisplayRealm);
+
+    private readonly record struct BackfillTarget(
+        CharacterToScan Character,
+        bool RequiresPlayerBackfill,
+        bool RequiresRareAchievementBackfill);
+
+    private readonly record struct CharacterBackfillResult(
+        Player? Player,
+        bool PlayerSucceeded,
+        IReadOnlyList<CharacterRareAchievement> RareAchievements,
+        bool RareAchievementsSucceeded)
+    {
+        public bool IsFullySuccessful => PlayerSucceeded && RareAchievementsSucceeded;
+    }
+
+    private readonly record struct PlayerFetchResult(Player? Player, bool Succeeded)
+    {
+        public static PlayerFetchResult Success(Player player) => new(player, true);
+
+        public static PlayerFetchResult Failure() => new(null, false);
+
+        public static PlayerFetchResult Skipped() => new(null, true);
+    }
+
+    private readonly record struct RareAchievementFetchResult(
+        IReadOnlyList<CharacterRareAchievement> Achievements,
+        bool Succeeded)
+    {
+        public static RareAchievementFetchResult Success(IReadOnlyList<CharacterRareAchievement> achievements) =>
+            new(achievements, true);
+
+        public static RareAchievementFetchResult Failure() =>
+            new(Array.Empty<CharacterRareAchievement>(), false);
+
+        public static RareAchievementFetchResult Skipped() =>
+            new(Array.Empty<CharacterRareAchievement>(), true);
+    }
 
     private sealed class CharacterKeyComparer : IEqualityComparer<CharacterKey>
     {
@@ -488,6 +765,27 @@ public sealed class MissingPlayerFinderService(
             return HashCode.Combine(
                 StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name),
                 StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DisplayRealm));
+        }
+    }
+
+    private sealed class RareAchievementEntryComparer : IEqualityComparer<CharacterRareAchievementEntry>
+    {
+        public bool Equals(CharacterRareAchievementEntry? x, CharacterRareAchievementEntry? y)
+        {
+            if (x is null || y is null)
+            {
+                return x is null && y is null;
+            }
+
+            return string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) &&
+                   string.Equals(x.Realm, y.Realm, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public int GetHashCode(CharacterRareAchievementEntry obj)
+        {
+            return HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name),
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Realm));
         }
     }
 }

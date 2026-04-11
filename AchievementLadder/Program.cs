@@ -32,9 +32,11 @@ internal static class Program
             var result = await playerService.SyncDataAsync(cancellationTokenSource.Token);
 
             Console.WriteLine($"Generated {result.PlayerCount} player rows.");
+            Console.WriteLine($"Characters needing retry: {result.RetryCharacterCount}");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
             Console.WriteLine($"RareAchievements.json: {result.RareAchievementsPath}");
             Console.WriteLine($"lastUpdated.txt: {result.LastUpdatedPath}");
+            Console.WriteLine($"MissingPlayersToScan.txt: {result.RetryOutputPath}");
 
             return 0;
         }
