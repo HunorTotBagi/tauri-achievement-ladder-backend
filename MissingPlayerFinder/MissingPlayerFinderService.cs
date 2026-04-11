@@ -126,7 +126,10 @@ public sealed class MissingPlayerFinderService(
     {
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
 
-        CharacterHelpers.LoadDefaultCharacterSources(_achievementLadderProjectRoot, allCharacters);
+        CharacterHelpers.LoadDefaultCharacterSources(
+            _achievementLadderProjectRoot,
+            allCharacters,
+            includePvPSeasonCharacters: true);
 
         var result = new HashSet<CharacterToScan>(new CharacterToScanComparer());
 

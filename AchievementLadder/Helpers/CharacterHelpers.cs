@@ -32,7 +32,8 @@ public static class CharacterHelpers
     public static void LoadDefaultCharacterSources(
         string projectRoot,
         List<(string Name, string ApiRealm, string DisplayRealm)> output,
-        bool ignoreMissingGuildCharacters = false)
+        bool ignoreMissingGuildCharacters = false,
+        bool includePvPSeasonCharacters = false)
     {
         if (ignoreMissingGuildCharacters)
         {
@@ -57,6 +58,11 @@ public static class CharacterHelpers
         foreach (var source in AdditionalTextSources)
         {
             LoadCharactersFromTextFile(projectRoot, source.RelativePath, source.ApiRealm, source.DisplayRealm, output);
+        }
+
+        if (includePvPSeasonCharacters)
+        {
+            LoadPvPSeasonCharacters(projectRoot, output);
         }
     }
 
@@ -149,6 +155,24 @@ public static class CharacterHelpers
             }
 
             output.Add((name, apiRealm, displayRealm));
+        }
+    }
+
+    public static void LoadPvPSeasonCharacters(
+        string projectRoot,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    {
+        var directoryPath = Path.Combine(projectRoot, "Data", "PvPSeasonCharacters");
+        if (!Directory.Exists(directoryPath))
+        {
+            return;
+        }
+
+        foreach (var filePath in Directory
+                     .EnumerateFiles(directoryPath, "*.txt", SearchOption.TopDirectoryOnly)
+                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            LoadCharactersFromBatchFile(filePath, output);
         }
     }
 
@@ -261,5 +285,20 @@ public static class CharacterHelpers
 
         name = candidate;
         return true;
+    }
+
+    private static void LoadCharactersFromBatchFile(
+        string filePath,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    {
+        foreach (var rawLine in File.ReadLines(filePath))
+        {
+            if (!TryExtractCharacterWithRealm(rawLine, out var name, out var apiRealm, out var displayRealm))
+            {
+                continue;
+            }
+
+            output.Add((name, apiRealm, displayRealm));
+        }
     }
 }

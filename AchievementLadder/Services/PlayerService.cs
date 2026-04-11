@@ -95,7 +95,10 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         void LoadCharacterSources(List<(string Name, string ApiRealm, string DisplayRealm)> output)
         {
-            CharacterHelpers.LoadDefaultCharacterSources(projectRoot, output);
+            CharacterHelpers.LoadDefaultCharacterSources(
+                projectRoot,
+                output,
+                includePvPSeasonCharacters: true);
         }
     }
 

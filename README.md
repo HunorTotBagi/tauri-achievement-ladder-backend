@@ -6,6 +6,7 @@ This repository is now a plain `.NET 9` console app. It reads the local characte
 
 - `AchievementLadder/Data/CharacterCollection/*.txt`
 - `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
+- `AchievementLadder/Data/PvPSeasonCharacters/*.txt`
 - `RareAchiAndItemScan/Input/tauri-ban-list.txt`
 - `RareAchiAndItemScan/Input/vengeful.txt`
 
