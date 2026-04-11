@@ -14,9 +14,15 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private const int ProgressInterval = 250;
     private const int ProgressBarWidth = 30;
     private const int MaxDegreeOfParallelism = 20;
+    private const int ApiRequestMaxAttempts = 3;
     private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions = RareScanCatalog.RareAchievementNames
         .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
         .ToList();
+    private static readonly IReadOnlyList<TimeSpan> ApiRetryDelays =
+    [
+        TimeSpan.FromMilliseconds(300),
+        TimeSpan.FromSeconds(1)
+    ];
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
@@ -140,7 +146,14 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         CancellationToken ct)
     {
         var playerTask = FetchPlayerAsync(client, apiUrl, secret, name, apiRealm, displayRealm, ct);
-        var rareAchievementsTask = FetchRareAchievementsAsync(client, apiUrl, secret, name, apiRealm, ct);
+        var rareAchievementsTask = FetchRareAchievementsAsync(
+            client,
+            apiUrl,
+            secret,
+            name,
+            apiRealm,
+            displayRealm,
+            ct);
 
         await Task.WhenAll(playerTask, rareAchievementsTask);
 
@@ -162,40 +175,28 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string displayRealm,
         CancellationToken ct)
     {
-        var body = new
-        {
+        var responseElement = await FetchResponseElementAsync(
+            client,
+            apiUrl,
             secret,
-            url = "character-sheet",
-            @params = new { r = apiRealm, n = name }
-        };
+            "character-sheet",
+            new { r = apiRealm, n = name },
+            $"{name}-{displayRealm}",
+            ct);
 
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json");
-
-        using var response = await client.PostAsync(apiUrl, content, ct);
-        if (!response.IsSuccessStatusCode)
+        if (responseElement is null)
         {
             return null;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-
-        var root = doc.RootElement;
-        if (!root.TryGetProperty("response", out var responseElement))
-        {
-            return null;
-        }
-
-        int race = responseElement.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
-        int gender = responseElement.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
-        int @class = responseElement.TryGetProperty("class", out value) ? value.GetInt32() : 0;
-        int achievementPoints = responseElement.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
-        int honorableKills = responseElement.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
-        string faction = responseElement.TryGetProperty("faction_string_class", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
-        string guild = responseElement.TryGetProperty("guildName", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
+        var response = responseElement.Value;
+        int race = response.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
+        int gender = response.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
+        int @class = response.TryGetProperty("class", out value) ? value.GetInt32() : 0;
+        int achievementPoints = response.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
+        int honorableKills = response.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
+        string faction = response.TryGetProperty("faction_string_class", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
+        string guild = response.TryGetProperty("guildName", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
 
         return new Player
         {
@@ -217,39 +218,90 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string secret,
         string name,
         string apiRealm,
+        string displayRealm,
         CancellationToken ct)
     {
-        var body = new
-        {
+        var responseElement = await FetchResponseElementAsync(
+            client,
+            apiUrl,
             secret,
-            url = "character-achievements",
-            @params = new { r = apiRealm, n = name }
-        };
+            "character-achievements",
+            new { r = apiRealm, n = name },
+            $"{name}-{displayRealm}",
+            ct);
 
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json");
-
-        using var response = await client.PostAsync(apiUrl, content, ct);
-        if (!response.IsSuccessStatusCode)
+        if (responseElement is null)
         {
             return Array.Empty<CharacterRareAchievement>();
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-
-        if (!doc.RootElement.TryGetProperty("response", out var responseElement))
-        {
-            return Array.Empty<CharacterRareAchievement>();
-        }
-
-        var achievedAchievements = ExtractAchievements(responseElement);
+        var achievedAchievements = ExtractAchievements(responseElement.Value);
         return RareAchievementDefinitions
             .Where(entry => achievedAchievements.ContainsKey(entry.Id))
             .Select(entry => new CharacterRareAchievement(entry.Id, achievedAchievements[entry.Id]))
             .ToList();
+    }
+
+    private static async Task<JsonElement?> FetchResponseElementAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string endpoint,
+        object parameters,
+        string characterLabel,
+        CancellationToken ct)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            secret,
+            url = endpoint,
+            @params = parameters
+        });
+
+        string? lastFailure = null;
+
+        for (var attempt = 1; attempt <= ApiRequestMaxAttempts; attempt++)
+        {
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+            try
+            {
+                using var response = await client.PostAsync(apiUrl, content, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    lastFailure = $"API returned {(int)response.StatusCode} {response.ReasonPhrase}";
+                }
+                else
+                {
+                    await using var stream = await response.Content.ReadAsStreamAsync(ct);
+                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+                    if (doc.RootElement.TryGetProperty("response", out var responseElement))
+                    {
+                        return responseElement.Clone();
+                    }
+
+                    lastFailure = "Missing response payload.";
+                }
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                lastFailure = "Request timed out.";
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex.Message;
+            }
+
+            if (attempt < ApiRequestMaxAttempts)
+            {
+                var delay = ApiRetryDelays[Math.Min(attempt - 1, ApiRetryDelays.Count - 1)];
+                await Task.Delay(delay, ct);
+            }
+        }
+
+        Console.Error.WriteLine($"[{endpoint}] Skipping {characterLabel}: {lastFailure ?? "Unknown failure."}");
+        return null;
     }
 
     private static string BuildApiUrl(string baseUrl, string apiKey)
