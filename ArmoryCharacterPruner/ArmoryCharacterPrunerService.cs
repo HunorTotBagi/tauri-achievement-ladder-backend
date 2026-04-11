@@ -45,6 +45,7 @@ public sealed class ArmoryCharacterPrunerService(
             cancellationToken);
 
         var keptLines = new List<string>(entries.Count);
+        var rewrittenRowCount = 0;
         var removedRowCount = 0;
 
         foreach (var entry in entries)
@@ -69,7 +70,13 @@ public sealed class ArmoryCharacterPrunerService(
                 continue;
             }
 
-            keptLines.Add(entry.OriginalLine);
+            var outputLine = BuildOutputLine(entry, result.ResolvedCharacter);
+            if (!string.Equals(outputLine, entry.OriginalLine, StringComparison.Ordinal))
+            {
+                rewrittenRowCount++;
+            }
+
+            keptLines.Add(outputLine);
         }
 
         await WriteOutputAsync(outputPath, keptLines, cancellationToken);
@@ -80,6 +87,7 @@ public sealed class ArmoryCharacterPrunerService(
             entries.Count,
             entries.Count(entry => entry.Character is not null),
             characters.Count,
+            rewrittenRowCount,
             removedRowCount,
             keptLines.Count,
             entries.Count(entry => entry.WasUnparsed),
@@ -164,6 +172,14 @@ public sealed class ArmoryCharacterPrunerService(
                 var result = await CheckCharacterAsync(client, apiUrl, _apiOptions.Secret, character, ct);
                 results[character] = result;
 
+                if (result.Status == CharacterLookupStatus.Found &&
+                    result.ResolvedCharacter is not null &&
+                    !new CharacterToScanComparer().Equals(character, result.ResolvedCharacter))
+                {
+                    Console.WriteLine(
+                        $"Rewriting {character.Name}-{character.DisplayRealm} -> {result.ResolvedCharacter.Name}-{result.ResolvedCharacter.DisplayRealm}");
+                }
+
                 if (result.Status == CharacterLookupStatus.Error)
                 {
                     Console.Error.WriteLine(
@@ -186,6 +202,46 @@ public sealed class ArmoryCharacterPrunerService(
     }
 
     private static async Task<CharacterLookupResult> CheckCharacterAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        CharacterToScan character,
+        CancellationToken cancellationToken)
+    {
+        var primaryResult = await TryLookupCharacterAsync(
+            client,
+            apiUrl,
+            secret,
+            character,
+            cancellationToken);
+        if (primaryResult.Status != CharacterLookupStatus.MissingDueToBadRequest)
+        {
+            return primaryResult;
+        }
+
+        foreach (var fallbackCharacter in GetFallbackCharacters(character))
+        {
+            var fallbackResult = await TryLookupCharacterAsync(
+                client,
+                apiUrl,
+                secret,
+                fallbackCharacter,
+                cancellationToken);
+            if (fallbackResult.Status == CharacterLookupStatus.Found)
+            {
+                return CharacterLookupResult.Found(fallbackCharacter);
+            }
+
+            if (fallbackResult.Status == CharacterLookupStatus.Error)
+            {
+                return fallbackResult;
+            }
+        }
+
+        return CharacterLookupResult.Missing();
+    }
+
+    private static async Task<CharacterLookupResult> TryLookupCharacterAsync(
         HttpClient client,
         string apiUrl,
         string secret,
@@ -216,7 +272,7 @@ public sealed class ArmoryCharacterPrunerService(
                 if (response.StatusCode == HttpStatusCode.BadRequest ||
                     response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    return CharacterLookupResult.Missing();
+                    return CharacterLookupResult.MissingDueToBadRequest();
                 }
 
                 return CharacterLookupResult.Error(
@@ -232,7 +288,7 @@ public sealed class ArmoryCharacterPrunerService(
                 return CharacterLookupResult.Missing();
             }
 
-            return CharacterLookupResult.Found();
+            return CharacterLookupResult.Found(character);
         }
         catch (OperationCanceledException)
         {
@@ -242,6 +298,48 @@ public sealed class ArmoryCharacterPrunerService(
         {
             return CharacterLookupResult.Error(ex.Message);
         }
+    }
+
+    private static IReadOnlyList<CharacterToScan> GetFallbackCharacters(CharacterToScan character)
+    {
+        string[] fallbackDisplayRealms = character.DisplayRealm switch
+        {
+            "Tauri" => ["Evermoon"],
+            "Evermoon" => ["Tauri"],
+            _ => Array.Empty<string>()
+        };
+
+        var results = new List<CharacterToScan>(fallbackDisplayRealms.Length);
+
+        foreach (var fallbackDisplayRealm in fallbackDisplayRealms)
+        {
+            if (!CharacterHelpers.TryResolveRealm(
+                    fallbackDisplayRealm,
+                    out var fallbackApiRealm,
+                    out var resolvedDisplayRealm))
+            {
+                continue;
+            }
+
+            results.Add(new CharacterToScan(
+                character.Name,
+                fallbackApiRealm,
+                resolvedDisplayRealm));
+        }
+
+        return results;
+    }
+
+    private static string BuildOutputLine(InputEntry entry, CharacterToScan? resolvedCharacter)
+    {
+        if (entry.Character is null || resolvedCharacter is null)
+        {
+            return entry.OriginalLine;
+        }
+
+        return new CharacterToScanComparer().Equals(entry.Character, resolvedCharacter)
+            ? entry.OriginalLine
+            : $"{resolvedCharacter.Name}-{resolvedCharacter.DisplayRealm}";
     }
 
     private static bool IsEmptyResponse(JsonElement responseElement)
@@ -299,19 +397,29 @@ public sealed class ArmoryCharacterPrunerService(
 
     private sealed record CharacterToScan(string Name, string ApiRealm, string DisplayRealm);
 
-    private sealed record CharacterLookupResult(CharacterLookupStatus Status, string? Message)
+    private sealed record CharacterLookupResult(
+        CharacterLookupStatus Status,
+        string? Message,
+        CharacterToScan? ResolvedCharacter)
     {
-        public static CharacterLookupResult Found() => new(CharacterLookupStatus.Found, null);
+        public static CharacterLookupResult Found(CharacterToScan character) =>
+            new(CharacterLookupStatus.Found, null, character);
 
-        public static CharacterLookupResult Missing() => new(CharacterLookupStatus.Missing, null);
+        public static CharacterLookupResult Missing() =>
+            new(CharacterLookupStatus.Missing, null, null);
 
-        public static CharacterLookupResult Error(string message) => new(CharacterLookupStatus.Error, message);
+        public static CharacterLookupResult MissingDueToBadRequest() =>
+            new(CharacterLookupStatus.MissingDueToBadRequest, null, null);
+
+        public static CharacterLookupResult Error(string message) =>
+            new(CharacterLookupStatus.Error, message, null);
     }
 
     private enum CharacterLookupStatus
     {
         Found,
         Missing,
+        MissingDueToBadRequest,
         Error
     }
 

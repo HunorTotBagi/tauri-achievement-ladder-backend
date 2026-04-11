@@ -6,6 +6,7 @@ public sealed record ArmoryCharacterPrunerResult(
     int TotalLineCount,
     int CheckedCharacterRowCount,
     int UniqueCharacterCount,
+    int RewrittenRowCount,
     int RemovedRowCount,
     int KeptRowCount,
     int UnparsedRowCount,

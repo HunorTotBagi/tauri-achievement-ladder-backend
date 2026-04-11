@@ -50,6 +50,7 @@ internal static class Program
             Console.WriteLine($"Total lines: {result.TotalLineCount}");
             Console.WriteLine($"Character rows checked: {result.CheckedCharacterRowCount}");
             Console.WriteLine($"Unique armory lookups: {result.UniqueCharacterCount}");
+            Console.WriteLine($"Rows rewritten: {result.RewrittenRowCount}");
             Console.WriteLine($"Rows removed: {result.RemovedRowCount}");
             Console.WriteLine($"Rows kept: {result.KeptRowCount}");
             Console.WriteLine($"Unparsed rows kept: {result.UnparsedRowCount}");
