@@ -51,6 +51,14 @@ To compare the current source inputs against `Players.csv`, fetch the missing ch
 dotnet run --project MissingPlayerFinder
 ```
 
+To prune a character batch file in place by removing rows whose Tauri `character-sheet` lookup returns no character payload, run:
+
+```bash
+dotnet run --project ArmoryCharacterPruner -- --names-file s15_6
+```
+
+This supports `Character-Realm` rows directly and also accepts `--realm` as a fallback for plain name lists. Pass `--output` if you want to write the filtered list to another file instead of rewriting the source file.
+
 To scan item appearances for specific item IDs, save a JSON report, and write unresolved retry characters into `MissingItemCharactersToScan.txt`, run:
 
 ```bash
@@ -94,10 +102,16 @@ To scan every member of one guild, pass `--guild` and `--realm`:
 dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
 ```
 
-To scan a custom batch from a text file, pass `--names-file` and `--realm`. The file can contain one character name per line or raw lines such as `[22191791]-Fluffy|186,Mining;...`:
+To scan a custom batch from a text file, pass `--names-file`. The file can contain `Character-Realm` rows, one character name per line, or raw lines such as `[22191791]-Fluffy|186,Mining;...`. Use `--realm` only as a fallback for rows that do not already include `-Realm`:
 
 ```bash
 dotnet run --project RareAchiAndItemScan -- --names-file .\RareAchiAndItemScan\Input\tauri-ban-list.txt --realm Tauri
+```
+
+For PvP season batch files under `AchievementLadder/Data/PvPSeasonCharacters`, you can pass just the file name:
+
+```bash
+dotnet run --project RareAchiAndItemScan -- --names-file s15_6 --scan achievements,items
 ```
 
 By default the scan writes a JSON report under `RareAchiAndItemScan/Output`. You can limit the scan scope with `--scan achievements`, `--scan items`, `--scan mounts`, or any comma-separated combination such as `--scan achievements,items`.

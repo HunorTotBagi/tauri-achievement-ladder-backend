@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
+using AchievementLadder.Infrastructure;
 using RareAchiAndItemScan;
 
 namespace MissingItemFinder;
@@ -171,12 +172,10 @@ public sealed class MissingItemFinderService(
         MissingItemFinderOptions options,
         CancellationToken cancellationToken)
     {
-        var resolvedPath = Path.GetFullPath(options.NamesFilePath!, _projectRoot);
-        if (!File.Exists(resolvedPath))
-        {
-            throw new FileNotFoundException($"Could not find names file: {resolvedPath}", resolvedPath);
-        }
-
+        var resolvedPath = ProjectPaths.ResolveCharacterBatchFilePath(
+            _solutionRoot,
+            _projectRoot,
+            options.NamesFilePath!);
         var characters = new HashSet<CharacterToScan>(new CharacterToScanComparer());
         var hasFallbackRealm = CharacterHelpers.TryResolveRealm(
             options.Realm,

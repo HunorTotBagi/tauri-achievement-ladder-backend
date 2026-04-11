@@ -30,6 +30,7 @@ public sealed record ScanOptions(
           dotnet run --project RareAchiAndItemScan
           dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
+          dotnet run --project RareAchiAndItemScan -- --names-file s15_6
           dotnet run --project RareAchiAndItemScan -- --names-file .\Input\tauri-ban-list.txt --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
           dotnet run --project RareAchiAndItemScan -- --scan achievements,items
@@ -38,8 +39,8 @@ public sealed record ScanOptions(
         Options:
           --name <character>    Scan a single character instead of all source characters.
           --guild <name>        Scan every member of one guild on the selected realm.
-          --names-file <path>   Scan characters listed in a text file. Supports one name per line or raw [id]-Name|... lines.
-          --realm <realm>       Required with --name, --guild, or --names-file. Accepts Tauri, Evermoon, WoD, or the full API realm name.
+          --names-file <path>   Scan characters listed in a text file. Supports Name-Realm rows, one name per line, or raw [id]-Name|... lines.
+          --realm <realm>       Required with --name or --guild. Optional fallback for --names-file rows without a realm suffix.
           --item-ids <ids>      Comma-separated item IDs to match. When provided without --scan, the scan becomes item-only.
           --scan <targets>      Comma-separated: achievements, items, mounts, or all. Default: all.
           --output <path>       Optional output file path. Relative paths are resolved from RareAchiAndItemScan.
@@ -53,8 +54,10 @@ public sealed record ScanOptions(
             : HasSpecificGuild
                 ? $"guild {GuildName} on {Realm}"
                 : HasNamesFile
-                    ? $"characters from {Path.GetFileName(NamesFilePath)} on {Realm}"
-                : "all source characters";
+                    ? string.IsNullOrWhiteSpace(Realm)
+                        ? $"characters from {Path.GetFileName(NamesFilePath)}"
+                        : $"characters from {Path.GetFileName(NamesFilePath)} with fallback realm {Realm}"
+                    : "all source characters";
     }
 
     public string DescribeTargets()
@@ -244,12 +247,11 @@ public sealed record ScanOptions(
             return false;
         }
 
-        if (( !string.IsNullOrWhiteSpace(characterName) ||
-              !string.IsNullOrWhiteSpace(guildName) ||
-              !string.IsNullOrWhiteSpace(namesFilePath)) &&
+        if ((!string.IsNullOrWhiteSpace(characterName) ||
+             !string.IsNullOrWhiteSpace(guildName)) &&
             string.IsNullOrWhiteSpace(realm))
         {
-            errorMessage = "--realm is required when --name, --guild, or --names-file is provided.";
+            errorMessage = "--realm is required when --name or --guild is provided.";
             return false;
         }
 

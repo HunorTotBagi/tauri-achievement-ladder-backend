@@ -1,13 +1,13 @@
 using AchievementLadder.Configuration;
 using AchievementLadder.Infrastructure;
 
-namespace RareAchiAndItemScan;
+namespace ArmoryCharacterPruner;
 
 internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (!ScanOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
+        if (!ArmoryCharacterPrunerOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
         {
             if (!string.IsNullOrWhiteSpace(errorMessage))
             {
@@ -15,15 +15,13 @@ internal static class Program
                 Console.Error.WriteLine();
             }
 
-            Console.WriteLine(ScanOptions.UsageText);
+            Console.WriteLine(ArmoryCharacterPrunerOptions.UsageText);
             return showHelp ? 0 : 1;
         }
 
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "RareAchiAndItemScan.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "ArmoryCharacterPruner.csproj");
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
-        var achievementLadderProjectRoot = Path.Combine(solutionRoot, "AchievementLadder");
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
-        var resolvedOptions = options!;
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
@@ -36,35 +34,37 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
-            var scanner = new RareAchiAndItemScanService(
+            var pruner = new ArmoryCharacterPrunerService(
                 solutionRoot,
                 projectRoot,
-                achievementLadderProjectRoot,
                 settings.TauriApi);
 
+            var resolvedOptions = options!;
             Console.WriteLine(
-                $"Starting rare scan for {resolvedOptions.DescribeScope()} ({resolvedOptions.DescribeTargets()})...");
+                $"Starting armory prune for {resolvedOptions.DescribeScope()}...");
 
-            var result = await scanner.ExecuteAsync(resolvedOptions, cancellationTokenSource.Token);
+            var result = await pruner.PruneAsync(resolvedOptions, cancellationTokenSource.Token);
 
-            Console.WriteLine($"Scanned characters: {result.ScannedCharacterCount}");
-            Console.WriteLine($"Characters with matches: {result.MatchedCharacterCount}");
-            Console.WriteLine($"Failed characters: {result.FailedCharacterCount}");
-            Console.WriteLine($"Rare achievement matches: {result.AchievementMatchCount}");
-            Console.WriteLine($"Rare item matches: {result.ItemMatchCount}");
-            Console.WriteLine($"Rare mount matches: {result.MountMatchCount}");
-            Console.WriteLine($"Report: {result.OutputPath}");
+            Console.WriteLine($"Input file: {result.InputPath}");
+            Console.WriteLine($"Output file: {result.OutputPath}");
+            Console.WriteLine($"Total lines: {result.TotalLineCount}");
+            Console.WriteLine($"Character rows checked: {result.CheckedCharacterRowCount}");
+            Console.WriteLine($"Unique armory lookups: {result.UniqueCharacterCount}");
+            Console.WriteLine($"Rows removed: {result.RemovedRowCount}");
+            Console.WriteLine($"Rows kept: {result.KeptRowCount}");
+            Console.WriteLine($"Unparsed rows kept: {result.UnparsedRowCount}");
+            Console.WriteLine($"Lookup failures kept: {result.FailedLookupCount}");
 
             return 0;
         }
         catch (OperationCanceledException)
         {
-            Console.Error.WriteLine("Rare scan cancelled.");
+            Console.Error.WriteLine("Armory prune cancelled.");
             return 1;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Rare scan failed: {ex.Message}");
+            Console.Error.WriteLine($"Armory prune failed: {ex.Message}");
             return 1;
         }
     }
@@ -84,7 +84,7 @@ internal static class Program
         }
 
         throw new FileNotFoundException(
-            "Could not find appsettings.json in either AchievementLadder or RareAchiAndItemScan.",
+            "Could not find appsettings.json in either AchievementLadder or ArmoryCharacterPruner.",
             sharedSettingsPath);
     }
 }

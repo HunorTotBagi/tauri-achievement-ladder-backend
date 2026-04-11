@@ -4,10 +4,12 @@ using System.Text.Json;
 using AchievementLadder.Configuration;
 using AchievementLadder.Dtos;
 using AchievementLadder.Helpers;
+using AchievementLadder.Infrastructure;
 
 namespace RareAchiAndItemScan;
 
 public sealed class RareAchiAndItemScanService(
+    string solutionRoot,
     string projectRoot,
     string achievementLadderProjectRoot,
     TauriApiOptions apiOptions)
@@ -34,6 +36,7 @@ public sealed class RareAchiAndItemScanService(
     private const int MaxDegreeOfParallelism = 10;
     private const int ProgressInterval = 100;
 
+    private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly string _projectRoot = Path.GetFullPath(projectRoot);
     private readonly string _achievementLadderProjectRoot = Path.GetFullPath(achievementLadderProjectRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
@@ -224,35 +227,47 @@ public sealed class RareAchiAndItemScanService(
 
     private List<CharacterToScan> LoadCharactersFromNamesFile(
         string namesFilePath,
-        string realm,
+        string? realm,
         CancellationToken cancellationToken)
     {
-        var realmSource = ResolveRealmSource(realm);
-        var resolvedPath = Path.GetFullPath(namesFilePath, _projectRoot);
-
-        if (!File.Exists(resolvedPath))
-        {
-            throw new FileNotFoundException(
-                $"Could not find names file: {resolvedPath}",
-                resolvedPath);
-        }
-
+        var resolvedPath = ProjectPaths.ResolveCharacterBatchFilePath(_solutionRoot, _projectRoot, namesFilePath);
         var characters = new HashSet<CharacterToScan>(new CharacterToScanComparer());
+        var hasFallbackRealm = CharacterHelpers.TryResolveRealm(
+            realm,
+            out var fallbackApiRealm,
+            out var fallbackDisplayRealm);
 
         foreach (var rawLine in File.ReadLines(resolvedPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (CharacterHelpers.TryExtractCharacterWithRealm(
+                    rawLine,
+                    out var nameWithRealm,
+                    out var apiRealm,
+                    out var displayRealm))
+            {
+                characters.Add(new CharacterToScan(nameWithRealm, apiRealm, displayRealm));
+                continue;
+            }
 
             if (!CharacterHelpers.TryExtractCharacterName(rawLine, out var name))
             {
                 continue;
             }
 
-            characters.Add(new CharacterToScan(name, realmSource.ApiRealm, realmSource.DisplayRealm));
+            if (!hasFallbackRealm)
+            {
+                throw new InvalidOperationException(
+                    $"The names file contains entries without realm information. Provide --realm or use Name-Realm lines. File: {resolvedPath}");
+            }
+
+            characters.Add(new CharacterToScan(name, fallbackApiRealm, fallbackDisplayRealm));
         }
 
         return characters
-            .OrderBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -648,7 +663,12 @@ public sealed class RareAchiAndItemScanService(
         else if (options.HasNamesFile)
         {
             fileName +=
-                $"-batch-{SanitizeFileSegment(Path.GetFileNameWithoutExtension(options.NamesFilePath!))}-{SanitizeFileSegment(options.Realm!)}";
+                $"-batch-{SanitizeFileSegment(Path.GetFileNameWithoutExtension(options.NamesFilePath!))}";
+
+            if (!string.IsNullOrWhiteSpace(options.Realm))
+            {
+                fileName += $"-{SanitizeFileSegment(options.Realm)}";
+            }
         }
 
         return $"{fileName}.json";

@@ -44,4 +44,69 @@ public static class ProjectPaths
         return Path.GetFullPath(
             Path.Combine(solutionRoot, "..", "tauriachievements.github.io", "src"));
     }
+
+    public static string ResolveCharacterBatchFilePath(
+        string solutionRoot,
+        string projectRoot,
+        string inputPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(solutionRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+
+        var trimmedInputPath = inputPath.Trim();
+
+        if (Path.IsPathRooted(trimmedInputPath))
+        {
+            var absolutePath = Path.GetFullPath(trimmedInputPath);
+            if (File.Exists(absolutePath))
+            {
+                return absolutePath;
+            }
+
+            throw new FileNotFoundException($"Could not find names file: {absolutePath}", absolutePath);
+        }
+
+        var candidates = new List<string>
+        {
+            Path.GetFullPath(trimmedInputPath, projectRoot),
+            Path.GetFullPath(trimmedInputPath, solutionRoot)
+        };
+
+        if (!trimmedInputPath.Contains(Path.DirectorySeparatorChar) &&
+            !trimmedInputPath.Contains(Path.AltDirectorySeparatorChar))
+        {
+            foreach (var fileName in ExpandBatchFileNames(trimmedInputPath))
+            {
+                candidates.Add(Path.Combine(solutionRoot, "AchievementLadder", "Data", "PvPSeasonCharacters", fileName));
+                candidates.Add(Path.Combine(solutionRoot, "RareAchiAndItemScan", "Input", fileName));
+            }
+        }
+
+        var distinctCandidates = candidates
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var candidate in distinctCandidates)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException(
+            $"Could not find names file '{trimmedInputPath}'. Checked: {string.Join(", ", distinctCandidates)}",
+            distinctCandidates.FirstOrDefault() ?? trimmedInputPath);
+    }
+
+    private static IEnumerable<string> ExpandBatchFileNames(string inputPath)
+    {
+        yield return inputPath;
+
+        if (string.IsNullOrWhiteSpace(Path.GetExtension(inputPath)))
+        {
+            yield return inputPath + ".txt";
+        }
+    }
 }
