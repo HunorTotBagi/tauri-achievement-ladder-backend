@@ -210,17 +210,6 @@
             "points": "11075"
         },
         {
-            "name": "\u00c7r\u00f8wley",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "6",
-            "class": "6",
-            "gender": "0",
-            "totalKills": "142488",
-            "totalTime": "27196650",
-            "points": "13200"
-        },
-        {
             "name": "Senatine",
             "guildName": "Incendia",
             "faction": "1",
@@ -4775,17 +4764,6 @@
             "points": "16210"
         },
         {
-            "name": "Frostb\u00e4ne",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "31008",
-            "totalTime": "13129397",
-            "points": "11705"
-        },
-        {
             "name": "Torgunn",
             "guildName": "Days Of Wonder",
             "faction": "0",
@@ -5523,17 +5501,6 @@
             "points": "7750"
         },
         {
-            "name": "K\u00f6cs\u00f6gdar\u00e1zs",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "28573",
-            "totalTime": "15777750",
-            "points": "7500"
-        },
-        {
             "name": "Nargorm",
             "guildName": "Aurora",
             "faction": "1",
@@ -5609,17 +5576,6 @@
             "totalKills": "28431",
             "totalTime": "10457806",
             "points": "17445"
-        },
-        {
-            "name": "Abr\u00e4xas",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "28400",
-            "totalTime": "12562064",
-            "points": "10350"
         },
         {
             "name": "Criticaldmg",
@@ -7127,17 +7083,6 @@
             "totalKills": "24247",
             "totalTime": "6020111",
             "points": "7440"
-        },
-        {
-            "name": "Thunderdu\u00e7k",
-            "guildName": "An evolving guild",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "1",
-            "totalKills": "24238",
-            "totalTime": "8507336",
-            "points": "8235"
         },
         {
             "name": "Kyoce",

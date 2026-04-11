@@ -705,17 +705,6 @@
             "points": "11660"
         },
         {
-            "name": "\u00c7r\u00f8wley",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "6",
-            "class": "6",
-            "gender": "0",
-            "totalKills": "142488",
-            "totalTime": "27196650",
-            "points": "13200"
-        },
-        {
             "name": "Alphashriek",
             "guildName": "Joy Division",
             "faction": "0",
@@ -2201,17 +2190,6 @@
             "points": "9185"
         },
         {
-            "name": "Thunderb\u00f8lt",
-            "guildName": "Elune",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "0",
-            "totalKills": "1644",
-            "totalTime": "18336462",
-            "points": "10615"
-        },
-        {
             "name": "Qayb",
             "guildName": "",
             "faction": "0",
@@ -3464,17 +3442,6 @@
             "totalKills": "17589",
             "totalTime": "15790368",
             "points": "11150"
-        },
-        {
-            "name": "K\u00f6cs\u00f6gdar\u00e1zs",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "28573",
-            "totalTime": "15777750",
-            "points": "7500"
         },
         {
             "name": "Heracym",
@@ -5369,17 +5336,6 @@
             "points": "14215"
         },
         {
-            "name": "Frostb\u00e4ne",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "31008",
-            "totalTime": "13129397",
-            "points": "11705"
-        },
-        {
             "name": "Cat",
             "guildName": "Raidloggen",
             "faction": "1",
@@ -5983,17 +5939,6 @@
             "totalKills": "618",
             "totalTime": "12567018",
             "points": "15640"
-        },
-        {
-            "name": "Abr\u00e4xas",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "28400",
-            "totalTime": "12562064",
-            "points": "10350"
         },
         {
             "name": "Trebron",
@@ -7877,17 +7822,6 @@
             "points": "10640"
         },
         {
-            "name": "Fudg\u00e9",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "2399",
-            "totalTime": "11168586",
-            "points": "9650"
-        },
-        {
             "name": "\u0422\u0440\u0443\u0431\u0435\u0446\u043a\u043e\u0439",
             "guildName": "Unicorns",
             "faction": "1",
@@ -9349,17 +9283,6 @@
             "totalKills": "23580",
             "totalTime": "10338662",
             "points": "6315"
-        },
-        {
-            "name": "M\u00e4zsola",
-            "guildName": "",
-            "faction": "0",
-            "race": "4",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "13883",
-            "totalTime": "10328706",
-            "points": "7550"
         },
         {
             "name": "Gimgembre",
