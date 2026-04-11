@@ -11,4 +11,8 @@
     <Folder Include="Data\GuildCharacters\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\RareAchiAndItemScan\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
+  </ItemGroup>
+
 </Project>

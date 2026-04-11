@@ -111,17 +111,6 @@
             "points": "18230"
         },
         {
-            "name": "Furi\u00f8us",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "121164",
-            "totalTime": "39979160",
-            "points": "18210"
-        },
-        {
             "name": "Permaban",
             "guildName": "",
             "faction": "1",
@@ -4080,17 +4069,6 @@
             "totalKills": "1644",
             "totalTime": "7371462",
             "points": "13210"
-        },
-        {
-            "name": "\u00c7r\u00f8wley",
-            "guildName": "Shadow Hunters",
-            "faction": "1",
-            "race": "6",
-            "class": "6",
-            "gender": "0",
-            "totalKills": "142488",
-            "totalTime": "27196650",
-            "points": "13200"
         },
         {
             "name": "Jaser",
@@ -9560,17 +9538,6 @@
             "points": "10620"
         },
         {
-            "name": "Thunderb\u00f8lt",
-            "guildName": "Elune",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "0",
-            "totalKills": "1644",
-            "totalTime": "18336462",
-            "points": "10615"
-        },
-        {
             "name": "Nalord",
             "guildName": "Valor Lovers",
             "faction": "0",
@@ -10330,17 +10297,6 @@
             "points": "10350"
         },
         {
-            "name": "Abr\u00e4xas",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "28400",
-            "totalTime": "12562064",
-            "points": "10350"
-        },
-        {
             "name": "Trebron",
             "guildName": "Wipes on Tresh",
             "faction": "1",
@@ -10416,17 +10372,6 @@
             "totalKills": "29677",
             "totalTime": "9651353",
             "points": "10330"
-        },
-        {
-            "name": "S\u00edlos",
-            "guildName": "",
-            "faction": "0",
-            "race": "4",
-            "class": "11",
-            "gender": "0",
-            "totalKills": "8374",
-            "totalTime": "9194273",
-            "points": "10325"
         },
         {
             "name": "Astralyn",

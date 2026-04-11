@@ -8416,17 +8416,6 @@
             "points": "13195"
         },
         {
-            "name": "Frostburner",
-            "guildName": "TeamWork",
-            "faction": "1",
-            "race": "8",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "34597",
-            "totalTime": "16652697",
-            "points": "13190"
-        },
-        {
             "name": "Spalding",
             "guildName": "",
             "faction": "0",

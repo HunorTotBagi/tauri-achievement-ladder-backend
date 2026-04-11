@@ -1,11 +1,12 @@
 # Tauri Achievement Ladder
 
-This repository is now a plain `.NET 9` console app. It reads the local character and guild source files, fetches fresh character details from the Tauri API, and writes `Players.csv` plus `lastUpdated.txt` to `../tauriachievements.github.io/src`.
+This repository is now a plain `.NET 9` console app. It reads the local character and guild source files, fetches fresh character details from the Tauri API, and writes `Players.csv`, `RareAchievements.json`, plus `lastUpdated.txt` to `../tauriachievements.github.io/src`.
 
 `AchievementLadder` loads characters from:
 
 - `AchievementLadder/Data/CharacterCollection/*.txt`
 - `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
+- `AchievementLadder/Data/PvPSeasonCharacters/*.txt`
 - `RareAchiAndItemScan/Input/tauri-ban-list.txt`
 - `RareAchiAndItemScan/Input/vengeful.txt`
 
@@ -27,7 +28,12 @@ Set real Tauri API credentials in `AchievementLadder/appsettings.json` or overri
 dotnet run --project AchievementLadder
 ```
 
-On success the app prints the absolute paths for `Players.csv` and `lastUpdated.txt`.
+On success the app prints the absolute paths for `Players.csv`, `RareAchievements.json`, and `lastUpdated.txt`.
+
+`RareAchievements.json` contains:
+
+- the exported rare-achievement catalog from `RareScanCatalog.RareAchievementNames`
+- one entry per exported character with `name`, `realm`, and the matching rare `achievementIds`
 
 To export guild members as `Character-Realm` rows into `GuildCharacters.txt`, run:
 
