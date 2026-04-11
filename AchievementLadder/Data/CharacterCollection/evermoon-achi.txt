@@ -386,17 +386,6 @@
             "points": "17540"
         },
         {
-            "name": "Lunapiena",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "34177",
-            "totalTime": "23556883",
-            "points": "17525"
-        },
-        {
             "name": "Natiry",
             "guildName": "Resolve",
             "faction": "1",
@@ -725,17 +714,6 @@
             "totalKills": "13279",
             "totalTime": "11265973",
             "points": "16820"
-        },
-        {
-            "name": "Deltarog",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "4",
-            "gender": "1",
-            "totalKills": "66278",
-            "totalTime": "28647737",
-            "points": "16810"
         },
         {
             "name": "Artheros",
@@ -1088,17 +1066,6 @@
             "totalKills": "15117",
             "totalTime": "17878119",
             "points": "16305"
-        },
-        {
-            "name": "Tonnyas",
-            "guildName": "Wipes on Tresh",
-            "faction": "1",
-            "race": "2",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "2936",
-            "totalTime": "9995261",
-            "points": "16230"
         },
         {
             "name": "Juakali",
@@ -2267,17 +2234,6 @@
             "points": "14825"
         },
         {
-            "name": "Pleo",
-            "guildName": "Fekete Hold",
-            "faction": "0",
-            "race": "1",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "117102",
-            "totalTime": "41535245",
-            "points": "14810"
-        },
-        {
             "name": "Dotlock",
             "guildName": "ComebackGang",
             "faction": "1",
@@ -3081,17 +3037,6 @@
             "points": "14085"
         },
         {
-            "name": "Ledlas",
-            "guildName": "",
-            "faction": "1",
-            "race": "26",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "41543",
-            "totalTime": "23142386",
-            "points": "14070"
-        },
-        {
             "name": "Pandapunk",
             "guildName": "Yin Yang",
             "faction": "0",
@@ -3554,17 +3499,6 @@
             "points": "13625"
         },
         {
-            "name": "Raaya",
-            "guildName": "Punishers",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "51215",
-            "totalTime": "24613855",
-            "points": "13620"
-        },
-        {
             "name": "Farfello",
             "guildName": "Dancing Steel",
             "faction": "1",
@@ -3761,17 +3695,6 @@
             "totalKills": "38741",
             "totalTime": "8471990",
             "points": "13460"
-        },
-        {
-            "name": "Lunanya",
-            "guildName": "Left Leaning Ladies",
-            "faction": "0",
-            "race": "4",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "2613",
-            "totalTime": "6265688",
-            "points": "13455"
         },
         {
             "name": "Emeraldia",
@@ -4357,17 +4280,6 @@
             "points": "13070"
         },
         {
-            "name": "Xaldinxion",
-            "guildName": "Warlords of Destruction",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "0",
-            "totalKills": "13386",
-            "totalTime": "16142442",
-            "points": "13060"
-        },
-        {
             "name": "Pit",
             "guildName": "Muzykanci z Gruzji",
             "faction": "1",
@@ -4552,17 +4464,6 @@
             "gender": "0",
             "totalKills": "649",
             "totalTime": "12860398",
-            "points": "12955"
-        },
-        {
-            "name": "Thefrozen",
-            "guildName": "Warlords of Destruction",
-            "faction": "1",
-            "race": "10",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "5532",
-            "totalTime": "7223955",
             "points": "12955"
         },
         {
@@ -4918,17 +4819,6 @@
             "points": "12700"
         },
         {
-            "name": "Pulykazul",
-            "guildName": "TheNewLegacy",
-            "faction": "1",
-            "race": "8",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "21601",
-            "totalTime": "18033879",
-            "points": "12695"
-        },
-        {
             "name": "Ursobeso",
             "guildName": "Purgatory",
             "faction": "0",
@@ -5215,17 +5105,6 @@
             "points": "12565"
         },
         {
-            "name": "Grizzela",
-            "guildName": "Paranoid",
-            "faction": "1",
-            "race": "2",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "1665",
-            "totalTime": "9462558",
-            "points": "12565"
-        },
-        {
             "name": "Leventhe",
             "guildName": "Fekete Hold",
             "faction": "0",
@@ -5235,17 +5114,6 @@
             "totalKills": "37259",
             "totalTime": "15912686",
             "points": "12565"
-        },
-        {
-            "name": "Jadymyagony",
-            "guildName": "Test Drive",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "23290",
-            "totalTime": "14151200",
-            "points": "12540"
         },
         {
             "name": "Neivah",
@@ -5303,17 +5171,6 @@
             "points": "12510"
         },
         {
-            "name": "Slpy",
-            "guildName": "",
-            "faction": "1",
-            "race": "5",
-            "class": "4",
-            "gender": "0",
-            "totalKills": "44032",
-            "totalTime": "16771139",
-            "points": "12505"
-        },
-        {
             "name": "L#423506",
             "guildName": "\u00d0uty",
             "faction": "0",
@@ -5367,17 +5224,6 @@
             "totalKills": "828",
             "totalTime": "7445738",
             "points": "12485"
-        },
-        {
-            "name": "Mawky",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "6",
-            "gender": "1",
-            "totalKills": "24434",
-            "totalTime": "12101669",
-            "points": "12470"
         },
         {
             "name": "Voldemord",
@@ -5600,17 +5446,6 @@
             "points": "12365"
         },
         {
-            "name": "Xelu",
-            "guildName": "",
-            "faction": "1",
-            "race": "8",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "64358",
-            "totalTime": "19768671",
-            "points": "12350"
-        },
-        {
             "name": "Hecatio",
             "guildName": "I Uni\u00f3n  Esencial I   ",
             "faction": "0",
@@ -5754,17 +5589,6 @@
             "points": "12285"
         },
         {
-            "name": "Jadymypain",
-            "guildName": "Punishers",
-            "faction": "1",
-            "race": "8",
-            "class": "6",
-            "gender": "0",
-            "totalKills": "44670",
-            "totalTime": "9928637",
-            "points": "12275"
-        },
-        {
             "name": "Haramia",
             "guildName": "",
             "faction": "1",
@@ -5796,17 +5620,6 @@
             "totalKills": "11294",
             "totalTime": "14767776",
             "points": "12265"
-        },
-        {
-            "name": "Novaldin",
-            "guildName": "Nexxus",
-            "faction": "1",
-            "race": "10",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "156080",
-            "totalTime": "26788451",
-            "points": "12260"
         },
         {
             "name": "Apathyxia",
@@ -5930,17 +5743,6 @@
             "points": "12185"
         },
         {
-            "name": "Xaldin",
-            "guildName": "",
-            "faction": "1",
-            "race": "5",
-            "class": "5",
-            "gender": "0",
-            "totalKills": "72363",
-            "totalTime": "19385895",
-            "points": "12175"
-        },
-        {
             "name": "Lulapi",
             "guildName": "Among Us",
             "faction": "1",
@@ -6027,17 +5829,6 @@
             "totalKills": "24098",
             "totalTime": "17403575",
             "points": "12130"
-        },
-        {
-            "name": "Myrasha",
-            "guildName": "Eternium",
-            "faction": "0",
-            "race": "4",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "363",
-            "totalTime": "5764819",
-            "points": "12110"
         },
         {
             "name": "Nensii",
@@ -6678,17 +6469,6 @@
             "points": "11835"
         },
         {
-            "name": "Helmonty",
-            "guildName": "",
-            "faction": "0",
-            "race": "1",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "7456",
-            "totalTime": "19366569",
-            "points": "11830"
-        },
-        {
             "name": "Escrotalus",
             "guildName": "MiniDowns",
             "faction": "1",
@@ -7305,17 +7085,6 @@
             "points": "11565"
         },
         {
-            "name": "Hatheiel",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "4",
-            "gender": "0",
-            "totalKills": "11004",
-            "totalTime": "18720383",
-            "points": "11560"
-        },
-        {
             "name": "Parashurama",
             "guildName": "Wayang",
             "faction": "0",
@@ -7809,17 +7578,6 @@
             "totalKills": "18547",
             "totalTime": "11655968",
             "points": "11350"
-        },
-        {
-            "name": "Justbehappy",
-            "guildName": "CHSV",
-            "faction": "1",
-            "race": "26",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "3992",
-            "totalTime": "3471667",
-            "points": "11335"
         },
         {
             "name": "Acyld",
@@ -9054,17 +8812,6 @@
             "points": "10895"
         },
         {
-            "name": "Zugoshunter",
-            "guildName": "P\u00e1lmafa",
-            "faction": "1",
-            "race": "2",
-            "class": "3",
-            "gender": "0",
-            "totalKills": "48322",
-            "totalTime": "22508917",
-            "points": "10885"
-        },
-        {
             "name": "Makotol",
             "guildName": "Skill Issue",
             "faction": "1",
@@ -10275,17 +10022,6 @@
             "points": "10470"
         },
         {
-            "name": "Mistwalk",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "10",
-            "gender": "1",
-            "totalKills": "475",
-            "totalTime": "4767579",
-            "points": "10470"
-        },
-        {
             "name": "Darlan",
             "guildName": "A Murder of Crows",
             "faction": "1",
@@ -10418,28 +10154,6 @@
             "points": "10430"
         },
         {
-            "name": "Lemedil",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "32914",
-            "totalTime": "15417111",
-            "points": "10420"
-        },
-        {
-            "name": "Kastavigi",
-            "guildName": "Storm",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "1",
-            "totalKills": "349",
-            "totalTime": "4526181",
-            "points": "10420"
-        },
-        {
             "name": "Zenghar",
             "guildName": "Storm",
             "faction": "1",
@@ -10482,17 +10196,6 @@
             "totalKills": "616",
             "totalTime": "3096327",
             "points": "10400"
-        },
-        {
-            "name": "Rotinpeace",
-            "guildName": "",
-            "faction": "1",
-            "race": "5",
-            "class": "8",
-            "gender": "0",
-            "totalKills": "2428",
-            "totalTime": "8760081",
-            "points": "10390"
         },
         {
             "name": "Karnefromusa",

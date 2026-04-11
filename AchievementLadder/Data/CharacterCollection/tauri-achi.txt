@@ -12,6 +12,50 @@
             "points": "18735"
         },
         {
+            "name": "Shocc",
+            "guildName": "Calamity",
+            "faction": "1",
+            "race": "8",
+            "class": "7",
+            "gender": "0",
+            "totalKills": "31616",
+            "totalTime": "4885567",
+            "points": "6070"
+        },
+        {
+            "name": "Mistwalk",
+            "guildName": "",
+            "faction": "1",
+            "race": "10",
+            "class": "10",
+            "gender": "1",
+            "totalKills": "475",
+            "totalTime": "4767579",
+            "points": "10470"
+        },
+        {
+            "name": "Kastavigi",
+            "guildName": "Storm",
+            "faction": "1",
+            "race": "8",
+            "class": "7",
+            "gender": "1",
+            "totalKills": "349",
+            "totalTime": "4526181",
+            "points": "10420"
+        },
+        {
+            "name": "Hatheiel",
+            "guildName": "",
+            "faction": "1",
+            "race": "2",
+            "class": "4",
+            "gender": "0",
+            "totalKills": "11004",
+            "totalTime": "18720383",
+            "points": "11560"
+        },
+        {
             "name": "Har\u00f0",
             "guildName": "DevilsArmy",
             "faction": "1",

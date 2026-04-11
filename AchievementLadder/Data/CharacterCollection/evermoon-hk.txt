@@ -166,17 +166,6 @@
             "points": "4670"
         },
         {
-            "name": "Novaldin",
-            "guildName": "Nexxus",
-            "faction": "1",
-            "race": "10",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "156080",
-            "totalTime": "26788451",
-            "points": "12260"
-        },
-        {
             "name": "Andronicus",
             "guildName": "OMNOMNOMNOMNOMNOMNOMNOM",
             "faction": "1",
@@ -384,17 +373,6 @@
             "totalKills": "118359",
             "totalTime": "19409668",
             "points": "12060"
-        },
-        {
-            "name": "Pleo",
-            "guildName": "Fekete Hold",
-            "faction": "0",
-            "race": "1",
-            "class": "8",
-            "gender": "1",
-            "totalKills": "117102",
-            "totalTime": "41535245",
-            "points": "14810"
         },
         {
             "name": "Swagerlikeus",
@@ -969,17 +947,6 @@
             "points": "5675"
         },
         {
-            "name": "Xaldin",
-            "guildName": "",
-            "faction": "1",
-            "race": "5",
-            "class": "5",
-            "gender": "0",
-            "totalKills": "72363",
-            "totalTime": "19385895",
-            "points": "12175"
-        },
-        {
             "name": "Julietta",
             "guildName": "",
             "faction": "0",
@@ -1189,17 +1156,6 @@
             "points": "11865"
         },
         {
-            "name": "Deltarog",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "4",
-            "gender": "1",
-            "totalKills": "66278",
-            "totalTime": "28647737",
-            "points": "16810"
-        },
-        {
             "name": "Mariri",
             "guildName": "Logic",
             "faction": "0",
@@ -1297,17 +1253,6 @@
             "totalKills": "64907",
             "totalTime": "30789820",
             "points": "14520"
-        },
-        {
-            "name": "Xelu",
-            "guildName": "",
-            "faction": "1",
-            "race": "8",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "64358",
-            "totalTime": "19768671",
-            "points": "12350"
         },
         {
             "name": "Awar\u00eda",
@@ -1992,17 +1937,6 @@
             "points": "6120"
         },
         {
-            "name": "Raaya",
-            "guildName": "Punishers",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "51215",
-            "totalTime": "24613855",
-            "points": "13620"
-        },
-        {
             "name": "Davee\u00fd",
             "guildName": "Army of Divergent",
             "faction": "0",
@@ -2287,17 +2221,6 @@
             "totalKills": "48425",
             "totalTime": "10311749",
             "points": "5270"
-        },
-        {
-            "name": "Zugoshunter",
-            "guildName": "P\u00e1lmafa",
-            "faction": "1",
-            "race": "2",
-            "class": "3",
-            "gender": "0",
-            "totalKills": "48322",
-            "totalTime": "22508917",
-            "points": "10885"
         },
         {
             "name": "Xedora",
@@ -2685,17 +2608,6 @@
             "points": "10555"
         },
         {
-            "name": "Jadymypain",
-            "guildName": "Punishers",
-            "faction": "1",
-            "race": "8",
-            "class": "6",
-            "gender": "0",
-            "totalKills": "44670",
-            "totalTime": "9928637",
-            "points": "12275"
-        },
-        {
             "name": "Tifus",
             "guildName": "",
             "faction": "0",
@@ -2771,17 +2683,6 @@
             "totalKills": "44109",
             "totalTime": "14927548",
             "points": "17110"
-        },
-        {
-            "name": "Slpy",
-            "guildName": "",
-            "faction": "1",
-            "race": "5",
-            "class": "4",
-            "gender": "0",
-            "totalKills": "44032",
-            "totalTime": "16771139",
-            "points": "12505"
         },
         {
             "name": "Loxy",
@@ -2916,17 +2817,6 @@
             "points": "16885"
         },
         {
-            "name": "Glendanna",
-            "guildName": "Fekete Hold",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "42144",
-            "totalTime": "7889691",
-            "points": "5660"
-        },
-        {
             "name": "Betashriek",
             "guildName": "Quantum",
             "faction": "1",
@@ -3002,17 +2892,6 @@
             "totalKills": "41607",
             "totalTime": "11372375",
             "points": "9400"
-        },
-        {
-            "name": "Ledlas",
-            "guildName": "",
-            "faction": "1",
-            "race": "26",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "41543",
-            "totalTime": "23142386",
-            "points": "14070"
         },
         {
             "name": "Alihuen",
@@ -4280,17 +4159,6 @@
             "points": "6325"
         },
         {
-            "name": "Lunapiena",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "34177",
-            "totalTime": "23556883",
-            "points": "17525"
-        },
-        {
             "name": "Foltis",
             "guildName": "",
             "faction": "0",
@@ -4476,17 +4344,6 @@
             "totalKills": "32918",
             "totalTime": "15288919",
             "points": "9275"
-        },
-        {
-            "name": "Lemedil",
-            "guildName": "",
-            "faction": "1",
-            "race": "2",
-            "class": "1",
-            "gender": "0",
-            "totalKills": "32914",
-            "totalTime": "15417111",
-            "points": "10420"
         },
         {
             "name": "Venomorph",
@@ -4720,17 +4577,6 @@
             "points": "4895"
         },
         {
-            "name": "Shocc",
-            "guildName": "Calamity",
-            "faction": "1",
-            "race": "8",
-            "class": "7",
-            "gender": "0",
-            "totalKills": "31616",
-            "totalTime": "4885567",
-            "points": "6070"
-        },
-        {
             "name": "Nakano",
             "guildName": "Chicken Squad",
             "faction": "1",
@@ -4960,17 +4806,6 @@
             "totalKills": "30957",
             "totalTime": "8943806",
             "points": "7730"
-        },
-        {
-            "name": "Zandali",
-            "guildName": "",
-            "faction": "1",
-            "race": "8",
-            "class": "3",
-            "gender": "0",
-            "totalKills": "30938",
-            "totalTime": "9599369",
-            "points": "8390"
         },
         {
             "name": "Niom",
@@ -6601,17 +6436,6 @@
             "points": "2540"
         },
         {
-            "name": "Graetel",
-            "guildName": "Sharia Police",
-            "faction": "1",
-            "race": "5",
-            "class": "8",
-            "gender": "0",
-            "totalKills": "26100",
-            "totalTime": "6515456",
-            "points": "5300"
-        },
-        {
             "name": "Rhaenyraa",
             "guildName": "",
             "faction": "1",
@@ -7019,17 +6843,6 @@
             "points": "11040"
         },
         {
-            "name": "Nahador",
-            "guildName": "Unicorns",
-            "faction": "1",
-            "race": "6",
-            "class": "11",
-            "gender": "0",
-            "totalKills": "25050",
-            "totalTime": "10926898",
-            "points": "4745"
-        },
-        {
             "name": "Noisivdam",
             "guildName": "Offline",
             "faction": "0",
@@ -7248,17 +7061,6 @@
             "totalKills": "24518",
             "totalTime": "10166903",
             "points": "14770"
-        },
-        {
-            "name": "Mawky",
-            "guildName": "",
-            "faction": "1",
-            "race": "10",
-            "class": "6",
-            "gender": "1",
-            "totalKills": "24434",
-            "totalTime": "12101669",
-            "points": "12470"
         },
         {
             "name": "Mesh\u00fbggah",
@@ -7481,17 +7283,6 @@
             "points": "4455"
         },
         {
-            "name": "Tutor",
-            "guildName": "Workers",
-            "faction": "0",
-            "race": "4",
-            "class": "3",
-            "gender": "0",
-            "totalKills": "23894",
-            "totalTime": "5490618",
-            "points": "8415"
-        },
-        {
             "name": "Ruxin",
             "guildName": "",
             "faction": "0",
@@ -7534,28 +7325,6 @@
             "totalKills": "23807",
             "totalTime": "14766134",
             "points": "8830"
-        },
-        {
-            "name": "Sphiron",
-            "guildName": "Crows at Midnight",
-            "faction": "0",
-            "race": "1",
-            "class": "2",
-            "gender": "0",
-            "totalKills": "23724",
-            "totalTime": "6434510",
-            "points": "4850"
-        },
-        {
-            "name": "Jadymysavage",
-            "guildName": "Punishers",
-            "faction": "1",
-            "race": "2",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "23719",
-            "totalTime": "10654350",
-            "points": "9995"
         },
         {
             "name": "Wintrade",
@@ -7666,17 +7435,6 @@
             "totalKills": "23579",
             "totalTime": "8222809",
             "points": "4260"
-        },
-        {
-            "name": "Pigfarm",
-            "guildName": "Farming is ALL we do",
-            "faction": "0",
-            "race": "1",
-            "class": "1",
-            "gender": "1",
-            "totalKills": "23572",
-            "totalTime": "14586532",
-            "points": "8330"
         },
         {
             "name": "Ziuro",
@@ -7831,17 +7589,6 @@
             "totalKills": "23304",
             "totalTime": "5400293",
             "points": "5035"
-        },
-        {
-            "name": "Jadymyagony",
-            "guildName": "Test Drive",
-            "faction": "0",
-            "race": "1",
-            "class": "5",
-            "gender": "1",
-            "totalKills": "23290",
-            "totalTime": "14151200",
-            "points": "12540"
         },
         {
             "name": "Mocnyluj",
@@ -8755,17 +8502,6 @@
             "totalKills": "21623",
             "totalTime": "5790168",
             "points": "7100"
-        },
-        {
-            "name": "Pulykazul",
-            "guildName": "TheNewLegacy",
-            "faction": "1",
-            "race": "8",
-            "class": "11",
-            "gender": "1",
-            "totalKills": "21601",
-            "totalTime": "18033879",
-            "points": "12695"
         },
         {
             "name": "Dantinaa",
@@ -9701,17 +9437,6 @@
             "totalKills": "19928",
             "totalTime": "10822981",
             "points": "8675"
-        },
-        {
-            "name": "Vigorax",
-            "guildName": "A Murder of Crows",
-            "faction": "1",
-            "race": "2",
-            "class": "3",
-            "gender": "1",
-            "totalKills": "19927",
-            "totalTime": "10081115",
-            "points": "9145"
         },
         {
             "name": "Darhelis",
