@@ -13,6 +13,7 @@ public sealed class ArmoryCharacterPrunerService(
     string projectRoot,
     TauriApiOptions apiOptions)
 {
+    private static readonly CharacterToScanComparer CharacterComparer = new();
     private const int ProgressInterval = 100;
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
@@ -33,10 +34,11 @@ public sealed class ArmoryCharacterPrunerService(
 
         var lines = await File.ReadAllLinesAsync(inputPath, cancellationToken);
         var entries = ParseInput(lines, inputPath, options.Realm, cancellationToken);
-        var characters = entries
+        var deduplicationResult = RemoveDuplicateEntries(entries, cancellationToken);
+        var dedupedEntries = deduplicationResult.Entries;
+        var characters = dedupedEntries
             .Where(entry => entry.Character is not null)
             .Select(entry => entry.Character!)
-            .Distinct(new CharacterToScanComparer())
             .ToList();
 
         var lookupResults = await CheckCharactersAsync(
@@ -44,11 +46,13 @@ public sealed class ArmoryCharacterPrunerService(
             options.MaxDegreeOfParallelism,
             cancellationToken);
 
-        var keptLines = new List<string>(entries.Count);
+        var keptLines = new List<string>(dedupedEntries.Count);
+        var seenOutputCharacters = new HashSet<CharacterToScan>(CharacterComparer);
+        var duplicateRowCount = deduplicationResult.RemovedDuplicateCount;
         var rewrittenRowCount = 0;
         var removedRowCount = 0;
 
-        foreach (var entry in entries)
+        foreach (var entry in dedupedEntries)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -70,7 +74,14 @@ public sealed class ArmoryCharacterPrunerService(
                 continue;
             }
 
-            var outputLine = BuildOutputLine(entry, result.ResolvedCharacter);
+            var resolvedCharacter = result.ResolvedCharacter ?? entry.Character;
+            if (!seenOutputCharacters.Add(resolvedCharacter))
+            {
+                duplicateRowCount++;
+                continue;
+            }
+
+            var outputLine = BuildOutputLine(entry, resolvedCharacter);
             if (!string.Equals(outputLine, entry.OriginalLine, StringComparison.Ordinal))
             {
                 rewrittenRowCount++;
@@ -87,6 +98,7 @@ public sealed class ArmoryCharacterPrunerService(
             entries.Count,
             entries.Count(entry => entry.Character is not null),
             characters.Count,
+            duplicateRowCount,
             rewrittenRowCount,
             removedRowCount,
             keptLines.Count,
@@ -149,13 +161,43 @@ public sealed class ArmoryCharacterPrunerService(
         return entries;
     }
 
+    private static DeduplicationResult RemoveDuplicateEntries(
+        IReadOnlyList<InputEntry> entries,
+        CancellationToken cancellationToken)
+    {
+        var keptEntries = new List<InputEntry>(entries.Count);
+        var seenCharacters = new HashSet<CharacterToScan>(CharacterComparer);
+        var removedDuplicateCount = 0;
+
+        foreach (var entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (entry.Character is null)
+            {
+                keptEntries.Add(entry);
+                continue;
+            }
+
+            if (!seenCharacters.Add(entry.Character))
+            {
+                removedDuplicateCount++;
+                continue;
+            }
+
+            keptEntries.Add(entry);
+        }
+
+        return new DeduplicationResult(keptEntries, removedDuplicateCount);
+    }
+
     private async Task<Dictionary<CharacterToScan, CharacterLookupResult>> CheckCharactersAsync(
         IReadOnlyList<CharacterToScan> characters,
         int maxDegreeOfParallelism,
         CancellationToken cancellationToken)
     {
         var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
-        var results = new ConcurrentDictionary<CharacterToScan, CharacterLookupResult>(new CharacterToScanComparer());
+        var results = new ConcurrentDictionary<CharacterToScan, CharacterLookupResult>(CharacterComparer);
         var processedCount = 0;
 
         using var client = new HttpClient();
@@ -174,7 +216,7 @@ public sealed class ArmoryCharacterPrunerService(
 
                 if (result.Status == CharacterLookupStatus.Found &&
                     result.ResolvedCharacter is not null &&
-                    !new CharacterToScanComparer().Equals(character, result.ResolvedCharacter))
+                    !CharacterComparer.Equals(character, result.ResolvedCharacter))
                 {
                     Console.WriteLine(
                         $"Rewriting {character.Name}-{character.DisplayRealm} -> {result.ResolvedCharacter.Name}-{result.ResolvedCharacter.DisplayRealm}");
@@ -198,7 +240,7 @@ public sealed class ArmoryCharacterPrunerService(
             Console.WriteLine();
         }
 
-        return results.ToDictionary(pair => pair.Key, pair => pair.Value, new CharacterToScanComparer());
+        return results.ToDictionary(pair => pair.Key, pair => pair.Value, CharacterComparer);
     }
 
     private static async Task<CharacterLookupResult> CheckCharacterAsync(
@@ -337,7 +379,7 @@ public sealed class ArmoryCharacterPrunerService(
             return entry.OriginalLine;
         }
 
-        return new CharacterToScanComparer().Equals(entry.Character, resolvedCharacter)
+        return CharacterComparer.Equals(entry.Character, resolvedCharacter)
             ? entry.OriginalLine
             : $"{resolvedCharacter.Name}-{resolvedCharacter.DisplayRealm}";
     }
@@ -394,6 +436,10 @@ public sealed class ArmoryCharacterPrunerService(
     }
 
     private sealed record InputEntry(string OriginalLine, CharacterToScan? Character, bool WasUnparsed);
+
+    private sealed record DeduplicationResult(
+        IReadOnlyList<InputEntry> Entries,
+        int RemovedDuplicateCount);
 
     private sealed record CharacterToScan(string Name, string ApiRealm, string DisplayRealm);
 
