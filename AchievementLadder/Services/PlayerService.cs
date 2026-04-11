@@ -158,68 +158,6 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string displayRealm,
         CancellationToken ct)
     {
-        var playerTask = FetchPlayerAsync(apiClient, name, apiRealm, displayRealm, ct);
-        var rareAchievementsTask = FetchRareAchievementsAsync(apiClient, name, apiRealm, displayRealm, ct);
-
-        await Task.WhenAll(playerTask, rareAchievementsTask);
-
-        var playerResult = await playerTask;
-        var rareAchievementsResult = await rareAchievementsTask;
-
-        return new CharacterSyncResult(
-            playerResult.Player,
-            playerResult.Succeeded,
-            rareAchievementsResult.Achievements,
-            rareAchievementsResult.Succeeded);
-    }
-
-    private static async Task<PlayerFetchResult> FetchPlayerAsync(
-        TauriApiClient apiClient,
-        string name,
-        string apiRealm,
-        string displayRealm,
-        CancellationToken ct)
-    {
-        var responseResult = await apiClient.FetchResponseElementAsync(
-            "character-sheet",
-            new { r = apiRealm, n = name },
-            $"{name}-{displayRealm}",
-            ct);
-
-        if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
-        {
-            return PlayerFetchResult.Failure();
-        }
-
-        int race = response.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
-        int gender = response.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
-        int @class = response.TryGetProperty("class", out value) ? value.GetInt32() : 0;
-        int achievementPoints = response.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
-        int honorableKills = response.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
-        string faction = response.TryGetProperty("faction_string_class", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
-        string guild = response.TryGetProperty("guildName", out value) ? (value.GetString() ?? string.Empty) : string.Empty;
-
-        return PlayerFetchResult.Success(new Player
-        {
-            Name = name,
-            Race = race,
-            Gender = gender,
-            Class = @class,
-            Realm = displayRealm,
-            Guild = guild,
-            AchievementPoints = achievementPoints,
-            HonorableKills = honorableKills,
-            Faction = faction
-        });
-    }
-
-    private static async Task<RareAchievementFetchResult> FetchRareAchievementsAsync(
-        TauriApiClient apiClient,
-        string name,
-        string apiRealm,
-        string displayRealm,
-        CancellationToken ct)
-    {
         var responseResult = await apiClient.FetchResponseElementAsync(
             "character-achievements",
             new { r = apiRealm, n = name },
@@ -228,11 +166,13 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
         {
-            return RareAchievementFetchResult.Failure();
+            return CharacterSyncResult.Failure();
         }
 
-        return RareAchievementFetchResult.Success(
-            RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions));
+        var player = CharacterResponseMapper.CreatePlayer(response, name, displayRealm);
+        var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
+
+        return CharacterSyncResult.Success(player, rareAchievements);
     }
 
     private static async Task WriteRetryCharactersAsync(
@@ -279,29 +219,16 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
     private readonly record struct CharacterSyncResult(
         Player? Player,
-        bool PlayerSucceeded,
         IReadOnlyList<CharacterRareAchievement> RareAchievements,
-        bool RareAchievementsSucceeded)
-    {
-        public bool IsFullySuccessful => PlayerSucceeded && RareAchievementsSucceeded;
-    }
-
-    private readonly record struct PlayerFetchResult(Player? Player, bool Succeeded)
-    {
-        public static PlayerFetchResult Success(Player player) => new(player, true);
-
-        public static PlayerFetchResult Failure() => new(null, false);
-    }
-
-    private readonly record struct RareAchievementFetchResult(
-        IReadOnlyList<CharacterRareAchievement> Achievements,
         bool Succeeded)
     {
-        public static RareAchievementFetchResult Success(IReadOnlyList<CharacterRareAchievement> achievements) =>
-            new(achievements, true);
+        public bool IsFullySuccessful => Succeeded;
 
-        public static RareAchievementFetchResult Failure() =>
-            new(Array.Empty<CharacterRareAchievement>(), false);
+        public static CharacterSyncResult Success(Player player, IReadOnlyList<CharacterRareAchievement> rareAchievements) =>
+            new(player, rareAchievements, true);
+
+        public static CharacterSyncResult Failure() =>
+            new(null, Array.Empty<CharacterRareAchievement>(), false);
     }
 
     private sealed class CharacterTargetComparer : IEqualityComparer<(string Name, string ApiRealm, string DisplayRealm)>

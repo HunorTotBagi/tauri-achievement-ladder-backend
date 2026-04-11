@@ -83,11 +83,10 @@ public sealed class MissingPlayerFinderService(
                 }
 
                 if (target.RequiresRareAchievementBackfill &&
-                    result.RareAchievementsSucceeded &&
+                    result.Succeeded &&
                     result.RareAchievements.Count > 0)
                 {
-                    var metadataPlayer = result.Player ?? GetExistingCsvPlayer(csvPlayers, target.Character);
-                    if (metadataPlayer is not null)
+                    if (result.Player is { } metadataPlayer)
                     {
                         rareAchievementEntries.Add(new CharacterRareAchievementEntry(
                             metadataPlayer.Name,
@@ -100,7 +99,7 @@ public sealed class MissingPlayerFinderService(
                     }
                 }
 
-                if (!result.IsFullySuccessful)
+                if (!result.Succeeded)
                 {
                     unresolvedCharacters.Add(target.Character);
                 }
@@ -335,102 +334,33 @@ public sealed class MissingPlayerFinderService(
         BackfillTarget target,
         CancellationToken cancellationToken)
     {
-        var playerTask = target.RequiresPlayerBackfill
-            ? FetchPlayerAsync(apiClient, target.Character, cancellationToken)
-            : Task.FromResult(PlayerFetchResult.Skipped());
-
-        var rareAchievementTask = target.RequiresRareAchievementBackfill
-            ? FetchRareAchievementsAsync(apiClient, target.Character, cancellationToken)
-            : Task.FromResult(RareAchievementFetchResult.Skipped());
-
-        await Task.WhenAll(playerTask, rareAchievementTask);
-
-        var playerResult = await playerTask;
-        var rareAchievementResult = await rareAchievementTask;
-
-        return new CharacterBackfillResult(
-            playerResult.Player,
-            playerResult.Succeeded,
-            rareAchievementResult.Achievements,
-            rareAchievementResult.Succeeded);
-    }
-
-    private static async Task<PlayerFetchResult> FetchPlayerAsync(
-        TauriApiClient apiClient,
-        CharacterToScan character,
-        CancellationToken cancellationToken)
-    {
-        var responseResult = await apiClient.FetchResponseElementAsync(
-            "character-sheet",
-            new
-            {
-                r = character.ApiRealm,
-                n = character.Name
-            },
-            $"{character.Name}-{character.DisplayRealm}",
-            cancellationToken);
-
-        if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
+        if (!target.RequiresPlayerBackfill && !target.RequiresRareAchievementBackfill)
         {
-            return PlayerFetchResult.Failure();
+            return CharacterBackfillResult.Skipped();
         }
 
-        int race = response.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
-        int gender = response.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
-        int @class = response.TryGetProperty("class", out value) ? value.GetInt32() : 0;
-        int achievementPoints = response.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
-        int honorableKills = response.TryGetProperty("playerHonorKills", out value) ? value.GetInt32() : 0;
-        string faction = response.TryGetProperty("faction_string_class", out value)
-            ? (value.GetString() ?? string.Empty)
-            : string.Empty;
-        string guild = response.TryGetProperty("guildName", out value)
-            ? (value.GetString() ?? string.Empty)
-            : string.Empty;
-
-        return PlayerFetchResult.Success(new Player
-        {
-            Name = character.Name,
-            Race = race,
-            Gender = gender,
-            Class = @class,
-            Realm = character.DisplayRealm,
-            Guild = guild,
-            AchievementPoints = achievementPoints,
-            HonorableKills = honorableKills,
-            Faction = faction
-        });
-    }
-
-    private static async Task<RareAchievementFetchResult> FetchRareAchievementsAsync(
-        TauriApiClient apiClient,
-        CharacterToScan character,
-        CancellationToken cancellationToken)
-    {
         var responseResult = await apiClient.FetchResponseElementAsync(
             "character-achievements",
             new
             {
-                r = character.ApiRealm,
-                n = character.Name
+                r = target.Character.ApiRealm,
+                n = target.Character.Name
             },
-            $"{character.Name}-{character.DisplayRealm}",
+            $"{target.Character.Name}-{target.Character.DisplayRealm}",
             cancellationToken);
 
         if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
         {
-            return RareAchievementFetchResult.Failure();
+            return CharacterBackfillResult.Failure();
         }
 
-        return RareAchievementFetchResult.Success(
-            RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions));
-    }
+        var player = CharacterResponseMapper.CreatePlayer(
+            response,
+            target.Character.Name,
+            target.Character.DisplayRealm);
+        var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
 
-    private static Player? GetExistingCsvPlayer(
-        Dictionary<CharacterKey, Player> csvPlayers,
-        CharacterToScan character)
-    {
-        csvPlayers.TryGetValue(new CharacterKey(character.Name, character.DisplayRealm), out var player);
-        return player;
+        return CharacterBackfillResult.Success(player, rareAchievements);
     }
 
     private static async Task AppendPlayersAsync(
@@ -710,34 +640,19 @@ public sealed class MissingPlayerFinderService(
 
     private readonly record struct CharacterBackfillResult(
         Player? Player,
-        bool PlayerSucceeded,
         IReadOnlyList<CharacterRareAchievement> RareAchievements,
-        bool RareAchievementsSucceeded)
-    {
-        public bool IsFullySuccessful => PlayerSucceeded && RareAchievementsSucceeded;
-    }
-
-    private readonly record struct PlayerFetchResult(Player? Player, bool Succeeded)
-    {
-        public static PlayerFetchResult Success(Player player) => new(player, true);
-
-        public static PlayerFetchResult Failure() => new(null, false);
-
-        public static PlayerFetchResult Skipped() => new(null, true);
-    }
-
-    private readonly record struct RareAchievementFetchResult(
-        IReadOnlyList<CharacterRareAchievement> Achievements,
         bool Succeeded)
     {
-        public static RareAchievementFetchResult Success(IReadOnlyList<CharacterRareAchievement> achievements) =>
-            new(achievements, true);
+        public static CharacterBackfillResult Success(
+            Player player,
+            IReadOnlyList<CharacterRareAchievement> rareAchievements) =>
+            new(player, rareAchievements, true);
 
-        public static RareAchievementFetchResult Failure() =>
-            new(Array.Empty<CharacterRareAchievement>(), false);
+        public static CharacterBackfillResult Failure() =>
+            new(null, Array.Empty<CharacterRareAchievement>(), false);
 
-        public static RareAchievementFetchResult Skipped() =>
-            new(Array.Empty<CharacterRareAchievement>(), true);
+        public static CharacterBackfillResult Skipped() =>
+            new(null, Array.Empty<CharacterRareAchievement>(), true);
     }
 
     private sealed class CharacterKeyComparer : IEqualityComparer<CharacterKey>
