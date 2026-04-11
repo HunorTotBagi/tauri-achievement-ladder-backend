@@ -12,4 +12,12 @@ public sealed record RareAchievementDefinition(
 public sealed record CharacterRareAchievementEntry(
     string Name,
     string Realm,
-    IReadOnlyList<int> AchievementIds);
+    int Race,
+    int Class,
+    string Guild,
+    IReadOnlyList<int> AchievementIds,
+    IReadOnlyList<CharacterRareAchievement> Achievements);
+
+public sealed record CharacterRareAchievement(
+    int Id,
+    DateTimeOffset? ObtainedAt);

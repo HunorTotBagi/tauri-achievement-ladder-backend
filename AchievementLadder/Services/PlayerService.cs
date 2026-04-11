@@ -66,10 +66,18 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                 if (syncResult is not null)
                 {
                     players.Add(syncResult.Player);
-                    rareAchievementEntries.Add(new CharacterRareAchievementEntry(
-                        syncResult.Player.Name,
-                        syncResult.Player.Realm,
-                        syncResult.RareAchievementIds));
+
+                    if (syncResult.RareAchievements.Count > 0)
+                    {
+                        rareAchievementEntries.Add(new CharacterRareAchievementEntry(
+                            syncResult.Player.Name,
+                            syncResult.Player.Realm,
+                            syncResult.Player.Race,
+                            syncResult.Player.Class,
+                            syncResult.Player.Guild,
+                            syncResult.RareAchievements.Select(achievement => achievement.Id).ToList(),
+                            syncResult.RareAchievements));
+                    }
                 }
 
                 var processed = Interlocked.Increment(ref done);
@@ -133,9 +141,9 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         CancellationToken ct)
     {
         var playerTask = FetchPlayerAsync(client, apiUrl, secret, name, apiRealm, displayRealm, ct);
-        var rareAchievementIdsTask = FetchRareAchievementIdsAsync(client, apiUrl, secret, name, apiRealm, ct);
+        var rareAchievementsTask = FetchRareAchievementsAsync(client, apiUrl, secret, name, apiRealm, ct);
 
-        await Task.WhenAll(playerTask, rareAchievementIdsTask);
+        await Task.WhenAll(playerTask, rareAchievementsTask);
 
         var player = await playerTask;
         if (player is null)
@@ -143,7 +151,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             return null;
         }
 
-        return new CharacterSyncResult(player, await rareAchievementIdsTask);
+        return new CharacterSyncResult(player, await rareAchievementsTask);
     }
 
     private static async Task<Player?> FetchPlayerAsync(
@@ -204,7 +212,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         };
     }
 
-    private static async Task<IReadOnlyList<int>> FetchRareAchievementIdsAsync(
+    private static async Task<IReadOnlyList<CharacterRareAchievement>> FetchRareAchievementsAsync(
         HttpClient client,
         string apiUrl,
         string secret,
@@ -227,7 +235,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         using var response = await client.PostAsync(apiUrl, content, ct);
         if (!response.IsSuccessStatusCode)
         {
-            return Array.Empty<int>();
+            return Array.Empty<CharacterRareAchievement>();
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -235,13 +243,13 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         if (!doc.RootElement.TryGetProperty("response", out var responseElement))
         {
-            return Array.Empty<int>();
+            return Array.Empty<CharacterRareAchievement>();
         }
 
-        var achievedIds = ExtractAchievementIds(responseElement);
+        var achievedAchievements = ExtractAchievements(responseElement);
         return RareAchievementDefinitions
-            .Where(entry => achievedIds.Contains(entry.Id))
-            .Select(entry => entry.Id)
+            .Where(entry => achievedAchievements.ContainsKey(entry.Id))
+            .Select(entry => new CharacterRareAchievement(entry.Id, achievedAchievements[entry.Id]))
             .ToList();
     }
 
@@ -251,14 +259,14 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
     }
 
-    private static HashSet<int> ExtractAchievementIds(JsonElement responseElement)
+    private static Dictionary<int, DateTimeOffset?> ExtractAchievements(JsonElement responseElement)
     {
         if (!responseElement.TryGetProperty("Achievements", out var achievementsElement))
         {
             return [];
         }
 
-        var achievementIds = new HashSet<int>();
+        var achievements = new Dictionary<int, DateTimeOffset?>();
 
         if (achievementsElement.ValueKind == JsonValueKind.Object)
         {
@@ -266,7 +274,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             {
                 if (int.TryParse(property.Name, out var achievementId))
                 {
-                    achievementIds.Add(achievementId);
+                    achievements[achievementId] = ReadAchievementObtainedAt(property.Value);
                 }
             }
         }
@@ -276,12 +284,230 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             {
                 if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var achievementId))
                 {
-                    achievementIds.Add(achievementId);
+                    achievements[achievementId] = null;
+                    continue;
+                }
+
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                achievementId = ReadInt(item, "id", "achievementId", "achievementID", "achievement");
+                if (achievementId > 0)
+                {
+                    achievements[achievementId] = ReadAchievementObtainedAt(item);
                 }
             }
         }
 
-        return achievementIds;
+        return achievements;
+    }
+
+    private static DateTimeOffset? ReadAchievementObtainedAt(JsonElement element)
+    {
+        if (TryReadDateValue(element, out var obtainedAt))
+        {
+            return obtainedAt;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var propertyName in new[]
+                 {
+                     "obtainedAt",
+                     "completedAt",
+                     "achievementDate",
+                     "completionDate",
+                     "date",
+                     "completed",
+                     "obtained",
+                     "timestamp",
+                     "time"
+                 })
+        {
+            if (TryGetPropertyIgnoreCase(element, propertyName, out var property) &&
+                TryReadDateValue(property, out obtainedAt))
+            {
+                return obtainedAt;
+            }
+        }
+
+        var year = ReadInt(element, "year", "y");
+        var month = ReadInt(element, "month", "m");
+        var day = ReadInt(element, "day", "d");
+
+        if (year > 0 && month > 0 && day > 0 &&
+            TryCreateDate(year, month, day, out obtainedAt))
+        {
+            return obtainedAt;
+        }
+
+        return null;
+    }
+
+    private static bool TryReadDateValue(JsonElement element, out DateTimeOffset value)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            return TryParseDateString(element.GetString(), out value);
+        }
+
+        if (element.ValueKind == JsonValueKind.Number)
+        {
+            if (element.TryGetInt64(out var longValue))
+            {
+                return TryParseNumericDate(longValue, out value);
+            }
+
+            if (element.TryGetDouble(out var doubleValue))
+            {
+                return TryParseNumericDate((long)Math.Round(doubleValue, MidpointRounding.AwayFromZero), out value);
+            }
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            var parts = element.EnumerateArray()
+                .Take(3)
+                .Where(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out _))
+                .Select(item => item.GetInt32())
+                .ToArray();
+
+            if (parts.Length == 3 && parts[0] > 31 &&
+                TryCreateDate(parts[0], parts[1], parts[2], out value))
+            {
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool TryParseDateString(string? rawValue, out DateTimeOffset value)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            value = default;
+            return false;
+        }
+
+        var trimmedValue = rawValue.Trim();
+        if (long.TryParse(trimmedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericValue) &&
+            TryParseNumericDate(numericValue, out value))
+        {
+            return true;
+        }
+
+        if (trimmedValue.Length == 8 &&
+            DateOnly.TryParseExact(trimmedValue, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+        {
+            value = new DateTimeOffset(dateOnly.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            return true;
+        }
+
+        return DateTimeOffset.TryParse(
+            trimmedValue,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out value);
+    }
+
+    private static bool TryParseNumericDate(long rawValue, out DateTimeOffset value)
+    {
+        try
+        {
+            if (Math.Abs(rawValue) >= 100_000_000_000)
+            {
+                value = DateTimeOffset.FromUnixTimeMilliseconds(rawValue);
+                return true;
+            }
+
+            if (Math.Abs(rawValue) >= 1_000_000_000)
+            {
+                value = DateTimeOffset.FromUnixTimeSeconds(rawValue);
+                return true;
+            }
+
+            if (rawValue is >= 19000101 and <= 29991231 &&
+                DateOnly.TryParseExact(rawValue.ToString(CultureInfo.InvariantCulture), "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+            {
+                value = new DateTimeOffset(dateOnly.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+                return true;
+            }
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool TryCreateDate(int year, int month, int day, out DateTimeOffset value)
+    {
+        try
+        {
+            value = new DateTimeOffset(year, month, day, 0, 0, 0, TimeSpan.Zero);
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            value = default;
+            return false;
+        }
+    }
+
+    private static int ReadInt(JsonElement element, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!TryGetPropertyIgnoreCase(element, propertyName, out var property))
+            {
+                continue;
+            }
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var intValue))
+            {
+                return intValue;
+            }
+
+            if (property.ValueKind == JsonValueKind.String &&
+                int.TryParse(property.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out intValue))
+            {
+                return intValue;
+            }
+        }
+
+        return 0;
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement element, string propertyName, out JsonElement value)
+    {
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out value))
+        {
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     private static void WriteProgress(int processed, int total)
@@ -301,5 +527,5 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
     private sealed record CharacterSyncResult(
         Player Player,
-        IReadOnlyList<int> RareAchievementIds);
+        IReadOnlyList<CharacterRareAchievement> RareAchievements);
 }
