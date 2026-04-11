@@ -5,6 +5,7 @@ using System.Globalization;
 using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
 using AchievementLadder.Models;
+using RareAchiAndItemScan;
 
 namespace AchievementLadder.Services;
 
@@ -13,6 +14,9 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private const int ProgressInterval = 250;
     private const int ProgressBarWidth = 30;
     private const int MaxDegreeOfParallelism = 20;
+    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions = RareScanCatalog.RareAchievementNames
+        .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
+        .ToList();
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
@@ -36,6 +40,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         WriteProgress(0, distinctCharacters.Count);
 
         var players = new ConcurrentBag<Player>();
+        var rareAchievementEntries = new ConcurrentBag<CharacterRareAchievementEntry>();
         var totalCharacters = distinctCharacters.Count;
         var done = 0;
         var progressLock = new Lock();
@@ -49,7 +54,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             },
             async (character, ct) =>
             {
-                var player = await FetchPlayerAsync(
+                var syncResult = await FetchCharacterSyncAsync(
                     client,
                     apiUrl,
                     secret,
@@ -58,9 +63,13 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                     character.DisplayRealm,
                     ct);
 
-                if (player is not null)
+                if (syncResult is not null)
                 {
-                    players.Add(player);
+                    players.Add(syncResult.Player);
+                    rareAchievementEntries.Add(new CharacterRareAchievementEntry(
+                        syncResult.Player.Name,
+                        syncResult.Player.Realm,
+                        syncResult.RareAchievementIds));
                 }
 
                 var processed = Interlocked.Increment(ref done);
@@ -84,14 +93,26 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             .ThenBy(player => player.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(player => player.Realm, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var orderedRareAchievementEntries = rareAchievementEntries
+            .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Realm, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var generatedAt = DateTimeOffset.UtcNow;
 
         var playersCsvPath = await csvStore.WriteAsync(orderedPlayers, "Players.csv", cancellationToken);
+        var rareAchievementsPath = await csvStore.WriteJsonAsync(
+            "RareAchievements.json",
+            new RareAchievementExport(
+                generatedAt,
+                RareAchievementDefinitions,
+                orderedRareAchievementEntries),
+            cancellationToken);
         var lastUpdatedPath = await csvStore.WriteTextAsync(
             "lastUpdated.txt",
-            DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            generatedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
             cancellationToken);
 
-        return new SyncResult(orderedPlayers.Count, playersCsvPath, lastUpdatedPath);
+        return new SyncResult(orderedPlayers.Count, playersCsvPath, rareAchievementsPath, lastUpdatedPath);
 
         void LoadCharacterSources(List<(string Name, string ApiRealm, string DisplayRealm)> output)
         {
@@ -100,6 +121,29 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                 output,
                 includePvPSeasonCharacters: true);
         }
+    }
+
+    private static async Task<CharacterSyncResult?> FetchCharacterSyncAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string name,
+        string apiRealm,
+        string displayRealm,
+        CancellationToken ct)
+    {
+        var playerTask = FetchPlayerAsync(client, apiUrl, secret, name, apiRealm, displayRealm, ct);
+        var rareAchievementIdsTask = FetchRareAchievementIdsAsync(client, apiUrl, secret, name, apiRealm, ct);
+
+        await Task.WhenAll(playerTask, rareAchievementIdsTask);
+
+        var player = await playerTask;
+        if (player is null)
+        {
+            return null;
+        }
+
+        return new CharacterSyncResult(player, await rareAchievementIdsTask);
     }
 
     private static async Task<Player?> FetchPlayerAsync(
@@ -160,10 +204,84 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         };
     }
 
+    private static async Task<IReadOnlyList<int>> FetchRareAchievementIdsAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string name,
+        string apiRealm,
+        CancellationToken ct)
+    {
+        var body = new
+        {
+            secret,
+            url = "character-achievements",
+            @params = new { r = apiRealm, n = name }
+        };
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(body),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await client.PostAsync(apiUrl, content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Array.Empty<int>();
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+        if (!doc.RootElement.TryGetProperty("response", out var responseElement))
+        {
+            return Array.Empty<int>();
+        }
+
+        var achievedIds = ExtractAchievementIds(responseElement);
+        return RareAchievementDefinitions
+            .Where(entry => achievedIds.Contains(entry.Id))
+            .Select(entry => entry.Id)
+            .ToList();
+    }
+
     private static string BuildApiUrl(string baseUrl, string apiKey)
     {
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
         return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
+    }
+
+    private static HashSet<int> ExtractAchievementIds(JsonElement responseElement)
+    {
+        if (!responseElement.TryGetProperty("Achievements", out var achievementsElement))
+        {
+            return [];
+        }
+
+        var achievementIds = new HashSet<int>();
+
+        if (achievementsElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in achievementsElement.EnumerateObject())
+            {
+                if (int.TryParse(property.Name, out var achievementId))
+                {
+                    achievementIds.Add(achievementId);
+                }
+            }
+        }
+        else if (achievementsElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in achievementsElement.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var achievementId))
+                {
+                    achievementIds.Add(achievementId);
+                }
+            }
+        }
+
+        return achievementIds;
     }
 
     private static void WriteProgress(int processed, int total)
@@ -180,4 +298,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         Console.Write($"\rProgress: [{bar}] {processed}/{total} ({ratio:P1})");
     }
+
+    private sealed record CharacterSyncResult(
+        Player Player,
+        IReadOnlyList<int> RareAchievementIds);
 }

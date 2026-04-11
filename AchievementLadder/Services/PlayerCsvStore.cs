@@ -1,11 +1,17 @@
 ﻿using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using AchievementLadder.Models;
 
 namespace AchievementLadder.Services;
 
 public sealed class PlayerCsvStore
 {
+    private static readonly JsonSerializerOptions FrontendJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly string _outputDirectory;
 
     public PlayerCsvStore(string outputDirectory)
@@ -67,6 +73,23 @@ public sealed class PlayerCsvStore
         {
             ct.ThrowIfCancellationRequested();
             await writer.WriteAsync(content);
+        }
+
+        File.Move(tmpPath, fullPath, overwrite: true);
+        return fullPath;
+    }
+
+    public async Task<string> WriteJsonAsync<T>(string relativePath, T value, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(_outputDirectory);
+
+        var fullPath = Path.Combine(_outputDirectory, relativePath);
+        var tmpPath = fullPath + ".tmp";
+
+        await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        {
+            ct.ThrowIfCancellationRequested();
+            await JsonSerializer.SerializeAsync(stream, value, FrontendJsonOptions, ct);
         }
 
         File.Move(tmpPath, fullPath, overwrite: true);
