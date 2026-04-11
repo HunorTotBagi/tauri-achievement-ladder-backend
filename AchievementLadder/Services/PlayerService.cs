@@ -79,6 +79,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                             syncResult.Player.Name,
                             syncResult.Player.Realm,
                             syncResult.Player.Race,
+                            syncResult.Player.Gender,
                             syncResult.Player.Class,
                             syncResult.Player.Guild,
                             syncResult.RareAchievements));

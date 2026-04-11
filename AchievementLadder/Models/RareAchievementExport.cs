@@ -13,6 +13,7 @@ public sealed record CharacterRareAchievementEntry(
     string Name,
     string Realm,
     int Race,
+    int Gender,
     int Class,
     string Guild,
     IReadOnlyList<CharacterRareAchievement> Achievements);
