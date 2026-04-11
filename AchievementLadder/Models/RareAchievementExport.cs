@@ -15,7 +15,6 @@ public sealed record CharacterRareAchievementEntry(
     int Race,
     int Class,
     string Guild,
-    IReadOnlyList<int> AchievementIds,
     IReadOnlyList<CharacterRareAchievement> Achievements);
 
 public sealed record CharacterRareAchievement(
