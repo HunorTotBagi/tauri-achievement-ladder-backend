@@ -4,7 +4,7 @@ public sealed class TauriApiOptions
 {
     private const string PlaceholderApiKey = "YOUR_REAL_API_KEY_HERE";
     private const string PlaceholderSecret = "YOUR_REAL_SECRET_HERE";
-    private const int DefaultMaxConcurrentRequests = 8;
+    private const int DefaultMaxConcurrentRequests = 20;
     private const int DefaultRequestTimeoutSeconds = 30;
     private const int DefaultMaxRetryAttempts = 5;
     private const int DefaultInitialRetryDelayMilliseconds = 750;
