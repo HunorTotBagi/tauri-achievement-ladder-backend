@@ -131,7 +131,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             }
 
             return guildInfo.response.guildList.Values
-                .Where(member => member.level >= 90)
+                .Where(member => member.level >= 70)
                 .Select(member => member.name?.Trim())
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Cast<string>()
