@@ -10,6 +10,10 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
     private const string TargetGuildName = "Endless";
     private const string TargetApiRealm = "[EN] Evermoon";
     private const string TargetDisplayRealm = "Evermoon";
+    private const string DefaultExportFileName = "Endless-Legion-Roster.xlsx";
+    private const string HeaderStyleKey = "Header";
+    private const string CheckedSymbol = "☑";
+    private const string UncheckedSymbol = "☐";
     private const int MaxDegreeOfParallelism = 8;
 
     private static readonly string[] DirectProfessionPropertyNames =
@@ -74,7 +78,26 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
         [8] = "Mage",
         [9] = "Warlock",
         [10] = "Monk",
-        [11] = "Druid"
+        [11] = "Druid",
+        [12] = "Demon Hunter",
+        [13] = "Evoker"
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> ClassColorHexByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Death Knight"] = "C41E3A",
+        ["Demon Hunter"] = "A330C9",
+        ["Druid"] = "FF7C0A",
+        ["Evoker"] = "33937F",
+        ["Hunter"] = "AAD372",
+        ["Mage"] = "3FC7EB",
+        ["Monk"] = "00FF98",
+        ["Paladin"] = "F48CBA",
+        ["Priest"] = "FFFFFF",
+        ["Rogue"] = "FFF468",
+        ["Shaman"] = "0070DD",
+        ["Warlock"] = "8788EE",
+        ["Warrior"] = "C69B6D"
     };
 
     private static readonly IReadOnlyDictionary<int, string> RaceNames = new Dictionary<int, string>
@@ -121,6 +144,9 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
         [794] = "Archaeology"
     };
 
+    private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> ClassCellStyles = BuildClassCellStyles();
+    private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> WorkbookCellStyles = BuildWorkbookCellStyles();
+
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
@@ -156,18 +182,24 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
             });
 
         var orderedRows = rows
-            .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(row => row.GuildRank)
+            .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Level)
             .ToList();
 
         var outputPath = ResolveOutputPath(requestedOutputPath);
-        var sheetRows = orderedRows.Select(BuildWorksheetRow).ToList();
+        var classStatisticNames = BuildClassStatisticNames();
+        var rankFilters = BuildRankFilters(orderedRows);
+        var sheetRows = BuildWorksheetRows(orderedRows, classStatisticNames, rankFilters);
+        var dataValidations = BuildDataValidations(rankFilters.Count);
 
         await SimpleXlsxWriter.WriteSingleWorksheetAsync(
             outputPath,
             TargetGuildName,
             BuildHeaderRow(),
             sheetRows,
+            WorkbookCellStyles,
+            dataValidations,
             cancellationToken);
 
         var characterSheetCount = orderedRows.Count(row => row.CharacterSheetFetched);
@@ -556,64 +588,186 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
         return responseElement.Clone();
     }
 
-    private static IReadOnlyList<string> BuildHeaderRow()
+    private static IReadOnlyList<SimpleXlsxWriter.CellData> BuildHeaderRow()
     {
         return
         [
-            "Name",
-            "Realm",
-            "Guild",
-            "Level",
-            "GuildRank",
-            "GuildRankName",
-            "ClassId",
-            "ClassName",
-            "RaceId",
-            "RaceName",
-            "Profession1",
-            "Profession2",
-            "AchievementPoints",
-            "HonorableKills",
-            "Faction",
-            "Status"
+            new("Name", HeaderStyleKey),
+            new("Class", HeaderStyleKey),
+            new("Race", HeaderStyleKey),
+            new("Rank", HeaderStyleKey),
+            new("Level", HeaderStyleKey),
+            new("RankId", HeaderStyleKey),
+            new(string.Empty),
+            new("Class", HeaderStyleKey),
+            new("Count", HeaderStyleKey),
+            new(string.Empty),
+            new("RankId", HeaderStyleKey),
+            new("Rank", HeaderStyleKey),
+            new("Include", HeaderStyleKey),
         ];
     }
 
-    private static IReadOnlyList<string> BuildWorksheetRow(ExportRow row)
+    private static IReadOnlyList<IReadOnlyList<SimpleXlsxWriter.CellData>> BuildWorksheetRows(
+        IReadOnlyList<ExportRow> orderedRows,
+        IReadOnlyList<string> classStatisticNames,
+        IReadOnlyList<RankFilterOption> rankFilters)
     {
-        return
-        [
-            row.Name,
-            row.Realm,
-            row.Guild,
-            row.Level.ToString(),
-            row.GuildRank.ToString(),
-            row.GuildRankName,
-            row.ClassId.ToString(),
-            row.ClassName,
-            row.RaceId.ToString(),
-            row.RaceName,
-            row.Profession1,
-            row.Profession2,
-            row.AchievementPoints.ToString(),
-            row.HonorableKills.ToString(),
-            row.Faction,
-            row.Status
-        ];
+        var totalRowCount = Math.Max(orderedRows.Count, Math.Max(classStatisticNames.Count, rankFilters.Count));
+        var dataEndRow = orderedRows.Count + 1;
+        var rankFilterEndRow = rankFilters.Count + 1;
+        var sheetRows = new List<IReadOnlyList<SimpleXlsxWriter.CellData>>(totalRowCount);
+
+        for (var index = 0; index < totalRowCount; index++)
+        {
+            var row = new List<SimpleXlsxWriter.CellData>(13);
+
+            if (index < orderedRows.Count)
+            {
+                var exportRow = orderedRows[index];
+                var classStyleKey = ClassCellStyles.ContainsKey(exportRow.ClassName)
+                    ? exportRow.ClassName
+                    : null;
+
+                row.Add(new(exportRow.Name));
+                row.Add(new(exportRow.ClassName, classStyleKey));
+                row.Add(new(exportRow.RaceName));
+                row.Add(new(exportRow.GuildRankName));
+                row.Add(new(exportRow.Level.ToString()));
+                row.Add(new(exportRow.GuildRank.ToString()));
+            }
+            else
+            {
+                row.AddRange(CreateEmptyCells(6));
+            }
+
+            row.Add(new(string.Empty));
+
+            if (index < classStatisticNames.Count)
+            {
+                var className = classStatisticNames[index];
+                var classStyleKey = ClassCellStyles.ContainsKey(className)
+                    ? className
+                    : null;
+
+                row.Add(new(className, classStyleKey));
+                row.Add(BuildClassCountFormulaCell(className, dataEndRow, rankFilterEndRow, orderedRows));
+            }
+            else
+            {
+                row.AddRange(CreateEmptyCells(2));
+            }
+
+            row.Add(new(string.Empty));
+
+            if (index < rankFilters.Count)
+            {
+                var rankFilter = rankFilters[index];
+                row.Add(new(rankFilter.RankId.ToString()));
+                row.Add(new(rankFilter.RankName));
+                row.Add(new(CheckedSymbol));
+            }
+            else
+            {
+                row.AddRange(CreateEmptyCells(3));
+            }
+
+            sheetRows.Add(row);
+        }
+
+        return sheetRows;
     }
 
     private string ResolveOutputPath(string? requestedOutputPath)
     {
-        if (!string.IsNullOrWhiteSpace(requestedOutputPath))
-        {
-            return Path.GetFullPath(requestedOutputPath, _solutionRoot);
-        }
+        var downloadsDirectory = GetDownloadsDirectory();
+        var fileName = string.IsNullOrWhiteSpace(requestedOutputPath)
+            ? DefaultExportFileName
+            : Path.GetFileName(requestedOutputPath.Trim());
 
         return Path.Combine(
-            _solutionRoot,
-            "artifacts",
-            "EndlessGuildExporter",
-            "Endless-Tauri-members.xlsx");
+            downloadsDirectory,
+            string.IsNullOrWhiteSpace(fileName)
+                ? DefaultExportFileName
+                : fileName);
+    }
+
+    private static string GetDownloadsDirectory()
+    {
+        var userProfileDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(userProfileDirectory))
+        {
+            throw new InvalidOperationException("Could not resolve the user profile directory for the export path.");
+        }
+
+        return Path.Combine(userProfileDirectory, "Downloads");
+    }
+
+    private static IReadOnlyList<string> BuildClassStatisticNames()
+    {
+        return
+        [
+            .. ClassColorHexByName.Keys,
+            .. ClassNames.Values
+                .Where(className => !ClassColorHexByName.ContainsKey(className))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(className => className, StringComparer.OrdinalIgnoreCase)
+        ];
+    }
+
+    private static IReadOnlyList<RankFilterOption> BuildRankFilters(IReadOnlyList<ExportRow> orderedRows)
+    {
+        return orderedRows
+            .Select(row => new RankFilterOption(row.GuildRank, row.GuildRankName))
+            .Distinct()
+            .OrderBy(rankFilter => rankFilter.RankId)
+            .ThenBy(rankFilter => rankFilter.RankName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IReadOnlyList<SimpleXlsxWriter.DataValidation> BuildDataValidations(int rankFilterCount)
+    {
+        if (rankFilterCount <= 0)
+        {
+            return [];
+        }
+
+        return
+        [
+            new SimpleXlsxWriter.DataValidation(
+                Sqref: $"M2:M{rankFilterCount + 1}",
+                Formula1: $"\"{CheckedSymbol},{UncheckedSymbol}\"",
+                AllowBlank: false)
+        ];
+    }
+
+    private static SimpleXlsxWriter.CellData BuildClassCountFormulaCell(
+        string className,
+        int dataEndRow,
+        int rankFilterEndRow,
+        IReadOnlyList<ExportRow> orderedRows)
+    {
+        var formula =
+            $"SUMPRODUCT(--($B$2:$B${dataEndRow}=\"{EscapeFormulaString(className)}\"),--(COUNTIFS($K$2:$K${rankFilterEndRow},$F$2:$F${dataEndRow},$M$2:$M${rankFilterEndRow},\"{CheckedSymbol}\")>0))";
+        var cachedValue = orderedRows.Count(row => string.Equals(row.ClassName, className, StringComparison.OrdinalIgnoreCase));
+
+        return new SimpleXlsxWriter.CellData(
+            cachedValue.ToString(),
+            ValueKind: SimpleXlsxWriter.CellValueKind.FormulaNumber,
+            Formula: formula);
+    }
+
+    private static IEnumerable<SimpleXlsxWriter.CellData> CreateEmptyCells(int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            yield return new SimpleXlsxWriter.CellData(string.Empty);
+        }
+    }
+
+    private static string EscapeFormulaString(string value)
+    {
+        return value.Replace("\"", "\"\"", StringComparison.Ordinal);
     }
 
     private static string LookupDisplayName(IReadOnlyDictionary<int, string> map, int id)
@@ -623,6 +777,38 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
             : id > 0
                 ? $"Unknown ({id})"
                 : string.Empty;
+    }
+
+    private static IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> BuildClassCellStyles()
+    {
+        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var classColor in ClassColorHexByName)
+        {
+            styles[classColor.Key] = new SimpleXlsxWriter.CellStyle(
+                FillColorHex: classColor.Value,
+                FontColorHex: "000000");
+        }
+
+        return styles;
+    }
+
+    private static IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> BuildWorkbookCellStyles()
+    {
+        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(StringComparer.OrdinalIgnoreCase)
+        {
+            [HeaderStyleKey] = new SimpleXlsxWriter.CellStyle(
+                FillColorHex: "C0C0C0",
+                FontColorHex: "000000",
+                IsBold: true)
+        };
+
+        foreach (var classStyle in ClassCellStyles)
+        {
+            styles[classStyle.Key] = classStyle.Value;
+        }
+
+        return styles;
     }
 
     private static bool TryGetPropertyIgnoreCase(JsonElement parent, string propertyName, out JsonElement value)
@@ -684,6 +870,10 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
         int RaceId,
         int GuildRank,
         string GuildRankName);
+
+    private readonly record struct RankFilterOption(
+        int RankId,
+        string RankName);
 
     private readonly record struct ProfessionPair(
         string Profession1,
