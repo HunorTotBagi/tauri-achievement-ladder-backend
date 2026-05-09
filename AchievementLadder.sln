@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EndlessGuildExporter", "End
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArmoryCharacterPruner", "ArmoryCharacterPruner\ArmoryCharacterPruner.csproj", "{C4C2B7E0-8F7D-4A8E-A52B-38E0D996A44D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealmFirstAchievements", "RealmFirstAchievements\RealmFirstAchievements.csproj", "{A312F36D-67C1-4E46-8BB0-1A7D81269220}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{C4C2B7E0-8F7D-4A8E-A52B-38E0D996A44D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4C2B7E0-8F7D-4A8E-A52B-38E0D996A44D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4C2B7E0-8F7D-4A8E-A52B-38E0D996A44D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A312F36D-67C1-4E46-8BB0-1A7D81269220}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A312F36D-67C1-4E46-8BB0-1A7D81269220}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A312F36D-67C1-4E46-8BB0-1A7D81269220}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A312F36D-67C1-4E46-8BB0-1A7D81269220}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
