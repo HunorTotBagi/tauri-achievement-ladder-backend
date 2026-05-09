@@ -11,7 +11,7 @@ internal static class Program
         var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "RealmFirstAchievements.csproj");
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
-        var frontendSourceDirectory = ProjectPaths.GetFrontendSrcDirectory(solutionRoot);
+        var achievementLadderDataDirectory = Path.Combine(solutionRoot, "AchievementLadder", "Data");
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
@@ -25,7 +25,7 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             var exporter = new RealmFirstAchievementExportService(
-                frontendSourceDirectory,
+                achievementLadderDataDirectory,
                 settings.TauriApi);
 
             Console.WriteLine("Exporting achievement-firsts for Evermoon, Tauri, and WoD...");
@@ -34,7 +34,7 @@ internal static class Program
 
             Console.WriteLine($"Candidate characters: {result.CandidateCharacterCount}");
             Console.WriteLine($"Valid characters: {result.ValidCharacterCount}");
-            Console.WriteLine($"Frontend valid character file: {result.FrontendValidCharactersPath}");
+            Console.WriteLine($"Valid character file: {result.ValidCharactersPath}");
 
             return 0;
         }

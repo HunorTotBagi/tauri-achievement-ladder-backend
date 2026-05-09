@@ -147,7 +147,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             CharacterHelpers.LoadDefaultCharacterSources(
                 projectRoot,
                 output,
-                includePvPSeasonCharacters: true);
+                includePvPSeasonCharacters: true,
+                includeRealmFirstCharacters: true);
         }
     }
 

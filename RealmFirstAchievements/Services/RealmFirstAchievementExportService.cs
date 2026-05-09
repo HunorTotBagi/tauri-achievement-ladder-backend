@@ -6,7 +6,7 @@ using RealmFirstAchievements.Models;
 
 namespace RealmFirstAchievements.Services;
 
-public sealed class RealmFirstAchievementExportService(string frontendSourceDirectory, TauriApiOptions apiOptions)
+public sealed class RealmFirstAchievementExportService(string achievementLadderDataDirectory, TauriApiOptions apiOptions)
 {
     private const string Endpoint = "achievement-firsts";
     private const string CharacterSheetEndpoint = "character-sheet";
@@ -19,7 +19,7 @@ public sealed class RealmFirstAchievementExportService(string frontendSourceDire
         new("WoD", "[HU] Warriors of Darkness")
     ];
 
-    private readonly string _frontendSourceDirectory = Path.GetFullPath(frontendSourceDirectory);
+    private readonly string _achievementLadderDataDirectory = Path.GetFullPath(achievementLadderDataDirectory);
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
     public async Task<RealmFirstAchievementExportResult> ExportAsync(CancellationToken cancellationToken)
@@ -60,13 +60,13 @@ public sealed class RealmFirstAchievementExportService(string frontendSourceDire
             .ToList();
 
         var validCharacters = await ValidateCharactersAsync(orderedCandidateCharacters, cancellationToken);
-        var frontendValidCharactersPath = await WriteValidCharactersAsync(
-            _frontendSourceDirectory,
+        var validCharactersPath = await WriteValidCharactersAsync(
+            _achievementLadderDataDirectory,
             validCharacters,
             cancellationToken);
 
         return new RealmFirstAchievementExportResult(
-            frontendValidCharactersPath,
+            validCharactersPath,
             orderedCandidateCharacters.Count,
             validCharacters.Count);
     }

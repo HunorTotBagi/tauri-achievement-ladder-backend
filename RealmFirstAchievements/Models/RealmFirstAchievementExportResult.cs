@@ -1,6 +1,6 @@
 namespace RealmFirstAchievements.Models;
 
 public sealed record RealmFirstAchievementExportResult(
-    string FrontendValidCharactersPath,
+    string ValidCharactersPath,
     int CandidateCharacterCount,
     int ValidCharacterCount);

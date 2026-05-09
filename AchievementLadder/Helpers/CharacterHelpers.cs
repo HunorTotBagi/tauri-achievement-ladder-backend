@@ -4,6 +4,8 @@ namespace AchievementLadder.Helpers;
 
 public static class CharacterHelpers
 {
+    private const string RealmFirstCharactersFileName = "valid-realm-first-characters.txt";
+
     private static readonly Dictionary<string, (string ApiRealm, string DisplayRealm)> Realms =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -33,7 +35,8 @@ public static class CharacterHelpers
         string projectRoot,
         List<(string Name, string ApiRealm, string DisplayRealm)> output,
         bool ignoreMissingGuildCharacters = false,
-        bool includePvPSeasonCharacters = false)
+        bool includePvPSeasonCharacters = false,
+        bool includeRealmFirstCharacters = false)
     {
         if (ignoreMissingGuildCharacters)
         {
@@ -63,6 +66,11 @@ public static class CharacterHelpers
         if (includePvPSeasonCharacters)
         {
             LoadPvPSeasonCharacters(projectRoot, output);
+        }
+
+        if (includeRealmFirstCharacters)
+        {
+            LoadRealmFirstCharacters(projectRoot, output);
         }
     }
 
@@ -174,6 +182,19 @@ public static class CharacterHelpers
         {
             LoadCharactersFromBatchFile(filePath, output);
         }
+    }
+
+    public static void LoadRealmFirstCharacters(
+        string projectRoot,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    {
+        var filePath = Path.Combine(projectRoot, "Data", RealmFirstCharactersFileName);
+        if (!File.Exists(filePath))
+        {
+            return;
+        }
+
+        LoadCharactersFromBatchFile(filePath, output);
     }
 
     public static bool TryResolveRealm(
