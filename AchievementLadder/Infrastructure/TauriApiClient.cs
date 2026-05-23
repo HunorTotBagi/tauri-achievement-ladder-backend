@@ -117,6 +117,12 @@ public sealed class TauriApiClient : IDisposable
                 shouldRetry = true;
                 retryDelay = GetRetryDelay(attempt);
             }
+            catch (IOException ex)
+            {
+                lastFailure = $"{ex.GetType().Name}: {ex.Message}";
+                shouldRetry = true;
+                retryDelay = GetRetryDelay(attempt);
+            }
             catch (JsonException ex)
             {
                 lastFailure = $"Invalid JSON response: {ex.Message}";
