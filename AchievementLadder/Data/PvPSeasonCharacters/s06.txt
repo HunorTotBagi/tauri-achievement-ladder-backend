@@ -6,4 +6,5 @@ Arcusvenator-Tauri
 Meleerection-Tauri
 Meleeslam-Tauri
 River-Evermoon
-Zeroayaya-Tauri 
+Zeroayaya-Tauri
+Textureface-Tauri
