@@ -171,6 +171,17 @@ public sealed class RareAchiAndItemScanService(
                 cancellationToken);
         }
 
+        if (options.HasGuildsFile)
+        {
+            return await LoadCharactersFromGuildsFileAsync(
+                client,
+                apiUrl,
+                secret,
+                options.GuildsFilePath!,
+                options.Realm!,
+                cancellationToken);
+        }
+
         if (options.HasNamesFile)
         {
             return LoadCharactersFromNamesFile(options.NamesFilePath!, options.Realm!, cancellationToken);
@@ -268,6 +279,62 @@ public sealed class RareAchiAndItemScanService(
         return characters
             .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
             .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<List<CharacterToScan>> LoadCharactersFromGuildsFileAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        string guildsFilePath,
+        string realm,
+        CancellationToken cancellationToken)
+    {
+        var resolvedPath = Path.IsPathRooted(guildsFilePath)
+            ? guildsFilePath
+            : ProjectPaths.ResolveCharacterBatchFilePath(_solutionRoot, _projectRoot, guildsFilePath);
+
+        var guildNames = File.ReadLines(resolvedPath)
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Console.WriteLine($"Loading members from {guildNames.Count} guild(s) on {realm}...");
+
+        var characters = new HashSet<CharacterToScan>(new CharacterToScanComparer());
+        var processedCount = 0;
+
+        foreach (var guildName in guildNames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var members = await LoadGuildMembersAsync(client, apiUrl, secret, guildName, realm, cancellationToken);
+                foreach (var member in members)
+                {
+                    characters.Add(member);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"  Skipping guild '{guildName}': {ex.Message}");
+            }
+
+            processedCount++;
+            if (processedCount % 25 == 0 || processedCount == guildNames.Count)
+            {
+                Console.WriteLine($"  Loaded {processedCount}/{guildNames.Count} guilds — {characters.Count} unique members so far.");
+            }
+        }
+
+        return characters
+            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -659,6 +726,11 @@ public sealed class RareAchiAndItemScanService(
         {
             fileName +=
                 $"-guild-{SanitizeFileSegment(options.GuildName!)}-{SanitizeFileSegment(options.Realm!)}";
+        }
+        else if (options.HasGuildsFile)
+        {
+            fileName +=
+                $"-guilds-{SanitizeFileSegment(Path.GetFileNameWithoutExtension(options.GuildsFilePath!))}-{SanitizeFileSegment(options.Realm!)}";
         }
         else if (options.HasNamesFile)
         {

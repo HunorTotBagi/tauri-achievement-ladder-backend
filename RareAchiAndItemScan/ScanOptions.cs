@@ -14,6 +14,7 @@ public sealed record ScanOptions(
     string? CharacterName,
     string? GuildName,
     string? NamesFilePath,
+    string? GuildsFilePath,
     string? Realm,
     ScanTarget Targets,
     IReadOnlyList<int> ItemIds,
@@ -22,6 +23,7 @@ public sealed record ScanOptions(
     public bool HasSpecificCharacter => !string.IsNullOrWhiteSpace(CharacterName);
     public bool HasSpecificGuild => !string.IsNullOrWhiteSpace(GuildName);
     public bool HasNamesFile => !string.IsNullOrWhiteSpace(NamesFilePath);
+    public bool HasGuildsFile => !string.IsNullOrWhiteSpace(GuildsFilePath);
     public bool HasCustomItemIds => ItemIds.Count > 0;
 
     public static string UsageText =>
@@ -30,6 +32,7 @@ public sealed record ScanOptions(
           dotnet run --project RareAchiAndItemScan
           dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
+          dotnet run --project RareAchiAndItemScan -- --guilds-file .\path\to\guilds.txt --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --names-file s15_6
           dotnet run --project RareAchiAndItemScan -- --names-file .\Input\tauri-ban-list.txt --realm Tauri
           dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
@@ -39,8 +42,9 @@ public sealed record ScanOptions(
         Options:
           --name <character>    Scan a single character instead of all source characters.
           --guild <name>        Scan every member of one guild on the selected realm.
+          --guilds-file <path>  Scan every member of every guild listed in a text file (one guild name per line).
           --names-file <path>   Scan characters listed in a text file. Supports Name-Realm rows, one name per line, or raw [id]-Name|... lines.
-          --realm <realm>       Required with --name or --guild. Optional fallback for --names-file rows without a realm suffix.
+          --realm <realm>       Required with --name, --guild, or --guilds-file. Optional fallback for --names-file rows without a realm suffix.
           --item-ids <ids>      Comma-separated item IDs to match. When provided without --scan, the scan becomes item-only.
           --scan <targets>      Comma-separated: achievements, items, mounts, or all. Default: all.
           --output <path>       Optional output file path. Relative paths are resolved from RareAchiAndItemScan.
@@ -53,11 +57,13 @@ public sealed record ScanOptions(
             ? $"{CharacterName} on {Realm}"
             : HasSpecificGuild
                 ? $"guild {GuildName} on {Realm}"
-                : HasNamesFile
-                    ? string.IsNullOrWhiteSpace(Realm)
-                        ? $"characters from {Path.GetFileName(NamesFilePath)}"
-                        : $"characters from {Path.GetFileName(NamesFilePath)} with fallback realm {Realm}"
-                    : "all source characters";
+                : HasGuildsFile
+                    ? $"guilds from {Path.GetFileName(GuildsFilePath)} on {Realm}"
+                    : HasNamesFile
+                        ? string.IsNullOrWhiteSpace(Realm)
+                            ? $"characters from {Path.GetFileName(NamesFilePath)}"
+                            : $"characters from {Path.GetFileName(NamesFilePath)} with fallback realm {Realm}"
+                        : "all source characters";
     }
 
     public string DescribeTargets()
@@ -127,6 +133,7 @@ public sealed record ScanOptions(
         string? characterName = null;
         string? guildName = null;
         string? namesFilePath = null;
+        string? guildsFilePath = null;
         string? realm = null;
         string? outputPath = null;
         IReadOnlyList<int> itemIds = Array.Empty<int>();
@@ -163,6 +170,14 @@ public sealed record ScanOptions(
 
                 case "--guild":
                     if (!TryReadValue(args, ref index, argument, out guildName, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    break;
+
+                case "--guilds-file":
+                    if (!TryReadValue(args, ref index, argument, out guildsFilePath, out errorMessage))
                     {
                         return false;
                     }
@@ -226,41 +241,33 @@ public sealed record ScanOptions(
         }
 
         var selectorCount = 0;
-        if (!string.IsNullOrWhiteSpace(characterName))
-        {
-            selectorCount++;
-        }
-
-        if (!string.IsNullOrWhiteSpace(guildName))
-        {
-            selectorCount++;
-        }
-
-        if (!string.IsNullOrWhiteSpace(namesFilePath))
-        {
-            selectorCount++;
-        }
+        if (!string.IsNullOrWhiteSpace(characterName)) selectorCount++;
+        if (!string.IsNullOrWhiteSpace(guildName)) selectorCount++;
+        if (!string.IsNullOrWhiteSpace(namesFilePath)) selectorCount++;
+        if (!string.IsNullOrWhiteSpace(guildsFilePath)) selectorCount++;
 
         if (selectorCount > 1)
         {
-            errorMessage = "Only one of --name, --guild, or --names-file can be used at a time.";
+            errorMessage = "Only one of --name, --guild, --guilds-file, or --names-file can be used at a time.";
             return false;
         }
 
         if ((!string.IsNullOrWhiteSpace(characterName) ||
-             !string.IsNullOrWhiteSpace(guildName)) &&
+             !string.IsNullOrWhiteSpace(guildName) ||
+             !string.IsNullOrWhiteSpace(guildsFilePath)) &&
             string.IsNullOrWhiteSpace(realm))
         {
-            errorMessage = "--realm is required when --name or --guild is provided.";
+            errorMessage = "--realm is required when --name, --guild, or --guilds-file is provided.";
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(characterName) &&
             string.IsNullOrWhiteSpace(guildName) &&
+            string.IsNullOrWhiteSpace(guildsFilePath) &&
             string.IsNullOrWhiteSpace(namesFilePath) &&
             !string.IsNullOrWhiteSpace(realm))
         {
-            errorMessage = "--realm can only be used together with --name, --guild, or --names-file.";
+            errorMessage = "--realm can only be used together with --name, --guild, --guilds-file, or --names-file.";
             return false;
         }
 
@@ -281,6 +288,7 @@ public sealed record ScanOptions(
             characterName?.Trim(),
             guildName?.Trim(),
             namesFilePath?.Trim(),
+            guildsFilePath?.Trim(),
             realm?.Trim(),
             targets,
             itemIds,
