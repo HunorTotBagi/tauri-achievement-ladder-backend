@@ -1,9 +1,7 @@
 ﻿Competence Optional
 Skill Issue
 Despair
-Cara Máxima
 Defiance
-Thunder
 Army of Divergent
 Yin Yang
 Impact
@@ -15,16 +13,23 @@ Wipes on Tresh
 beloved
 Classifieds
 Logic
+Ejecutores De La Muerte
 Välhalla
+MisforTune Of Argus
+Elysium of Darkness
 Ace Of Spades
+For The Order
+Cruisin for a Bamboozlin
+The Siege
 Ace Of Spadez
 Solo Leveling
 Last Try
+Reviewers
 Rycerze Ortalionu
+Warriors of Pannónia
 Storm
 Endless
 Calamity
-Unicorns
 The World Eaters
 Redemption
 Aurora
@@ -52,7 +57,6 @@ Czechoslovakia
 Warlords of Destruction
 A Murder of Crows
 ForTheAlliance
-The Echoes
 Dark Forest
 Grupo Tera
 Tribunes of the Light
@@ -62,7 +66,6 @@ Valor Lovers
 Purple Stuff
 A Bosszú Kolbászai
 A K A T S U K I
-A Murder of Crows
 Ace Of Spades
 Ace of Spadez
 Achievements
@@ -133,7 +136,6 @@ Crows at Midnight
 Crusade
 Cruzada de Los Andes
 Crystal Castles
-Czechoslovakia
 Ðamagë Cøntrøl
 Dancing Steel
 Dark Forest
@@ -373,7 +375,6 @@ Shadow Hunters
 Shadows and Light
 Shadows of Darkness
 shmyelf
-Siege
 Sir Hamilton
 Skill Issue
 Skorpiók
@@ -474,7 +475,6 @@ Wonkru Hun
 xxbds
 Yakitori
 YEW R NOT REPAIRED
-Yin Yang
 Zakon Wypalonego Blanta
 Zsibbadt egerek
 Искатели легенд
@@ -630,6 +630,7 @@ Kquattzquatmootgaatoraid
 La Alborada
 La Casa Das Primas
 LA CRUZADA DE LA LUZ
+RAB
 La Divina Comedia
 La Tripulación Maldita
 LaParcaOscuraBUG
@@ -745,3 +746,6 @@ You are not prepare
 Znowu Oni
 Zootopie
 ноунейм сквад
+Symbiosis
+DADCORE AF
+GLADIADORES

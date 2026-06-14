@@ -1,5 +1,4 @@
 ﻿Outlaws
-Infernum
 Insane
 Killepitsch
 Public enemies
@@ -18,6 +17,7 @@ Angel Rune
 Beton Logok Szar Karikkal
 Seekers of the Self
 Lost Heroes of Dalaran
+abacabb
 Unbound
 The Veterans
 Pandemonium
@@ -37,7 +37,6 @@ Apothecary
 Durability
 Cafe of the old man
 Best of The Best
-Hordecore Pørnstars
 The Redeemers
 Nonsense
 High and Mighty
@@ -111,7 +110,6 @@ patient
 CENZORED
 Victorious Secret
 Rémálom Az Elf Utcában
-The Executioners Of Sargeras
 HATERS ARE NOT WELCOME
 Ex Mortis
 ernourasag zsoldosai
