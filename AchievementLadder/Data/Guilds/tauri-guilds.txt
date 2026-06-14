@@ -263,7 +263,6 @@ Dark Synergy
 Darkey Mort
 Darkmist Vortex
 Das Ist Undebach
-Dawnguard
 Dëad Bank
 Deadly Players
 Death Azeroth
@@ -372,6 +371,7 @@ Hóban Táncolók
 HolidayRaiders
 HollowKnights
 Holy Sentinels
+Inner Peace
 Hordecore Pørnstars
 hordlake
 Horsemen
@@ -437,7 +437,6 @@ LOOKING 4 GROUP
 Lords of Destiny
 Lorewalkers
 LotsOfThings
-Low Fast Fox
 Lumen Natum
 M I N D R U S T
 MacskaSzem

@@ -103,7 +103,6 @@ boats n hoes
 Shadow of Mordor
 Light of the Immortals
 BrazilianStorm
-Brodate Drzewa
 Buccaneers Federated
 Bekarty Przymierza
 Bun Babylon Bun
@@ -147,7 +146,6 @@ deceased legend
 Depression Intensifies
 Descent into Madness
 Despair
-Diamond Dogs
 Dimension
 Dioses del Pve
 Disarmonia Mundi
@@ -183,9 +181,9 @@ Feláldozhatók
 fevecerose
 FireDragons
 Firelords
+Autre Temps
 Flyíng Whales
 FORGOTTEN SHADOWS
-ForTheAlliance
 Foundation
 Foundations
 Fovou tous Ellines
@@ -308,6 +306,7 @@ Noobs
 Oblivion
 Oceanic
 Offline
+Pensive
 OID MORTALES
 Oldtimer Retirement Fund
 Olympus
