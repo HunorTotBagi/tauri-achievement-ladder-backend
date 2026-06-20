@@ -3104,4 +3104,44 @@ satisfactions
 sanctimonious
 phantasmagoria
 rehabilitation
+a cég
+a céh
+a pap
+a bank
+a klub
+a klán
+a párt
+a rend
+a széf
+a team
+a banda
+a falka
+a gárda
+a horda
+a sztár
+a bankár
+a család
+a csorda
+a flegma
+a flotta
+a kaptár
+a raktár
+a szekta
+a sziget
+a vándor
+a kolónia
+a legenda
+a paraszt
+a piramis
+a zsivány
+a hívatlan
+a mángorló
+a mészáros
+a rendszer
+a társaság
+a szövetség
+a befektetés
+a szupercsapat
+a rettenthetetlen
+b team
 
