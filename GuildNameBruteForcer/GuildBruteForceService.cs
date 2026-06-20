@@ -1,6 +1,4 @@
-using System.Net;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Channels;
 using AchievementLadder.Configuration;
 
@@ -19,46 +17,28 @@ public sealed class GuildBruteForceService : IDisposable
     // Invalid forms (leading/trailing space, consecutive spaces) are filtered before each API call.
     private const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
 
-    private readonly HttpClient _httpClient;
-    private readonly SemaphoreSlim _semaphore;
-    private readonly string _apiUrl;
-    private readonly string _secret;
+    private readonly GuildLookupClient _apiClient;
     private readonly int _maxConcurrent;
 
     public GuildBruteForceService(TauriApiOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-
-        _secret = options.Secret;
         _maxConcurrent = options.MaxConcurrentRequests;
-        _apiUrl = BuildApiUrl(options.BaseUrl, options.ApiKey);
-        _semaphore = new SemaphoreSlim(_maxConcurrent, _maxConcurrent);
-
-        var handler = new SocketsHttpHandler
-        {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-            MaxConnectionsPerServer = _maxConcurrent,
-            PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-            UseCookies = false
-        };
-
-        _httpClient = new HttpClient(handler, disposeHandler: true)
-        {
-            Timeout = Timeout.InfiniteTimeSpan
-        };
+        _apiClient = new GuildLookupClient(options);
     }
 
-    public async Task ScanAsync(int nameLength, string? realmFilter, string outputDirectory, CancellationToken cancellationToken)
+    public async Task ScanAsync(
+        int nameLength,
+        string? realmFilter,
+        string outputDirectory,
+        CancellationToken cancellationToken)
     {
-        var realms = realmFilter is null
-            ? AllRealms
-            : AllRealms.Where(r => r.Key == realmFilter).ToArray();
-
+        var realms = ResolveRealms(realmFilter);
         var totalCombinations = CountValidCombinations(nameLength);
 
         foreach (var realm in realms)
         {
-            if (cancellationToken.IsCancellationRequested) break;
+            cancellationToken.ThrowIfCancellationRequested();
 
             var outputPath = Path.Combine(outputDirectory, $"found-guilds-{realm.Key}-len{nameLength}.txt");
             Console.WriteLine($"Scanning {realm.DisplayRealm} ({totalCombinations:N0} combinations)");
@@ -66,6 +46,7 @@ public sealed class GuildBruteForceService : IDisposable
 
             long checkedCount = 0;
             long foundCount = 0;
+            long failedCount = 0;
 
             var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
             var writerTask = WriteFoundGuildsAsync(outputPath, channel.Reader);
@@ -81,19 +62,26 @@ public sealed class GuildBruteForceService : IDisposable
                     },
                     async (candidate, token) =>
                     {
-                        var exists = await CheckGuildExistsAsync(candidate, realm.ApiRealm, token);
+                        var lookup = await _apiClient.LookupAsync(candidate, realm.ApiRealm, token);
                         var current = Interlocked.Increment(ref checkedCount);
 
-                        if (exists)
+                        if (lookup == GuildLookupStatus.Found)
                         {
                             Interlocked.Increment(ref foundCount);
                             channel.Writer.TryWrite(candidate);
                             Console.WriteLine($"  [FOUND] {candidate} on {realm.DisplayRealm}");
                         }
+                        else if (lookup == GuildLookupStatus.Failed)
+                        {
+                            Interlocked.Increment(ref failedCount);
+                        }
 
                         if (current % 1000 == 0 || current == totalCombinations)
                         {
-                            Console.WriteLine($"  [{realm.DisplayRealm}] {current:N0}/{totalCombinations:N0} ({current * 100.0 / totalCombinations:F1}%) — found so far: {Interlocked.Read(ref foundCount)}");
+                            Console.WriteLine(
+                                $"  [{realm.DisplayRealm}] {current:N0}/{totalCombinations:N0} " +
+                                $"({current * 100.0 / totalCombinations:F1}%) — " +
+                                $"found: {Interlocked.Read(ref foundCount)}, failed: {Interlocked.Read(ref failedCount)}");
                         }
                     });
             }
@@ -103,61 +91,130 @@ public sealed class GuildBruteForceService : IDisposable
                 await writerTask;
             }
 
-            Console.WriteLine($"Finished {realm.DisplayRealm}: {foundCount} guild(s) discovered.");
+            Console.WriteLine(
+                $"Finished {realm.DisplayRealm}: {foundCount} guild(s) discovered, " +
+                $"{failedCount} request(s) failed after retries.");
             Console.WriteLine();
         }
     }
 
-    private async Task<bool> CheckGuildExistsAsync(string guildName, string apiRealm, CancellationToken cancellationToken)
+    public async Task ScanDictionaryAsync(
+        IReadOnlyList<string> candidates,
+        string dictionaryKey,
+        string? realmFilter,
+        string outputDirectory,
+        CancellationToken cancellationToken)
     {
-        await _semaphore.WaitAsync(cancellationToken);
-        try
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentException.ThrowIfNullOrWhiteSpace(dictionaryKey);
+        var realms = ResolveRealms(realmFilter);
+        var outputSuffix = dictionaryKey.Equals("hu", StringComparison.OrdinalIgnoreCase)
+            ? "dictionary"
+            : $"{dictionaryKey.ToLowerInvariant()}-dictionary";
+
+        foreach (var realm in realms)
         {
-            var payload = JsonSerializer.Serialize(new
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var foundPath = Path.Combine(outputDirectory, $"found-guilds-{realm.Key}-{outputSuffix}.txt");
+            var checkedPath = Path.Combine(outputDirectory, $"checked-guilds-{realm.Key}-{outputSuffix}.txt");
+            var foundCandidates = LoadCandidateSet(foundPath);
+            var completedCandidates = LoadCandidateSet(checkedPath);
+            completedCandidates.UnionWith(foundCandidates);
+
+            var pendingCandidates = candidates
+                .Where(candidate => !completedCandidates.Contains(candidate))
+                .ToArray();
+
+            Console.WriteLine($"Scanning dictionary candidates on {realm.DisplayRealm}");
+            Console.WriteLine($"  Total candidates : {candidates.Count:N0}");
+            Console.WriteLine($"  Already checked  : {candidates.Count - pendingCandidates.Length:N0}");
+            Console.WriteLine($"  Remaining        : {pendingCandidates.Length:N0}");
+            Console.WriteLine($"  Found output     : {foundPath}");
+            Console.WriteLine($"  Resume checkpoint: {checkedPath}");
+
+            if (pendingCandidates.Length == 0)
             {
-                secret = _secret,
-                url = "guild-info",
-                @params = new { r = apiRealm, gn = guildName }
-            });
+                Console.WriteLine("  Nothing left to scan.");
+                Console.WriteLine();
+                continue;
+            }
 
-            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            long processedCount = 0;
+            long completedCount = 0;
+            long foundCount = 0;
+            long failedCount = 0;
 
-            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutSource.CancelAfter(TimeSpan.FromSeconds(10));
+            var channel = Channel.CreateUnbounded<DictionaryScanResult>(
+                new UnboundedChannelOptions { SingleReader = true });
+            var writerTask = WriteDictionaryResultsAsync(
+                foundPath,
+                checkedPath,
+                foundCandidates,
+                channel.Reader);
 
-            using var response = await _httpClient.PostAsync(_apiUrl, content, timeoutSource.Token);
-            if (!response.IsSuccessStatusCode) return false;
+            try
+            {
+                await Parallel.ForEachAsync(
+                    pendingCandidates,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = _maxConcurrent,
+                        CancellationToken = cancellationToken
+                    },
+                    async (candidate, token) =>
+                    {
+                        var lookup = await _apiClient.LookupAsync(candidate, realm.ApiRealm, token);
+                        var processed = Interlocked.Increment(ref processedCount);
 
-            await using var stream = await response.Content.ReadAsStreamAsync(timeoutSource.Token);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: timeoutSource.Token);
+                        if (lookup == GuildLookupStatus.Failed)
+                        {
+                            Interlocked.Increment(ref failedCount);
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref completedCount);
+                            channel.Writer.TryWrite(new DictionaryScanResult(candidate, lookup));
 
-            if (!doc.RootElement.TryGetProperty("response", out var responseEl) ||
-                responseEl.ValueKind == JsonValueKind.Null)
-                return false;
+                            if (lookup == GuildLookupStatus.Found)
+                            {
+                                Interlocked.Increment(ref foundCount);
+                                Console.WriteLine($"  [FOUND] {candidate} on {realm.DisplayRealm}");
+                            }
+                        }
 
-            return responseEl.TryGetProperty("guildList", out var guildList)
-                && guildList.ValueKind == JsonValueKind.Object
-                && guildList.EnumerateObject().Any();
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Request timed out — treat as not found
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-        finally
-        {
-            _semaphore.Release();
+                        if (processed % 250 == 0 || processed == pendingCandidates.Length)
+                        {
+                            Console.WriteLine(
+                                $"  [{realm.DisplayRealm}] {processed:N0}/{pendingCandidates.Length:N0} " +
+                                $"({processed * 100.0 / pendingCandidates.Length:F1}%) — " +
+                                $"found: {Interlocked.Read(ref foundCount)}, failed: {Interlocked.Read(ref failedCount)}");
+                        }
+                    });
+            }
+            finally
+            {
+                channel.Writer.TryComplete();
+                await writerTask;
+            }
+
+            Console.WriteLine(
+                $"Finished {realm.DisplayRealm}: {completedCount:N0} candidate(s) checkpointed, " +
+                $"{foundCount:N0} guild(s) found, {failedCount:N0} candidate(s) left for retry.");
+            Console.WriteLine();
         }
     }
 
     private static async Task WriteFoundGuildsAsync(string outputPath, ChannelReader<string> reader)
     {
         var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        await using var stream = new FileStream(outputPath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
+        await using var stream = new FileStream(
+            outputPath,
+            FileMode.Append,
+            FileAccess.Write,
+            FileShare.Read,
+            4096,
+            useAsync: true);
         await using var writer = new StreamWriter(stream, encoding);
 
         await foreach (var guild in reader.ReadAllAsync())
@@ -167,6 +224,67 @@ public sealed class GuildBruteForceService : IDisposable
         }
     }
 
+    private static async Task WriteDictionaryResultsAsync(
+        string foundPath,
+        string checkedPath,
+        HashSet<string> foundCandidates,
+        ChannelReader<DictionaryScanResult> reader)
+    {
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        await using var foundStream = new FileStream(
+            foundPath,
+            FileMode.Append,
+            FileAccess.Write,
+            FileShare.Read,
+            4096,
+            useAsync: true);
+        await using var checkedStream = new FileStream(
+            checkedPath,
+            FileMode.Append,
+            FileAccess.Write,
+            FileShare.Read,
+            4096,
+            useAsync: true);
+        await using var foundWriter = new StreamWriter(foundStream, encoding);
+        await using var checkedWriter = new StreamWriter(checkedStream, encoding);
+
+        var unflushedCount = 0;
+        await foreach (var result in reader.ReadAllAsync())
+        {
+            if (result.Status == GuildLookupStatus.Found && foundCandidates.Add(result.Candidate))
+            {
+                await foundWriter.WriteLineAsync(result.Candidate);
+            }
+
+            await checkedWriter.WriteLineAsync(result.Candidate);
+            unflushedCount++;
+
+            if (unflushedCount >= 100)
+            {
+                await foundWriter.FlushAsync();
+                await checkedWriter.FlushAsync();
+                unflushedCount = 0;
+            }
+        }
+
+        await foundWriter.FlushAsync();
+        await checkedWriter.FlushAsync();
+    }
+
+    private static HashSet<string> LoadCandidateSet(string path) =>
+        File.Exists(path)
+            ? new HashSet<string>(
+                File.ReadLines(path)
+                    .Select(candidate => candidate.Trim())
+                    .Where(candidate => candidate.Length > 0),
+                StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    private static RealmInfo[] ResolveRealms(string? realmFilter) =>
+        realmFilter is null
+            ? AllRealms
+            : AllRealms.Where(realm => realm.Key == realmFilter).ToArray();
+
     private static IEnumerable<string> GenerateCombinations(int length)
     {
         var indices = new int[length];
@@ -174,54 +292,47 @@ public sealed class GuildBruteForceService : IDisposable
 
         while (true)
         {
-            for (var i = 0; i < length; i++)
-                chars[i] = Alphabet[indices[i]];
+            for (var index = 0; index < length; index++)
+            {
+                chars[index] = Alphabet[indices[index]];
+            }
 
             yield return new string(chars);
 
-            var pos = length - 1;
-            while (pos >= 0)
+            var position = length - 1;
+            while (position >= 0)
             {
-                indices[pos]++;
-                if (indices[pos] < Alphabet.Length) break;
-                indices[pos] = 0;
-                pos--;
+                indices[position]++;
+                if (indices[position] < Alphabet.Length) break;
+                indices[position] = 0;
+                position--;
             }
 
-            if (pos < 0) break;
+            if (position < 0) break;
         }
     }
 
     private static bool IsValidGuildName(string name) =>
         name[0] != ' ' && name[^1] != ' ' && !name.Contains("  ");
 
-    // Counts valid strings of `length` over A-Z + space where:
-    // - first and last chars must be letters
-    // - no two consecutive spaces
-    // Uses DP: fL = ends-in-letter count, fS = ends-in-space count.
     private static long CountValidCombinations(int length)
     {
         if (length == 0) return 0;
-        const long k = 26;
-        long fL = k, fS = 0;
-        for (var i = 1; i < length; i++)
+
+        const long letterCount = 26;
+        long endsInLetter = letterCount;
+        long endsInSpace = 0;
+        for (var index = 1; index < length; index++)
         {
-            (fL, fS) = ((fL + fS) * k, fL);
+            (endsInLetter, endsInSpace) =
+                ((endsInLetter + endsInSpace) * letterCount, endsInLetter);
         }
-        return fL; // names ending in space are invalid, so only fL counts
+
+        return endsInLetter;
     }
 
-    public void Dispose()
-    {
-        _httpClient.Dispose();
-        _semaphore.Dispose();
-    }
+    public void Dispose() => _apiClient.Dispose();
 
-    private static string BuildApiUrl(string baseUrl, string apiKey)
-    {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
-    }
-
+    private sealed record DictionaryScanResult(string Candidate, GuildLookupStatus Status);
     private sealed record RealmInfo(string Key, string ApiRealm, string DisplayRealm);
 }

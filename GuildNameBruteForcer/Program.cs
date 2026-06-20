@@ -7,51 +7,108 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 1 || !int.TryParse(args[0], out var nameLength) || nameLength < 1 || nameLength > 10)
+        if (!GuildScanOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
         {
-            Console.Error.WriteLine("Usage: GuildNameBruteForcer <length> [realm]");
-            Console.Error.WriteLine("  length  Number of characters to brute-force (1-10)");
-            Console.Error.WriteLine("  realm   evermoon | tauri | wod  (default: all)");
+            Console.Error.WriteLine(errorMessage);
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(GuildScanOptions.UsageText);
             return 1;
         }
 
-        string? realmFilter = args.Length >= 2 ? args[1].ToLowerInvariant().Trim() : null;
-        if (realmFilter is not null && realmFilter is not ("evermoon" or "tauri" or "wod"))
+        if (showHelp)
         {
-            Console.Error.WriteLine($"Unknown realm '{realmFilter}'. Valid values: evermoon, tauri, wod.");
-            return 1;
+            Console.WriteLine(GuildScanOptions.UsageText);
+            return 0;
         }
 
+        var parsedOptions = options!;
         var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "GuildNameBruteForcer.csproj");
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
-        var settingsPath = ResolveSettingsPath(solutionRoot, projectRoot);
 
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        Console.CancelKeyPress += (_, eventArgs) =>
         {
-            e.Cancel = true;
+            eventArgs.Cancel = true;
             cts.Cancel();
         };
 
         try
         {
-            var settings = AppSettings.Load(settingsPath);
-            var outputDir = Path.Combine(projectRoot, "Output");
-            Directory.CreateDirectory(outputDir);
+            IReadOnlyList<string>? dictionaryCandidates = null;
+            string? dictionaryPath = null;
+            DictionarySource? dictionarySource = null;
 
-            Console.WriteLine($"Guild name length : {nameLength}");
-            Console.WriteLine($"Realm(s)          : {realmFilter ?? "all"}");
-            Console.WriteLine($"Output directory  : {outputDir}");
-            Console.WriteLine();
+            if (parsedOptions.Mode == GuildScanMode.Dictionary)
+            {
+                dictionarySource = DictionaryWordList.GetSource(parsedOptions.DictionaryLanguage);
+                var usesDefaultDictionary = string.IsNullOrWhiteSpace(parsedOptions.DictionaryPath);
+                dictionaryPath = usesDefaultDictionary
+                    ? DictionaryWordList.GetDefaultPath(projectRoot, dictionarySource)
+                    : ResolveInputPath(projectRoot, parsedOptions.DictionaryPath!);
+
+                if (usesDefaultDictionary)
+                {
+                    await DictionaryWordList.EnsureDefaultFileExistsAsync(
+                        dictionaryPath,
+                        dictionarySource,
+                        cts.Token);
+                }
+
+                dictionaryCandidates = DictionaryWordList.LoadCandidates(
+                    dictionaryPath,
+                    parsedOptions.MinLength,
+                    parsedOptions.MaxLength);
+
+                Console.WriteLine($"Language            : {dictionarySource.DisplayName}");
+                Console.WriteLine($"Dictionary          : {dictionaryPath}");
+                Console.WriteLine($"Candidate lengths   : {parsedOptions.MinLength}-{parsedOptions.MaxLength}");
+                Console.WriteLine($"Unique candidates   : {dictionaryCandidates.Count:N0}");
+                Console.WriteLine($"Realm(s)            : {parsedOptions.RealmFilter ?? "all"}");
+
+                if (parsedOptions.CountOnly)
+                {
+                    return 0;
+                }
+            }
+
+            var settingsPath = ResolveSettingsPath(solutionRoot, projectRoot);
+            var settings = AppSettings.Load(settingsPath);
+            var outputDirectory = Path.Combine(projectRoot, "Output");
+            Directory.CreateDirectory(outputDirectory);
 
             using var service = new GuildBruteForceService(settings.TauriApi);
-            await service.ScanAsync(nameLength, realmFilter, outputDir, cts.Token);
+
+            if (parsedOptions.Mode == GuildScanMode.Dictionary)
+            {
+                Console.WriteLine($"Output directory    : {outputDirectory}");
+                Console.WriteLine();
+
+                await service.ScanDictionaryAsync(
+                    dictionaryCandidates!,
+                    dictionarySource!.Key,
+                    parsedOptions.RealmFilter,
+                    outputDirectory,
+                    cts.Token);
+            }
+            else
+            {
+                Console.WriteLine($"Guild name length   : {parsedOptions.NameLength}");
+                Console.WriteLine($"Realm(s)            : {parsedOptions.RealmFilter ?? "all"}");
+                Console.WriteLine($"Output directory    : {outputDirectory}");
+                Console.WriteLine();
+
+                await service.ScanAsync(
+                    parsedOptions.NameLength!.Value,
+                    parsedOptions.RealmFilter,
+                    outputDirectory,
+                    cts.Token);
+            }
 
             return 0;
         }
         catch (OperationCanceledException)
         {
-            Console.Error.WriteLine("\nScan cancelled — partial results saved.");
+            Console.Error.WriteLine("\nScan cancelled — completed dictionary candidates were checkpointed.");
             return 1;
         }
         catch (Exception ex)
@@ -60,6 +117,11 @@ internal static class Program
             return 1;
         }
     }
+
+    private static string ResolveInputPath(string projectRoot, string inputPath) =>
+        Path.GetFullPath(Path.IsPathRooted(inputPath)
+            ? inputPath
+            : Path.Combine(projectRoot, inputPath));
 
     private static string ResolveSettingsPath(string solutionRoot, string projectRoot)
     {
