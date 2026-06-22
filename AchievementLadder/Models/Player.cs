@@ -12,5 +12,6 @@ namespace AchievementLadder.Models
         public int AchievementPoints { get; set; }
         public int HonorableKills { get; set; }
         public string Faction { get; set; } = string.Empty;
+        public int AppearanceCount { get; set; }
     }
 }

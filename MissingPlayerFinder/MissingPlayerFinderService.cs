@@ -213,6 +213,13 @@ public sealed class MissingPlayerFinderService(
         var achievementPointsIndex = FindColumnIndex(header, "AchievementPoints");
         var honorableKillsIndex = FindColumnIndex(header, "HonorableKills");
         var factionIndex = FindColumnIndex(header, "Faction");
+        var appearanceCountIndex = FindColumnIndex(header, "AppearanceCount");
+
+        if (appearanceCountIndex < 0)
+        {
+            throw new InvalidDataException(
+                "Players.csv must contain an AppearanceCount column. Run AchievementLadder once to regenerate it before appending missing players.");
+        }
 
         var result = new Dictionary<CharacterKey, Player>(CharacterComparer);
 
@@ -250,7 +257,8 @@ public sealed class MissingPlayerFinderService(
                 Guild = ReadStringValue(values, guildIndex),
                 AchievementPoints = ReadIntValue(values, achievementPointsIndex),
                 HonorableKills = ReadIntValue(values, honorableKillsIndex),
-                Faction = ReadStringValue(values, factionIndex)
+                Faction = ReadStringValue(values, factionIndex),
+                AppearanceCount = ReadIntValue(values, appearanceCountIndex)
             };
 
             result[new CharacterKey(name, realm)] = player;
@@ -360,6 +368,28 @@ public sealed class MissingPlayerFinderService(
             target.Character.DisplayRealm);
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
 
+        if (target.RequiresPlayerBackfill)
+        {
+            var appearanceResponseResult = await apiClient.FetchResponseElementAsync(
+                "character-itemappearances",
+                new
+                {
+                    r = target.Character.ApiRealm,
+                    n = target.Character.Name
+                },
+                $"{target.Character.Name}-{target.Character.DisplayRealm}",
+                cancellationToken);
+
+            if (!appearanceResponseResult.Succeeded ||
+                appearanceResponseResult.ResponseElement is not { } appearanceResponse ||
+                !ItemAppearanceCounter.TryCountOwned(appearanceResponse, out var appearanceCount))
+            {
+                return CharacterBackfillResult.Failure();
+            }
+
+            player.AppearanceCount = appearanceCount;
+        }
+
         return CharacterBackfillResult.Success(player, rareAchievements);
     }
 
@@ -388,7 +418,7 @@ public sealed class MissingPlayerFinderService(
 
         if (writeHeader)
         {
-            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\"");
+            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\"");
         }
         else if (needsLeadingNewLine)
         {
@@ -606,7 +636,8 @@ public sealed class MissingPlayerFinderService(
             Quote(player.Guild),
             player.AchievementPoints.ToString(CultureInfo.InvariantCulture),
             player.HonorableKills.ToString(CultureInfo.InvariantCulture),
-            Quote(player.Faction));
+            Quote(player.Faction),
+            player.AppearanceCount.ToString(CultureInfo.InvariantCulture));
     }
 
     private static bool NeedsLeadingNewLine(string path)

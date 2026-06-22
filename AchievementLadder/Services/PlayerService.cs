@@ -173,6 +173,21 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         var player = CharacterResponseMapper.CreatePlayer(response, name, displayRealm);
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
 
+        var appearanceResponseResult = await apiClient.FetchResponseElementAsync(
+            "character-itemappearances",
+            new { r = apiRealm, n = name },
+            $"{name}-{displayRealm}",
+            ct);
+
+        if (!appearanceResponseResult.Succeeded ||
+            appearanceResponseResult.ResponseElement is not { } appearanceResponse ||
+            !ItemAppearanceCounter.TryCountOwned(appearanceResponse, out var appearanceCount))
+        {
+            return CharacterSyncResult.Failure();
+        }
+
+        player.AppearanceCount = appearanceCount;
+
         return CharacterSyncResult.Success(player, rareAchievements);
     }
 
