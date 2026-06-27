@@ -32,29 +32,96 @@ public sealed class BattlegroundExtractorService(string solutionRoot, TauriApiOp
         };
         var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
 
-        Console.WriteLine($"Fetching match {options.MatchId} on {options.DisplayRealm}...");
+        Console.WriteLine($"Fetching match(es) {options.DescribeRange} on {options.DisplayRealm}...");
 
-        var members = await FetchMatchMembersAsync(client, apiUrl, _apiOptions.Secret, options, cancellationToken);
-        if (members.Count == 0)
+        var allMembers = await FetchRangeMembersAsync(client, apiUrl, _apiOptions.Secret, options, cancellationToken);
+        if (allMembers.Count == 0)
         {
-            Console.WriteLine("Match returned no members.");
+            Console.WriteLine("No members found across the requested match(es).");
             return;
         }
 
-        Console.WriteLine($"Found {members.Count} member(s) in the match.");
+        // The same player can appear in many matches across a range — scan each only once.
+        var distinctMembers = allMembers
+            .DistinctBy(member => $"{member.CharName}|{member.RealmName}".ToLowerInvariant())
+            .OrderBy(member => member.CharName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Console.WriteLine($"Collected {distinctMembers.Count} unique member(s).");
         Console.WriteLine();
 
-        await ScanRareAchievementsAsync(client, apiUrl, _apiOptions.Secret, members, cancellationToken);
+        await ScanRareAchievementsAsync(client, apiUrl, _apiOptions.Secret, distinctMembers, cancellationToken);
 
         Console.WriteLine();
-        CollectUnknownGuilds(members);
+        CollectUnknownGuilds(distinctMembers);
+    }
+
+    private async Task<List<MatchMember>> FetchRangeMembersAsync(
+        HttpClient client,
+        string apiUrl,
+        string secret,
+        ExtractorOptions options,
+        CancellationToken cancellationToken)
+    {
+        var allMembers = new ConcurrentBag<MatchMember>();
+        var total = options.MatchCount;
+        var processed = 0;
+        var matchesWithData = 0;
+
+        await Parallel.ForEachAsync(
+            options.MatchIds,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = MaxDegreeOfParallelism,
+                CancellationToken = cancellationToken
+            },
+            async (matchId, ct) =>
+            {
+                try
+                {
+                    var members = await FetchMatchMembersAsync(client, apiUrl, secret, options.ApiRealm, matchId, ct);
+                    if (members.Count > 0)
+                    {
+                        Interlocked.Increment(ref matchesWithData);
+                        foreach (var member in members)
+                        {
+                            allMembers.Add(member);
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"  Skipping match {matchId}: {ex.Message}");
+                }
+                finally
+                {
+                    var current = Interlocked.Increment(ref processed);
+                    if (options.IsRange && (current % 100 == 0 || current == total))
+                    {
+                        Console.WriteLine(
+                            $"  Fetched {current}/{total} match(es) — {Volatile.Read(ref matchesWithData)} with data.");
+                    }
+                }
+            });
+
+        if (options.IsRange)
+        {
+            Console.WriteLine($"Matches with data: {matchesWithData}/{total}.");
+        }
+
+        return allMembers.ToList();
     }
 
     private static async Task<List<MatchMember>> FetchMatchMembersAsync(
         HttpClient client,
         string apiUrl,
         string secret,
-        ExtractorOptions options,
+        string apiRealm,
+        int matchId,
         CancellationToken cancellationToken)
     {
         var body = new
@@ -63,8 +130,8 @@ public sealed class BattlegroundExtractorService(string solutionRoot, TauriApiOp
             url = "pvp-match",
             @params = new
             {
-                r = options.ApiRealm,
-                matchid = options.MatchId
+                r = apiRealm,
+                matchid = matchId.ToString()
             }
         };
 
@@ -76,12 +143,18 @@ public sealed class BattlegroundExtractorService(string solutionRoot, TauriApiOp
         using var response = await client.PostAsync(apiUrl, content, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"pvp-match lookup failed: API returned {(int)response.StatusCode} {response.ReasonPhrase}.");
+            // A non-existent match id is expected within a range — skip it quietly.
+            return [];
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        if (document.RootElement.TryGetProperty("success", out var successElement) &&
+            successElement.ValueKind == JsonValueKind.False)
+        {
+            return [];
+        }
 
         if (!document.RootElement.TryGetProperty("response", out var responseElement) ||
             !responseElement.TryGetProperty("members", out var membersElement) ||

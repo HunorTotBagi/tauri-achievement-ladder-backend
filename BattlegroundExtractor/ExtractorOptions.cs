@@ -9,34 +9,59 @@ public sealed class ExtractorOptions
         (["wod", "[HU] Warriors of Darkness"], "[HU] Warriors of Darkness", "WoD")
     ];
 
-    private ExtractorOptions(string matchId, string apiRealm, string displayRealm)
+    private ExtractorOptions(int startMatchId, int endMatchId, string apiRealm, string displayRealm)
     {
-        MatchId = matchId;
+        StartMatchId = startMatchId;
+        EndMatchId = endMatchId;
         ApiRealm = apiRealm;
         DisplayRealm = displayRealm;
     }
 
-    public string MatchId { get; }
+    public int StartMatchId { get; }
+
+    public int EndMatchId { get; }
+
+    public int MatchCount => EndMatchId - StartMatchId + 1;
+
+    public bool IsRange => EndMatchId > StartMatchId;
 
     public string ApiRealm { get; }
 
     public string DisplayRealm { get; }
 
+    public IEnumerable<int> MatchIds
+    {
+        get
+        {
+            for (var id = StartMatchId; id <= EndMatchId; id++)
+            {
+                yield return id;
+            }
+        }
+    }
+
+    public string DescribeRange =>
+        IsRange ? $"{StartMatchId}-{EndMatchId} ({MatchCount} matches)" : StartMatchId.ToString();
+
     public static string UsageText =>
         """
-        BattlegroundExtractor — scans a battleground match for rare achievements and unknown guilds.
+        BattlegroundExtractor — scans battleground match(es) for rare achievements and unknown guilds.
 
         Usage:
           BattlegroundExtractor <matchid> [realm]
+          BattlegroundExtractor <start>-<end> [realm]
+          BattlegroundExtractor <start> <end> [realm]
 
         Arguments:
-          matchid    The pvp-match id to extract (for example 95874).
-          realm      Optional realm used to query the match. Defaults to evermoon.
-                     Accepts: evermoon, tauri, wod (or a full API realm name).
+          matchid      A single pvp-match id to extract (for example 95874).
+          start, end   An inclusive range of match ids to loop over (for example 94000 95880).
+          realm        Optional realm used to query the matches. Defaults to evermoon.
+                       Accepts: evermoon, tauri, wod (or a full API realm name).
 
         Examples:
           BattlegroundExtractor 95874
-          BattlegroundExtractor 95874 tauri
+          BattlegroundExtractor 94000-95880
+          BattlegroundExtractor 94000 95880 tauri
         """;
 
     public static bool TryParse(
@@ -51,7 +76,7 @@ public sealed class ExtractorOptions
 
         if (args.Length == 0)
         {
-            errorMessage = "A matchid is required.";
+            errorMessage = "A matchid or match id range is required.";
             return false;
         }
 
@@ -62,22 +87,68 @@ public sealed class ExtractorOptions
             return false;
         }
 
-        var matchId = args[0].Trim();
-        if (string.IsNullOrWhiteSpace(matchId) || !matchId.All(char.IsDigit))
+        var remaining = new Queue<string>(args);
+        var first = remaining.Dequeue().Trim();
+
+        int startMatchId;
+        int endMatchId;
+
+        // Form: <start>-<end> as a single token.
+        var hyphenIndex = first.IndexOf('-');
+        if (hyphenIndex > 0)
         {
-            errorMessage = $"Invalid matchid '{args[0]}'. The matchid must be numeric.";
+            var startText = first[..hyphenIndex].Trim();
+            var endText = first[(hyphenIndex + 1)..].Trim();
+            if (!TryParseMatchId(startText, out startMatchId) || !TryParseMatchId(endText, out endMatchId))
+            {
+                errorMessage = $"Invalid range '{first}'. Use numeric ids like 94000-95880.";
+                return false;
+            }
+        }
+        else
+        {
+            if (!TryParseMatchId(first, out startMatchId))
+            {
+                errorMessage = $"Invalid matchid '{first}'. The matchid must be numeric.";
+                return false;
+            }
+
+            // Form: <start> <end> as two tokens — only when the next token is numeric.
+            if (remaining.Count > 0 && TryParseMatchId(remaining.Peek().Trim(), out var parsedEnd))
+            {
+                remaining.Dequeue();
+                endMatchId = parsedEnd;
+            }
+            else
+            {
+                endMatchId = startMatchId;
+            }
+        }
+
+        if (endMatchId < startMatchId)
+        {
+            errorMessage = $"Invalid range: end ({endMatchId}) is less than start ({startMatchId}).";
             return false;
         }
 
-        var realmInput = args.Length > 1 ? args[1].Trim() : "evermoon";
+        var realmInput = remaining.Count > 0 ? remaining.Dequeue().Trim() : "evermoon";
         if (!TryResolveRealm(realmInput, out var apiRealm, out var displayRealm))
         {
             errorMessage = $"Unknown realm '{realmInput}'. Valid values: evermoon, tauri, wod, or a full API realm name.";
             return false;
         }
 
-        options = new ExtractorOptions(matchId, apiRealm, displayRealm);
+        options = new ExtractorOptions(startMatchId, endMatchId, apiRealm, displayRealm);
         return true;
+    }
+
+    private static bool TryParseMatchId(string value, out int matchId)
+    {
+        matchId = 0;
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.All(char.IsDigit) &&
+               int.TryParse(value, out matchId) &&
+               matchId > 0;
     }
 
     private static bool TryResolveRealm(string realmInput, out string apiRealm, out string displayRealm)
