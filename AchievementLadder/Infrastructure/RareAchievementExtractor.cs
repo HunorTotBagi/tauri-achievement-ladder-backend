@@ -18,6 +18,16 @@ public static class RareAchievementExtractor
             .ToList();
     }
 
+    /// <summary>
+    /// Returns the date a specific achievement was obtained, or <c>null</c> when the
+    /// character does not have it (or the date cannot be parsed).
+    /// </summary>
+    public static DateTimeOffset? TryGetAchievementObtainedAt(JsonElement responseElement, int achievementId)
+    {
+        var achievements = ExtractAchievements(responseElement);
+        return achievements.TryGetValue(achievementId, out var obtainedAt) ? obtainedAt : null;
+    }
+
     private static Dictionary<int, DateTimeOffset?> ExtractAchievements(JsonElement responseElement)
     {
         if (!responseElement.TryGetProperty("Achievements", out var achievementsElement))

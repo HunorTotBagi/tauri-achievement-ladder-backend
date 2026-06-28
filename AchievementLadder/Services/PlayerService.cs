@@ -21,6 +21,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
+        var scanStartedAt = DateTimeOffset.UtcNow;
         using var apiClient = new TauriApiClient(apiOptions);
 
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
@@ -63,6 +64,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                     character.Name,
                     character.ApiRealm,
                     character.DisplayRealm,
+                    scanStartedAt,
                     ct);
 
                 if (syncResult.Player is { } player)
@@ -157,6 +159,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string name,
         string apiRealm,
         string displayRealm,
+        DateTimeOffset scanStartedAt,
         CancellationToken ct)
     {
         var responseResult = await apiClient.FetchResponseElementAsync(
@@ -170,7 +173,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             return CharacterSyncResult.Failure();
         }
 
-        var player = CharacterResponseMapper.CreatePlayer(response, name, displayRealm);
+        var player = CharacterResponseMapper.CreatePlayer(response, name, displayRealm, scanStartedAt);
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
 
         var appearanceResponseResult = await apiClient.FetchResponseElementAsync(

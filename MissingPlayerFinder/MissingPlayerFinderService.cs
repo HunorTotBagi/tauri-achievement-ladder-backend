@@ -50,6 +50,7 @@ public sealed class MissingPlayerFinderService(
             throw new FileNotFoundException($"Could not find Players.csv at {playersCsvPath}", playersCsvPath);
         }
 
+        var scanStartedAt = DateTimeOffset.UtcNow;
         var sourceCharacters = LoadSourceCharacters(cancellationToken);
         var csvPlayers = LoadCsvPlayers(playersCsvPath, cancellationToken);
         var retryCharacters = LoadRetryCharacters(retryOutputPath, cancellationToken);
@@ -75,7 +76,7 @@ public sealed class MissingPlayerFinderService(
             },
             async (target, ct) =>
             {
-                var result = await FetchBackfillAsync(apiClient, target, ct);
+                var result = await FetchBackfillAsync(apiClient, target, scanStartedAt, ct);
 
                 if (target.RequiresPlayerBackfill && result.Player is { } fetchedPlayer)
                 {
@@ -214,6 +215,7 @@ public sealed class MissingPlayerFinderService(
         var honorableKillsIndex = FindColumnIndex(header, "HonorableKills");
         var factionIndex = FindColumnIndex(header, "Faction");
         var appearanceCountIndex = FindColumnIndex(header, "AppearanceCount");
+        var characterAgeIndex = FindColumnIndex(header, "CharacterAge");
 
         if (appearanceCountIndex < 0)
         {
@@ -258,7 +260,8 @@ public sealed class MissingPlayerFinderService(
                 AchievementPoints = ReadIntValue(values, achievementPointsIndex),
                 HonorableKills = ReadIntValue(values, honorableKillsIndex),
                 Faction = ReadStringValue(values, factionIndex),
-                AppearanceCount = ReadIntValue(values, appearanceCountIndex)
+                AppearanceCount = ReadIntValue(values, appearanceCountIndex),
+                CharacterAge = ReadStringValue(values, characterAgeIndex)
             };
 
             result[new CharacterKey(name, realm)] = player;
@@ -340,6 +343,7 @@ public sealed class MissingPlayerFinderService(
     private static async Task<CharacterBackfillResult> FetchBackfillAsync(
         TauriApiClient apiClient,
         BackfillTarget target,
+        DateTimeOffset scanStartedAt,
         CancellationToken cancellationToken)
     {
         if (!target.RequiresPlayerBackfill && !target.RequiresRareAchievementBackfill)
@@ -365,7 +369,8 @@ public sealed class MissingPlayerFinderService(
         var player = CharacterResponseMapper.CreatePlayer(
             response,
             target.Character.Name,
-            target.Character.DisplayRealm);
+            target.Character.DisplayRealm,
+            scanStartedAt);
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
 
         if (target.RequiresPlayerBackfill)
@@ -418,7 +423,7 @@ public sealed class MissingPlayerFinderService(
 
         if (writeHeader)
         {
-            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\"");
+            await writer.WriteLineAsync("\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\"");
         }
         else if (needsLeadingNewLine)
         {
@@ -637,7 +642,8 @@ public sealed class MissingPlayerFinderService(
             player.AchievementPoints.ToString(CultureInfo.InvariantCulture),
             player.HonorableKills.ToString(CultureInfo.InvariantCulture),
             Quote(player.Faction),
-            player.AppearanceCount.ToString(CultureInfo.InvariantCulture));
+            player.AppearanceCount.ToString(CultureInfo.InvariantCulture),
+            Quote(player.CharacterAge));
     }
 
     private static bool NeedsLeadingNewLine(string path)

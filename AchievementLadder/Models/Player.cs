@@ -13,5 +13,6 @@ namespace AchievementLadder.Models
         public int HonorableKills { get; set; }
         public string Faction { get; set; } = string.Empty;
         public int AppearanceCount { get; set; }
+        public string CharacterAge { get; set; } = string.Empty;
     }
 }

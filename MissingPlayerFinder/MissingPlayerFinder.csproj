@@ -11,6 +11,7 @@
     <Compile Include="..\AchievementLadder\Configuration\AppSettings.cs" Link="Configuration\AppSettings.cs" />
     <Compile Include="..\AchievementLadder\Configuration\TauriApiOptions.cs" Link="Configuration\TauriApiOptions.cs" />
     <Compile Include="..\AchievementLadder\Helpers\CharacterHelpers.cs" Link="Helpers\CharacterHelpers.cs" />
+    <Compile Include="..\AchievementLadder\Infrastructure\CharacterAgeCalculator.cs" Link="Infrastructure\CharacterAgeCalculator.cs" />
     <Compile Include="..\AchievementLadder\Infrastructure\CharacterResponseMapper.cs" Link="Infrastructure\CharacterResponseMapper.cs" />
     <Compile Include="..\AchievementLadder\Infrastructure\ItemAppearanceCounter.cs" Link="Infrastructure\ItemAppearanceCounter.cs" />
     <Compile Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs" Link="Infrastructure\ProjectPaths.cs" />
