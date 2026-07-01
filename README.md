@@ -127,3 +127,11 @@ To scan the item-appearance endpoint only for specific item IDs across all defau
 ```bash
 dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
 ```
+
+To collect battleground metadata from consecutive `pvp-match` ids into JSON, seed the first run with a known match id:
+
+```bash
+dotnet run --project BattlegroundCollector -- 95874
+```
+
+After that, run it without arguments. It resumes from `../tauriachievements.github.io/src/battleground-collector-state.json`, stops at the first missing match response, and prepends newly found battlegrounds to `../tauriachievements.github.io/src/battlegrounds.json`.
