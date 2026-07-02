@@ -1,12 +1,14 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AchievementLadder.Configuration;
 
 namespace BattlegroundCollector;
 
 public sealed class BattlegroundCollectorService(
     string projectRoot,
+    string solutionRoot,
     string frontendSrcDirectory,
     TauriApiOptions apiOptions)
 {
@@ -19,7 +21,25 @@ public sealed class BattlegroundCollectorService(
 
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
+    private static readonly HashSet<string> ExcludedBattlegroundNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Nagrand Arena",
+        "Ruins of Lordaeron",
+        "The Tiger's Peak",
+        "Tol'Viron Arena",
+        "Dalaran Sewers"
+    };
+
+    private static readonly (string Token, string FileName)[] GuildFileByRealm =
+    [
+        ("Evermoon", "evermoon-guilds.txt"),
+        ("Tauri", "tauri-guilds.txt"),
+        ("Warriors of Darkness", "wod-guilds.txt"),
+        ("WoD", "wod-guilds.txt")
+    ];
+
     private readonly string _projectRoot = Path.GetFullPath(projectRoot);
+    private readonly string _guildsDirectory = Path.Combine(solutionRoot, "AchievementLadder", "Data", "Guilds");
     private readonly string _frontendSrcDirectory = Path.GetFullPath(frontendSrcDirectory);
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
@@ -35,9 +55,14 @@ public sealed class BattlegroundCollectorService(
         var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
         var currentMatchId = startMatchId;
         var newRecords = new List<BattlegroundRecord>();
-        var knownBgIds = existingRecords
-            .Select(record => record.BgId)
+        var newMembers = new List<MatchMember>();
+        var knownMatchIds = existingRecords
+            .Where(record => record.Id > 0)
+            .Select(record => record.Id)
             .ToHashSet();
+        var knownRecordKeys = existingRecords
+            .Select(GetRecordKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         using var client = new HttpClient
         {
@@ -66,25 +91,34 @@ public sealed class BattlegroundCollectorService(
                 break;
             }
 
-            if (knownBgIds.Add(fetchResult.Record.BgId))
+            if (IsExcludedBattlegroundName(fetchResult.Record.Name))
+            {
+                Console.WriteLine($"  - {fetchResult.Record.Id}: skipping excluded map '{fetchResult.Record.Name}'.");
+                currentMatchId++;
+                continue;
+            }
+
+            var recordKey = GetRecordKey(fetchResult.Record);
+            var isKnownId = fetchResult.Record.Id > 0 && !knownMatchIds.Add(fetchResult.Record.Id);
+            var isKnownRecord = !knownRecordKeys.Add(recordKey);
+            if (!isKnownId && !isKnownRecord)
             {
                 newRecords.Add(fetchResult.Record);
+                newMembers.AddRange(fetchResult.Members);
                 Console.WriteLine(
-                    $"  + {fetchResult.Record.BgId}: {fetchResult.Record.BgName} at {fetchResult.Record.BgStartTime}");
+                    $"  + {fetchResult.Record.Id}: {fetchResult.Record.Name} at {fetchResult.Record.StartTime}");
             }
             else
             {
-                Console.WriteLine($"  = {fetchResult.Record.BgId}: already exists in output JSON.");
+                Console.WriteLine($"  = {fetchResult.Record.Id}: already exists in output JSON.");
             }
 
             currentMatchId++;
         }
 
         var mergedRecords = MergeRecords(newRecords, existingRecords);
-        if (newRecords.Count > 0 || !File.Exists(outputPath))
-        {
-            await WriteJsonAsync(outputPath, mergedRecords, cancellationToken);
-        }
+        await WriteJsonAsync(outputPath, mergedRecords, cancellationToken);
+        var newGuildCount = CollectUnknownGuilds(newMembers);
 
         var savedState = new BattlegroundCollectorState(
             currentMatchId,
@@ -93,7 +127,7 @@ public sealed class BattlegroundCollectorService(
             DateTimeOffset.UtcNow,
             stopReason,
             newRecords.Count,
-            newRecords.Count == 0 ? null : newRecords.Max(record => record.BgId));
+            newRecords.Count == 0 ? null : newRecords.Max(record => record.Id));
 
         await WriteJsonAsync(statePath, savedState, cancellationToken);
 
@@ -102,6 +136,7 @@ public sealed class BattlegroundCollectorService(
             currentMatchId,
             newRecords.Count,
             mergedRecords.Count,
+            newGuildCount,
             outputPath,
             statePath,
             stopReason);
@@ -170,12 +205,10 @@ public sealed class BattlegroundCollectorService(
             apiMatchId,
             ReadString(responseElement, "mapname", fallback: "Unknown Battleground"),
             FormatUnixTimestamp(startTimeUnix),
-            startTimeUnix,
-            FormatUnixDate(startTimeUnix),
-            durationMilliseconds,
-            FormatDuration(durationMilliseconds));
+            durationMilliseconds);
+        var members = ReadMembers(responseElement);
 
-        return BattlegroundFetchResult.Found(record);
+        return BattlegroundFetchResult.Found(record, members);
     }
 
     private static bool IsExplicitFalse(JsonElement element)
@@ -252,10 +285,42 @@ public sealed class BattlegroundCollectorService(
             64 * 1024,
             useAsync: true);
 
-        return await JsonSerializer.DeserializeAsync<List<BattlegroundRecord>>(
-            stream,
-            JsonOptions,
-            cancellationToken) ?? [];
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var records = new List<BattlegroundRecord>();
+        foreach (var element in document.RootElement.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var name = ReadString(element, "name", ReadString(element, "bgName"));
+            if (string.IsNullOrWhiteSpace(name) || IsExcludedBattlegroundName(name))
+            {
+                continue;
+            }
+
+            var startTime = ReadString(element, "startTime", ReadString(element, "bgStartTime"));
+            if (string.IsNullOrWhiteSpace(startTime))
+            {
+                startTime = FormatUnixTimestamp(ReadLong(element, "bgStartTimeUnix"));
+            }
+
+            var duration = ReadLong(element, "duration", ReadLong(element, "bgDuration"));
+
+            records.Add(new BattlegroundRecord(
+                ReadInt(element, "id", ReadInt(element, "bgId")),
+                name,
+                startTime,
+                duration));
+        }
+
+        return records;
     }
 
     private static async Task<BattlegroundCollectorState?> LoadStateAsync(
@@ -286,11 +351,12 @@ public sealed class BattlegroundCollectorService(
         IReadOnlyList<BattlegroundRecord> existingRecords)
     {
         var mergedRecords = new List<BattlegroundRecord>(newRecords.Count + existingRecords.Count);
-        var seenBgIds = new HashSet<int>();
+        var seenMatchIds = new HashSet<int>();
+        var seenRecordKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var record in newRecords.OrderByDescending(record => record.BgId))
+        foreach (var record in newRecords.OrderByDescending(record => record.Id))
         {
-            if (seenBgIds.Add(record.BgId))
+            if (TryAddRecord(record, seenMatchIds, seenRecordKeys))
             {
                 mergedRecords.Add(record);
             }
@@ -298,13 +364,80 @@ public sealed class BattlegroundCollectorService(
 
         foreach (var record in existingRecords)
         {
-            if (seenBgIds.Add(record.BgId))
+            if (IsExcludedBattlegroundName(record.Name))
+            {
+                continue;
+            }
+
+            if (TryAddRecord(record, seenMatchIds, seenRecordKeys))
             {
                 mergedRecords.Add(record);
             }
         }
 
         return mergedRecords;
+    }
+
+    private int CollectUnknownGuilds(IReadOnlyList<MatchMember> members)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== Guild collection ===");
+
+        if (members.Count == 0)
+        {
+            Console.WriteLine("No new battleground members to check for guilds.");
+            return 0;
+        }
+
+        Directory.CreateDirectory(_guildsDirectory);
+
+        var knownGuildsByFile = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var addedCount = 0;
+        var skippedUnknownRealm = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var distinctMembers = members
+            .DistinctBy(member => $"{member.CharName}|{member.RealmName}".ToLowerInvariant())
+            .OrderBy(member => member.CharName, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var member in distinctMembers)
+        {
+            if (string.IsNullOrWhiteSpace(member.GuildName))
+            {
+                continue;
+            }
+
+            var fileName = ResolveGuildFileName(member.RealmName);
+            if (fileName is null)
+            {
+                if (skippedUnknownRealm.Add(member.RealmName))
+                {
+                    Console.WriteLine($"  No guild file for realm '{member.RealmName}' - skipping its guilds.");
+                }
+
+                continue;
+            }
+
+            var filePath = Path.Combine(_guildsDirectory, fileName);
+            if (!knownGuildsByFile.TryGetValue(fileName, out var knownGuilds))
+            {
+                knownGuilds = LoadGuildSet(filePath);
+                knownGuildsByFile[fileName] = knownGuilds;
+            }
+
+            if (!knownGuilds.Add(member.GuildName))
+            {
+                continue;
+            }
+
+            AppendGuildName(filePath, member.GuildName);
+            addedCount++;
+            Console.WriteLine($"  + Added '{member.GuildName}' to {fileName}");
+        }
+
+        Console.WriteLine(addedCount == 0
+            ? "No new guilds - all guilds already known."
+            : $"Added {addedCount} new guild name(s).");
+
+        return addedCount;
     }
 
     private static async Task WriteJsonAsync<T>(
@@ -342,6 +475,12 @@ public sealed class BattlegroundCollectorService(
             : 0;
     }
 
+    private static int ReadInt(JsonElement parent, string propertyName, int fallback)
+    {
+        var value = ReadInt(parent, propertyName);
+        return value == 0 ? fallback : value;
+    }
+
     private static long ReadLong(JsonElement parent, string propertyName)
     {
         if (!parent.TryGetProperty(propertyName, out var property))
@@ -360,6 +499,12 @@ public sealed class BattlegroundCollectorService(
             : 0;
     }
 
+    private static long ReadLong(JsonElement parent, string propertyName, long fallback)
+    {
+        var value = ReadLong(parent, propertyName);
+        return value == 0 ? fallback : value;
+    }
+
     private static string ReadString(JsonElement parent, string propertyName, string fallback = "")
     {
         if (!parent.TryGetProperty(propertyName, out var property) ||
@@ -371,6 +516,123 @@ public sealed class BattlegroundCollectorService(
         var value = property.GetString();
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
+
+    private static List<MatchMember> ReadMembers(JsonElement responseElement)
+    {
+        if (!responseElement.TryGetProperty("members", out var membersElement) ||
+            membersElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var members = new List<MatchMember>();
+        foreach (var memberElement in membersElement.EnumerateArray())
+        {
+            if (memberElement.ValueKind != JsonValueKind.Object ||
+                !memberElement.TryGetProperty("character-minimal-data", out var minimal) ||
+                minimal.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var charName = ReadString(minimal, "charname");
+            if (string.IsNullOrWhiteSpace(charName))
+            {
+                continue;
+            }
+
+            members.Add(new MatchMember(
+                charName,
+                ReadString(minimal, "guildname"),
+                ReadString(memberElement, "realmName")));
+        }
+
+        return members;
+    }
+
+    private static string? ResolveGuildFileName(string realmName)
+    {
+        if (string.IsNullOrWhiteSpace(realmName))
+        {
+            return null;
+        }
+
+        foreach (var (token, fileName) in GuildFileByRealm)
+        {
+            if (realmName.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                return fileName;
+            }
+        }
+
+        return null;
+    }
+
+    private static HashSet<string> LoadGuildSet(string filePath)
+    {
+        var guilds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(filePath))
+        {
+            return guilds;
+        }
+
+        foreach (var line in File.ReadLines(filePath))
+        {
+            var trimmed = line.Trim().TrimStart('\uFEFF');
+            if (!string.IsNullOrWhiteSpace(trimmed))
+            {
+                guilds.Add(trimmed);
+            }
+        }
+
+        return guilds;
+    }
+
+    private static void AppendGuildName(string filePath, string guildName)
+    {
+        var needsLeadingNewline = File.Exists(filePath) && !EndsWithNewline(filePath);
+        var textToAppend = (needsLeadingNewline ? Environment.NewLine : string.Empty) + guildName + Environment.NewLine;
+        File.AppendAllText(filePath, textToAppend, Utf8NoBom);
+    }
+
+    private static bool EndsWithNewline(string filePath)
+    {
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        if (stream.Length == 0)
+        {
+            return true;
+        }
+
+        stream.Seek(-1, SeekOrigin.End);
+        var lastByte = stream.ReadByte();
+        return lastByte is '\n' or '\r';
+    }
+
+    private static bool TryAddRecord(
+        BattlegroundRecord record,
+        HashSet<int> seenMatchIds,
+        HashSet<string> seenRecordKeys)
+    {
+        var recordKey = GetRecordKey(record);
+        if (record.Id > 0)
+        {
+            if (!seenMatchIds.Add(record.Id))
+            {
+                return false;
+            }
+
+            seenRecordKeys.Add(recordKey);
+            return true;
+        }
+
+        return seenRecordKeys.Add(recordKey);
+    }
+
+    private static string GetRecordKey(BattlegroundRecord record) =>
+        $"{record.Name}|{record.StartTime}|{record.Duration}";
+
+    private static bool IsExcludedBattlegroundName(string name) =>
+        ExcludedBattlegroundNames.Contains(name.Trim());
 
     private static string FormatUnixTimestamp(long unixTimestamp)
     {
@@ -385,32 +647,6 @@ public sealed class BattlegroundCollectorService(
             .ToString("yyyy.MM.dd HH.mm", CultureInfo.InvariantCulture);
     }
 
-    private static string FormatUnixDate(long unixTimestamp)
-    {
-        if (unixTimestamp <= 0)
-        {
-            return string.Empty;
-        }
-
-        return DateTimeOffset
-            .FromUnixTimeSeconds(unixTimestamp)
-            .ToLocalTime()
-            .ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
-    }
-
-    private static string FormatDuration(long durationMilliseconds)
-    {
-        if (durationMilliseconds <= 0)
-        {
-            return "00:00:00";
-        }
-
-        var duration = TimeSpan.FromMilliseconds(durationMilliseconds);
-        return duration.TotalDays >= 1
-            ? $"{(int)duration.TotalDays}.{duration:hh\\:mm\\:ss}"
-            : duration.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
-    }
-
     private static string BuildApiUrl(string baseUrl, string apiKey)
     {
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
@@ -419,13 +655,10 @@ public sealed class BattlegroundCollectorService(
 }
 
 public sealed record BattlegroundRecord(
-    int BgId,
-    string BgName,
-    string BgStartTime,
-    long BgStartTimeUnix,
-    string BgStartDate,
-    long BgDuration,
-    string BgDurationFormatted);
+    [property: JsonIgnore] int Id,
+    string Name,
+    string StartTime,
+    long Duration);
 
 public sealed record BattlegroundCollectorState(
     int NextMatchId,
@@ -434,24 +667,28 @@ public sealed record BattlegroundCollectorState(
     DateTimeOffset LastScanUtc,
     string LastStopReason,
     int LastAddedCount,
-    int? LastAddedBgId);
+    int? LastAddedMatchId);
 
 public sealed record BattlegroundCollectionResult(
     int StartMatchId,
     int NextMatchId,
     int NewBattlegroundCount,
     int TotalBattlegroundCount,
+    int NewGuildCount,
     string OutputPath,
     string StatePath,
     string StopReason);
 
 internal sealed record BattlegroundFetchResult(
     BattlegroundRecord? Record,
+    IReadOnlyList<MatchMember> Members,
     string? StopReason)
 {
-    public static BattlegroundFetchResult Found(BattlegroundRecord record) =>
-        new(record, null);
+    public static BattlegroundFetchResult Found(BattlegroundRecord record, IReadOnlyList<MatchMember> members) =>
+        new(record, members, null);
 
     public static BattlegroundFetchResult Stop(string reason) =>
-        new(null, reason);
+        new(null, [], reason);
 }
+
+internal sealed record MatchMember(string CharName, string GuildName, string RealmName);

@@ -34,13 +34,14 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             var frontendSrcDirectory = ProjectPaths.GetFrontendSrcDirectory(solutionRoot);
-            var collector = new BattlegroundCollectorService(projectRoot, frontendSrcDirectory, settings.TauriApi);
+            var collector = new BattlegroundCollectorService(projectRoot, solutionRoot, frontendSrcDirectory, settings.TauriApi);
             var result = await collector.ExecuteAsync(options!, cancellationTokenSource.Token);
 
             Console.WriteLine();
             Console.WriteLine($"Started at match id: {result.StartMatchId}");
             Console.WriteLine($"Next match id to try: {result.NextMatchId}");
             Console.WriteLine($"New battlegrounds: {result.NewBattlegroundCount}");
+            Console.WriteLine($"New guilds: {result.NewGuildCount}");
             Console.WriteLine($"Total battlegrounds in JSON: {result.TotalBattlegroundCount}");
             Console.WriteLine($"Stop reason: {result.StopReason}");
             Console.WriteLine($"Output: {result.OutputPath}");
