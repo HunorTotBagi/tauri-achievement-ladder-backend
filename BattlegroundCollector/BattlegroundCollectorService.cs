@@ -205,7 +205,7 @@ public sealed class BattlegroundCollectorService(
             apiMatchId,
             ReadString(responseElement, "mapname", fallback: "Unknown Battleground"),
             FormatUnixTimestamp(startTimeUnix),
-            durationMilliseconds);
+            FormatDuration(durationMilliseconds));
         var members = ReadMembers(responseElement);
 
         return BattlegroundFetchResult.Found(record, members);
@@ -311,7 +311,7 @@ public sealed class BattlegroundCollectorService(
                 startTime = FormatUnixTimestamp(ReadLong(element, "bgStartTimeUnix"));
             }
 
-            var duration = ReadLong(element, "duration", ReadLong(element, "bgDuration"));
+            var duration = ReadDuration(element);
 
             records.Add(new BattlegroundRecord(
                 ReadInt(element, "id", ReadInt(element, "bgId")),
@@ -634,6 +634,22 @@ public sealed class BattlegroundCollectorService(
     private static bool IsExcludedBattlegroundName(string name) =>
         ExcludedBattlegroundNames.Contains(name.Trim());
 
+    private static string ReadDuration(JsonElement element)
+    {
+        var duration = ReadString(element, "duration", ReadString(element, "bgDurationFormatted"));
+        if (long.TryParse(duration, NumberStyles.Integer, CultureInfo.InvariantCulture, out var durationMilliseconds))
+        {
+            return FormatDuration(durationMilliseconds);
+        }
+
+        if (!string.IsNullOrWhiteSpace(duration))
+        {
+            return duration;
+        }
+
+        return FormatDuration(ReadLong(element, "bgDuration"));
+    }
+
     private static string FormatUnixTimestamp(long unixTimestamp)
     {
         if (unixTimestamp <= 0)
@@ -647,6 +663,17 @@ public sealed class BattlegroundCollectorService(
             .ToString("yyyy.MM.dd HH.mm", CultureInfo.InvariantCulture);
     }
 
+    private static string FormatDuration(long durationMilliseconds)
+    {
+        if (durationMilliseconds <= 0)
+        {
+            return "00:00:00";
+        }
+
+        var duration = TimeSpan.FromMilliseconds(durationMilliseconds);
+        return $"{(long)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
+    }
+
     private static string BuildApiUrl(string baseUrl, string apiKey)
     {
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
@@ -658,7 +685,7 @@ public sealed record BattlegroundRecord(
     [property: JsonIgnore] int Id,
     string Name,
     string StartTime,
-    long Duration);
+    string Duration);
 
 public sealed record BattlegroundCollectorState(
     int NextMatchId,
