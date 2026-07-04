@@ -2,11 +2,14 @@ using System.Text;
 using System.Text.Json;
 using AchievementLadder.Configuration;
 using AchievementLadder.Dtos;
+using AchievementLadder.Infrastructure;
 
 namespace GuildCharacterExporter;
 
 public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOptions apiOptions)
 {
+    private const int ProgressInterval = 25;
+
     private static readonly RealmSource[] RealmSources =
     [
         new("evermoon-guilds.txt", "[EN] Evermoon", "Evermoon"),
@@ -15,6 +18,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
     ];
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
+    private readonly TauriApiOptions _apiOptions = apiOptions;
 
     public async Task<GuildCharacterExportResult> ExportAsync(CancellationToken cancellationToken)
     {
@@ -24,34 +28,41 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             throw new DirectoryNotFoundException($"Could not find guild data folder: {guildDataDirectory}");
         }
 
-        using var client = new HttpClient();
-        string apiUrl = BuildApiUrl(apiOptions.BaseUrl, apiOptions.ApiKey);
-
         var guilds = LoadGuilds(guildDataDirectory)
             .DistinctBy(guild => (guild.GuildName.ToLowerInvariant(), guild.ApiRealm))
             .ToList();
 
+        Console.WriteLine($"Scanning {guilds.Count} guilds...");
+        Console.WriteLine(
+            $"API settings: concurrency={_apiOptions.MaxConcurrentRequests}, timeout={_apiOptions.RequestTimeoutSeconds}s, retries={_apiOptions.MaxRetryAttempts}");
+
         var characterLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var retryGuilds = new List<GuildSource>();
         var processedGuildCount = 0;
+
+        using var apiClient = new TauriApiClient(_apiOptions);
 
         foreach (var guild in guilds)
         {
-            var members = await LoadGuildMembersAsync(client, apiUrl, apiOptions.Secret, guild, cancellationToken);
-            foreach (var memberName in members)
+            var result = await LoadGuildMembersAsync(apiClient, guild, cancellationToken);
+            if (result.Succeeded)
             {
-                characterLines.Add($"{memberName}-{guild.DisplayRealm}");
+                foreach (var memberName in result.Members)
+                {
+                    characterLines.Add($"{memberName}-{guild.DisplayRealm}");
+                }
+            }
+            else
+            {
+                retryGuilds.Add(guild);
             }
 
             processedGuildCount++;
-            if (processedGuildCount % 25 == 0)
+            if (processedGuildCount % ProgressInterval == 0 || processedGuildCount == guilds.Count)
             {
                 Console.WriteLine($"Loaded guilds {processedGuildCount}/{guilds.Count}");
             }
         }
-
-        var orderedLines = characterLines
-            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         var outputPath = Path.Combine(
             _solutionRoot,
@@ -59,9 +70,33 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             "Data",
             "GuildCharacters",
             "GuildCharacters.txt");
+        var retryOutputPath = Path.Combine(_solutionRoot, "MissingGuildsToScan.txt");
+        var orderedRetryGuilds = retryGuilds
+            .OrderBy(guild => guild.DisplayRealm, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(guild => guild.GuildName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        await WriteRetryGuildsAsync(retryOutputPath, orderedRetryGuilds, cancellationToken);
+
+        if (orderedRetryGuilds.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Could not load {orderedRetryGuilds.Count} of {guilds.Count} guilds after configured retries. " +
+                $"MissingGuildsToScan.txt: {retryOutputPath}. GuildCharacters.txt was not overwritten.");
+        }
+
+        var orderedLines = characterLines
+            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         await WriteLinesAsync(outputPath, orderedLines, cancellationToken);
 
-        return new GuildCharacterExportResult(orderedLines.Count, outputPath);
+        return new GuildCharacterExportResult(
+            guilds.Count,
+            orderedLines.Count,
+            orderedRetryGuilds.Count,
+            outputPath,
+            retryOutputPath);
     }
 
     private static IEnumerable<GuildSource> LoadGuilds(string guildDataDirectory)
@@ -87,65 +122,59 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
         }
     }
 
-    private static async Task<IReadOnlyList<string>> LoadGuildMembersAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
+    private static async Task<GuildLoadResult> LoadGuildMembersAsync(
+        TauriApiClient apiClient,
         GuildSource guild,
         CancellationToken cancellationToken)
     {
-        var body = new
-        {
-            secret,
-            url = "guild-info",
-            @params = new
+        var result = await apiClient.FetchResponseElementAsync(
+            "guild-info",
+            new
             {
                 r = guild.ApiRealm,
                 gn = guild.GuildName
-            }
-        };
+            },
+            $"guild '{guild.GuildName}' on {guild.DisplayRealm}",
+            cancellationToken);
 
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json");
+        if (!result.Succeeded || result.ResponseElement is not { } response)
+        {
+            return GuildLoadResult.Failure();
+        }
+
+        if (response.ValueKind != JsonValueKind.Object ||
+            !response.TryGetProperty("guildList", out var guildListElement) ||
+            guildListElement.ValueKind != JsonValueKind.Object)
+        {
+            Console.Error.WriteLine(
+                $"Could not load guild '{guild.GuildName}' on {guild.DisplayRealm}: response did not contain a guildList object.");
+            return GuildLoadResult.Failure();
+        }
 
         try
         {
-            using var response = await client.PostAsync(apiUrl, content, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            var guildInfo = response.Deserialize<GuildInfoInner>();
+            if (guildInfo?.guildList is null)
             {
                 Console.Error.WriteLine(
-                    $"Skipping guild '{guild.GuildName}' on {guild.DisplayRealm}: API returned {(int)response.StatusCode} {response.ReasonPhrase}.");
-                return [];
+                    $"Could not load guild '{guild.GuildName}' on {guild.DisplayRealm}: response did not contain guild members.");
+                return GuildLoadResult.Failure();
             }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var guildInfo = await JsonSerializer.DeserializeAsync<GuildInfoResponse>(
-                stream,
-                cancellationToken: cancellationToken);
-
-            if (guildInfo?.response?.guildList is null)
-            {
-                return [];
-            }
-
-            return guildInfo.response.guildList.Values
+            var members = guildInfo.guildList.Values
                 .Where(member => member.level >= 70)
                 .Select(member => member.name?.Trim())
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Cast<string>()
                 .ToList();
+
+            return GuildLoadResult.Success(members);
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
             Console.Error.WriteLine(
-                $"Skipping guild '{guild.GuildName}' on {guild.DisplayRealm}: {ex.Message}");
-            return [];
+                $"Could not parse guild '{guild.GuildName}' on {guild.DisplayRealm}: {ex.Message}");
+            return GuildLoadResult.Failure();
         }
     }
 
@@ -173,13 +202,26 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
         File.Move(tempPath, path, overwrite: true);
     }
 
-    private static string BuildApiUrl(string baseUrl, string apiKey)
+    private static async Task WriteRetryGuildsAsync(
+        string path,
+        IReadOnlyList<GuildSource> guilds,
+        CancellationToken cancellationToken)
     {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
+        var lines = guilds
+            .Select(guild => $"{guild.DisplayRealm}\t{guild.GuildName}")
+            .ToList();
+
+        await WriteLinesAsync(path, lines, cancellationToken);
     }
 
     private sealed record RealmSource(string FileName, string ApiRealm, string DisplayRealm);
 
     private sealed record GuildSource(string GuildName, string ApiRealm, string DisplayRealm);
+
+    private readonly record struct GuildLoadResult(bool Succeeded, IReadOnlyList<string> Members)
+    {
+        public static GuildLoadResult Success(IReadOnlyList<string> members) => new(true, members);
+
+        public static GuildLoadResult Failure() => new(false, Array.Empty<string>());
+    }
 }

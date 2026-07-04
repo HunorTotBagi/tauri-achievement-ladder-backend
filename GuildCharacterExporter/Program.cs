@@ -28,8 +28,11 @@ internal static class Program
 
             var result = await exporter.ExportAsync(cancellationTokenSource.Token);
 
+            Console.WriteLine($"Scanned {result.GuildCount} guilds.");
             Console.WriteLine($"Generated {result.CharacterCount} character rows.");
+            Console.WriteLine($"Guilds needing retry: {result.RetryGuildCount}");
             Console.WriteLine($"GuildCharacters.txt: {result.OutputPath}");
+            Console.WriteLine($"MissingGuildsToScan.txt: {result.RetryOutputPath}");
 
             return 0;
         }
