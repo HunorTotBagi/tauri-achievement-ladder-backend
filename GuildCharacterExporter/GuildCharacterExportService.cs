@@ -78,13 +78,6 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
 
         await WriteRetryGuildsAsync(retryOutputPath, orderedRetryGuilds, cancellationToken);
 
-        if (orderedRetryGuilds.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Could not load {orderedRetryGuilds.Count} of {guilds.Count} guilds after configured retries. " +
-                $"MissingGuildsToScan.txt: {retryOutputPath}. GuildCharacters.txt was not overwritten.");
-        }
-
         var orderedLines = characterLines
             .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
             .ToList();
