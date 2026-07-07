@@ -393,7 +393,6 @@ Stepup
 Storm
 Storm of Vengeance
 Stormwind Raid Club
-Straznicy Erathii
 Strictly Casual
 STUNLØCK SØCIETY
 Sunrise
@@ -1437,7 +1436,6 @@ archangel
 Ascension
 avalanche
 barracuda
-blackjack
 blacklist
 bombastic
 bloodline
@@ -1611,7 +1609,6 @@ My Little Bronies
 Six Seven
 Sigillum Diaboli
 Mudhut Millionaires
-The Ethereal
 Pick and Mix
 Eternal Dreamer
 A Család
@@ -1668,7 +1665,6 @@ Warsongs
 Titanes de Azeroth
 unacceptable behavior
 Death Wings
-VadFarkasok
 Welcome to Quilla
 WoW Renace
 Kopalnioki
@@ -1755,7 +1751,6 @@ BLOODHORDE
 Circle of Hades
 League of Clans
 Midgard
-Djidji Djamu
 Death Hunters
 RÏOT
 Infinite Void
@@ -2448,3 +2443,7 @@ Most Wanted
 GobliFans
 Exotic Fur Trade
 Digital Monster
+Nefritor
+Traficantii de Acadele
+Que foi
+Polski Zwiazek Wedkarski
