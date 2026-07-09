@@ -42,6 +42,7 @@ dotnet run --project GuildCharacterExporter
 ```
 
 `GuildCharacterExporter` reuses the API settings from `AchievementLadder/appsettings.json`.
+If `MissingGuildsToScan.txt` contains retry rows from a previous run, the next run scans only those guilds and merges successful retry members into the existing `GuildCharacters.txt`.
 
 To export the `Endless` guild on `Tauri` into a real Excel workbook with one row per character plus class, race, and profession columns when the character endpoint exposes them, run:
 
