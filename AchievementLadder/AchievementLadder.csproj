@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -10,5 +9,4 @@
   <ItemGroup>
     <Folder Include="Data\GuildCharacters\" />
   </ItemGroup>
-
 </Project>

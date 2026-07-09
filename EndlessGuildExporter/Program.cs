@@ -7,7 +7,10 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "EndlessGuildExporter.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(
+            AppContext.BaseDirectory,
+            "EndlessGuildExporter.csproj"
+        );
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
         var outputPath = ParseOutputPath(args);
@@ -53,8 +56,10 @@ internal static class Program
         for (var index = 0; index < args.Count; index++)
         {
             var argument = args[index];
-            if (!string.Equals(argument, "--output", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(argument, "-o", StringComparison.OrdinalIgnoreCase))
+            if (
+                !string.Equals(argument, "--output", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(argument, "-o", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 continue;
             }
@@ -72,7 +77,11 @@ internal static class Program
 
     private static string ResolveSettingsPath(string projectRoot, string solutionRoot)
     {
-        var sharedSettingsPath = Path.Combine(solutionRoot, "AchievementLadder", "appsettings.json");
+        var sharedSettingsPath = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "appsettings.json"
+        );
         if (File.Exists(sharedSettingsPath))
         {
             return sharedSettingsPath;
@@ -86,6 +95,7 @@ internal static class Program
 
         throw new FileNotFoundException(
             "Could not find appsettings.json in either AchievementLadder or EndlessGuildExporter.",
-            sharedSettingsPath);
+            sharedSettingsPath
+        );
     }
 }

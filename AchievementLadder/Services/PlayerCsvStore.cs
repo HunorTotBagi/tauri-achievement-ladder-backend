@@ -9,7 +9,7 @@ public sealed class PlayerCsvStore
 {
     private static readonly JsonSerializerOptions FrontendJsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly string _outputDirectory;
@@ -19,7 +19,11 @@ public sealed class PlayerCsvStore
         _outputDirectory = Path.GetFullPath(outputDirectory);
     }
 
-    public async Task<string> WriteAsync(IEnumerable<Player> players, string relativePath, CancellationToken ct = default)
+    public async Task<string> WriteAsync(
+        IEnumerable<Player> players,
+        string relativePath,
+        CancellationToken ct = default
+    )
     {
         Directory.CreateDirectory(_outputDirectory);
 
@@ -27,7 +31,16 @@ public sealed class PlayerCsvStore
         var tmpPath = fullPath + ".tmp";
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        await using (
+            var stream = new FileStream(
+                tmpPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                64 * 1024,
+                useAsync: true
+            )
+        )
         await using (var writer = new StreamWriter(stream, utf8))
         {
             await writer.WriteLineAsync(
@@ -40,7 +53,8 @@ public sealed class PlayerCsvStore
 
                 static string Q(string? s) => $"\"{(s ?? string.Empty).Replace("\"", "\"\"")}\"";
 
-                var line = string.Join(",",
+                var line = string.Join(
+                    ",",
                     Q(p.Name),
                     p.Race.ToString(CultureInfo.InvariantCulture),
                     p.Gender.ToString(CultureInfo.InvariantCulture),
@@ -62,7 +76,11 @@ public sealed class PlayerCsvStore
         return fullPath;
     }
 
-    public async Task<string> WriteTextAsync(string relativePath, string content, CancellationToken ct = default)
+    public async Task<string> WriteTextAsync(
+        string relativePath,
+        string content,
+        CancellationToken ct = default
+    )
     {
         Directory.CreateDirectory(_outputDirectory);
 
@@ -70,7 +88,16 @@ public sealed class PlayerCsvStore
         var tmpPath = fullPath + ".tmp";
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024, useAsync: true))
+        await using (
+            var stream = new FileStream(
+                tmpPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                4 * 1024,
+                useAsync: true
+            )
+        )
         await using (var writer = new StreamWriter(stream, utf8))
         {
             ct.ThrowIfCancellationRequested();
@@ -81,14 +108,27 @@ public sealed class PlayerCsvStore
         return fullPath;
     }
 
-    public async Task<string> WriteJsonAsync<T>(string relativePath, T value, CancellationToken ct = default)
+    public async Task<string> WriteJsonAsync<T>(
+        string relativePath,
+        T value,
+        CancellationToken ct = default
+    )
     {
         Directory.CreateDirectory(_outputDirectory);
 
         var fullPath = Path.Combine(_outputDirectory, relativePath);
         var tmpPath = fullPath + ".tmp";
 
-        await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        await using (
+            var stream = new FileStream(
+                tmpPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                64 * 1024,
+                useAsync: true
+            )
+        )
         {
             ct.ThrowIfCancellationRequested();
             await JsonSerializer.SerializeAsync(stream, value, FrontendJsonOptions, ct);

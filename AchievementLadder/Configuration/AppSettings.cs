@@ -14,12 +14,11 @@ public sealed class AppSettings
         }
 
         var json = File.ReadAllText(path);
-        var settings = JsonSerializer.Deserialize<AppSettings>(
-            json,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            }) ?? new AppSettings();
+        var settings =
+            JsonSerializer.Deserialize<AppSettings>(
+                json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            ) ?? new AppSettings();
 
         settings.TauriApi.ApplyEnvironmentOverrides();
         settings.TauriApi.Validate();

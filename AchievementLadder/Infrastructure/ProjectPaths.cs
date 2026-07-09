@@ -17,7 +17,9 @@ public static class ProjectPaths
             directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException($"Could not locate {projectFileName} from {startDirectory}.");
+        throw new DirectoryNotFoundException(
+            $"Could not locate {projectFileName} from {startDirectory}."
+        );
     }
 
     public static string FindSolutionRoot(string startDirectory)
@@ -42,13 +44,15 @@ public static class ProjectPaths
         ArgumentException.ThrowIfNullOrWhiteSpace(solutionRoot);
 
         return Path.GetFullPath(
-            Path.Combine(solutionRoot, "..", "tauriachievements.github.io", "src"));
+            Path.Combine(solutionRoot, "..", "tauriachievements.github.io", "src")
+        );
     }
 
     public static string ResolveCharacterBatchFilePath(
         string solutionRoot,
         string projectRoot,
-        string inputPath)
+        string inputPath
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(solutionRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
@@ -64,28 +68,47 @@ public static class ProjectPaths
                 return absolutePath;
             }
 
-            throw new FileNotFoundException($"Could not find names file: {absolutePath}", absolutePath);
+            throw new FileNotFoundException(
+                $"Could not find names file: {absolutePath}",
+                absolutePath
+            );
         }
 
         var candidates = new List<string>
         {
             Path.GetFullPath(trimmedInputPath, projectRoot),
-            Path.GetFullPath(trimmedInputPath, solutionRoot)
+            Path.GetFullPath(trimmedInputPath, solutionRoot),
         };
 
-        if (!trimmedInputPath.Contains(Path.DirectorySeparatorChar) &&
-            !trimmedInputPath.Contains(Path.AltDirectorySeparatorChar))
+        if (
+            !trimmedInputPath.Contains(Path.DirectorySeparatorChar)
+            && !trimmedInputPath.Contains(Path.AltDirectorySeparatorChar)
+        )
         {
             foreach (var fileName in ExpandBatchFileNames(trimmedInputPath))
             {
-                candidates.Add(Path.Combine(solutionRoot, "AchievementLadder", "Data", "PvPSeasonCharacters", fileName));
-                candidates.Add(Path.Combine(solutionRoot, "AchievementLadder", "Data", "AdditionalCharacters", fileName));
+                candidates.Add(
+                    Path.Combine(
+                        solutionRoot,
+                        "AchievementLadder",
+                        "Data",
+                        "PvPSeasonCharacters",
+                        fileName
+                    )
+                );
+                candidates.Add(
+                    Path.Combine(
+                        solutionRoot,
+                        "AchievementLadder",
+                        "Data",
+                        "AdditionalCharacters",
+                        fileName
+                    )
+                );
             }
         }
 
-        var distinctCandidates = candidates
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var distinctCandidates = candidates.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         foreach (var candidate in distinctCandidates)
         {
@@ -97,7 +120,8 @@ public static class ProjectPaths
 
         throw new FileNotFoundException(
             $"Could not find names file '{trimmedInputPath}'. Checked: {string.Join(", ", distinctCandidates)}",
-            distinctCandidates.FirstOrDefault() ?? trimmedInputPath);
+            distinctCandidates.FirstOrDefault() ?? trimmedInputPath
+        );
     }
 
     private static IEnumerable<string> ExpandBatchFileNames(string inputPath)

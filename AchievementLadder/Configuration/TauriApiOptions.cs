@@ -22,78 +22,105 @@ public sealed class TauriApiOptions
         BaseUrl = FirstNonEmpty(
             Environment.GetEnvironmentVariable("TAURI_API_BASEURL"),
             Environment.GetEnvironmentVariable("TauriApi__BaseUrl"),
-            BaseUrl);
+            BaseUrl
+        );
 
         ApiKey = FirstNonEmpty(
             Environment.GetEnvironmentVariable("TAURI_API_APIKEY"),
             Environment.GetEnvironmentVariable("TauriApi__ApiKey"),
-            ApiKey);
+            ApiKey
+        );
 
         Secret = FirstNonEmpty(
             Environment.GetEnvironmentVariable("TAURI_API_SECRET"),
             Environment.GetEnvironmentVariable("TauriApi__Secret"),
-            Secret);
+            Secret
+        );
 
         MaxConcurrentRequests = FirstPositiveInt(
             Environment.GetEnvironmentVariable("TAURI_API_MAX_CONCURRENT_REQUESTS"),
             Environment.GetEnvironmentVariable("TauriApi__MaxConcurrentRequests"),
             MaxConcurrentRequests,
-            DefaultMaxConcurrentRequests);
+            DefaultMaxConcurrentRequests
+        );
 
         RequestTimeoutSeconds = FirstPositiveInt(
             Environment.GetEnvironmentVariable("TAURI_API_REQUEST_TIMEOUT_SECONDS"),
             Environment.GetEnvironmentVariable("TauriApi__RequestTimeoutSeconds"),
             RequestTimeoutSeconds,
-            DefaultRequestTimeoutSeconds);
+            DefaultRequestTimeoutSeconds
+        );
 
         MaxRetryAttempts = FirstPositiveInt(
             Environment.GetEnvironmentVariable("TAURI_API_MAX_RETRY_ATTEMPTS"),
             Environment.GetEnvironmentVariable("TauriApi__MaxRetryAttempts"),
             MaxRetryAttempts,
-            DefaultMaxRetryAttempts);
+            DefaultMaxRetryAttempts
+        );
 
         InitialRetryDelayMilliseconds = FirstPositiveInt(
             Environment.GetEnvironmentVariable("TAURI_API_INITIAL_RETRY_DELAY_MS"),
             Environment.GetEnvironmentVariable("TauriApi__InitialRetryDelayMilliseconds"),
             InitialRetryDelayMilliseconds,
-            DefaultInitialRetryDelayMilliseconds);
+            DefaultInitialRetryDelayMilliseconds
+        );
     }
 
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(BaseUrl))
         {
-            throw new InvalidOperationException("Missing TauriApi.BaseUrl in appsettings.json or environment variables.");
+            throw new InvalidOperationException(
+                "Missing TauriApi.BaseUrl in appsettings.json or environment variables."
+            );
         }
 
-        if (string.IsNullOrWhiteSpace(ApiKey) || ApiKey.Contains(PlaceholderApiKey, StringComparison.OrdinalIgnoreCase))
+        if (
+            string.IsNullOrWhiteSpace(ApiKey)
+            || ApiKey.Contains(PlaceholderApiKey, StringComparison.OrdinalIgnoreCase)
+        )
         {
-            throw new InvalidOperationException("Missing a real TauriApi.ApiKey. Update appsettings.json or set TAURI_API_APIKEY.");
+            throw new InvalidOperationException(
+                "Missing a real TauriApi.ApiKey. Update appsettings.json or set TAURI_API_APIKEY."
+            );
         }
 
-        if (string.IsNullOrWhiteSpace(Secret) || Secret.Contains(PlaceholderSecret, StringComparison.OrdinalIgnoreCase))
+        if (
+            string.IsNullOrWhiteSpace(Secret)
+            || Secret.Contains(PlaceholderSecret, StringComparison.OrdinalIgnoreCase)
+        )
         {
-            throw new InvalidOperationException("Missing a real TauriApi.Secret. Update appsettings.json or set TAURI_API_SECRET.");
+            throw new InvalidOperationException(
+                "Missing a real TauriApi.Secret. Update appsettings.json or set TAURI_API_SECRET."
+            );
         }
 
         if (MaxConcurrentRequests <= 0)
         {
-            throw new InvalidOperationException("TauriApi.MaxConcurrentRequests must be greater than zero.");
+            throw new InvalidOperationException(
+                "TauriApi.MaxConcurrentRequests must be greater than zero."
+            );
         }
 
         if (RequestTimeoutSeconds <= 0)
         {
-            throw new InvalidOperationException("TauriApi.RequestTimeoutSeconds must be greater than zero.");
+            throw new InvalidOperationException(
+                "TauriApi.RequestTimeoutSeconds must be greater than zero."
+            );
         }
 
         if (MaxRetryAttempts <= 0)
         {
-            throw new InvalidOperationException("TauriApi.MaxRetryAttempts must be greater than zero.");
+            throw new InvalidOperationException(
+                "TauriApi.MaxRetryAttempts must be greater than zero."
+            );
         }
 
         if (InitialRetryDelayMilliseconds <= 0)
         {
-            throw new InvalidOperationException("TauriApi.InitialRetryDelayMilliseconds must be greater than zero.");
+            throw new InvalidOperationException(
+                "TauriApi.InitialRetryDelayMilliseconds must be greater than zero."
+            );
         }
     }
 
@@ -114,13 +141,16 @@ public sealed class TauriApiOptions
         string? environmentValue,
         string? configurationValue,
         int currentValue,
-        int fallbackValue)
+        int fallbackValue
+    )
     {
         foreach (var value in new[] { environmentValue, configurationValue })
         {
-            if (!string.IsNullOrWhiteSpace(value) &&
-                int.TryParse(value.Trim(), out var parsedValue) &&
-                parsedValue > 0)
+            if (
+                !string.IsNullOrWhiteSpace(value)
+                && int.TryParse(value.Trim(), out var parsedValue)
+                && parsedValue > 0
+            )
             {
                 return parsedValue;
             }

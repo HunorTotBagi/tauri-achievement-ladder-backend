@@ -8,9 +8,11 @@ public static class ItemAppearanceCounter
     {
         appearanceCount = 0;
 
-        if (!response.TryGetProperty("itemappearances", out var itemAppearances) ||
-            !itemAppearances.TryGetProperty("owned", out var owned) ||
-            owned.ValueKind != JsonValueKind.Array)
+        if (
+            !response.TryGetProperty("itemappearances", out var itemAppearances)
+            || !itemAppearances.TryGetProperty("owned", out var owned)
+            || owned.ValueKind != JsonValueKind.Array
+        )
         {
             return false;
         }

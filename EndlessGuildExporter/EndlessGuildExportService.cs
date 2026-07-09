@@ -29,10 +29,12 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         "prof_1",
         "prof_2",
         "primaryProfession1",
-        "primaryProfession2"
+        "primaryProfession2",
     ];
 
-    private static readonly HashSet<string> PrimaryProfessionNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> PrimaryProfessionNames = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         "Alchemy",
         "Blacksmithing",
@@ -44,7 +46,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         "Leatherworking",
         "Mining",
         "Skinning",
-        "Tailoring"
+        "Tailoring",
     };
 
     private static readonly string[] KnownProfessionNames =
@@ -63,10 +65,13 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         "Leatherworking",
         "Mining",
         "Skinning",
-        "Tailoring"
+        "Tailoring",
     ];
 
-    private static readonly IReadOnlyDictionary<int, string> ClassNames = new Dictionary<int, string>
+    private static readonly IReadOnlyDictionary<int, string> ClassNames = new Dictionary<
+        int,
+        string
+    >
     {
         [1] = "Warrior",
         [2] = "Paladin",
@@ -79,24 +84,25 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         [9] = "Warlock",
         [10] = "Monk",
         [11] = "Druid",
-        [12] = "Demon Hunter"
+        [12] = "Demon Hunter",
     };
 
-    private static readonly IReadOnlyDictionary<string, string> ClassColorHexByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Death Knight"] = "C41E3A",
-        ["Demon Hunter"] = "A330C9",
-        ["Druid"] = "FF7C0A",
-        ["Hunter"] = "AAD372",
-        ["Mage"] = "3FC7EB",
-        ["Monk"] = "00FF98",
-        ["Paladin"] = "F48CBA",
-        ["Priest"] = "FFFFFF",
-        ["Rogue"] = "FFF468",
-        ["Shaman"] = "0070DD",
-        ["Warlock"] = "8788EE",
-        ["Warrior"] = "C69B6D"
-    };
+    private static readonly IReadOnlyDictionary<string, string> ClassColorHexByName =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Death Knight"] = "C41E3A",
+            ["Demon Hunter"] = "A330C9",
+            ["Druid"] = "FF7C0A",
+            ["Hunter"] = "AAD372",
+            ["Mage"] = "3FC7EB",
+            ["Monk"] = "00FF98",
+            ["Paladin"] = "F48CBA",
+            ["Priest"] = "FFFFFF",
+            ["Rogue"] = "FFF468",
+            ["Shaman"] = "0070DD",
+            ["Warlock"] = "8788EE",
+            ["Warrior"] = "C69B6D",
+        };
 
     private static readonly IReadOnlyDictionary<int, string> RaceNames = new Dictionary<int, string>
     {
@@ -120,10 +126,13 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         [29] = "Void Elf",
         [30] = "Lightforged Draenei",
         [34] = "Dark Iron Dwarf",
-        [36] = "Mag'har Orc"
+        [36] = "Mag'har Orc",
     };
 
-    private static readonly IReadOnlyDictionary<int, string> ProfessionNamesById = new Dictionary<int, string>
+    private static readonly IReadOnlyDictionary<int, string> ProfessionNamesById = new Dictionary<
+        int,
+        string
+    >
     {
         [129] = "First Aid",
         [164] = "Blacksmithing",
@@ -139,20 +148,34 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         [393] = "Skinning",
         [755] = "Jewelcrafting",
         [773] = "Inscription",
-        [794] = "Archaeology"
+        [794] = "Archaeology",
     };
 
-    private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> ClassCellStyles = BuildClassCellStyles();
-    private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> WorkbookCellStyles = BuildWorkbookCellStyles();
+    private static readonly IReadOnlyDictionary<
+        string,
+        SimpleXlsxWriter.CellStyle
+    > ClassCellStyles = BuildClassCellStyles();
+    private static readonly IReadOnlyDictionary<
+        string,
+        SimpleXlsxWriter.CellStyle
+    > WorkbookCellStyles = BuildWorkbookCellStyles();
 
     private readonly string _projectRoot = Path.GetFullPath(projectRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
-    public async Task<EndlessGuildExportResult> ExportAsync(string? requestedOutputPath, CancellationToken cancellationToken)
+    public async Task<EndlessGuildExportResult> ExportAsync(
+        string? requestedOutputPath,
+        CancellationToken cancellationToken
+    )
     {
         using var client = new HttpClient();
         var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
-        var guildMembers = await LoadGuildMembersAsync(client, apiUrl, _apiOptions.Secret, cancellationToken);
+        var guildMembers = await LoadGuildMembersAsync(
+            client,
+            apiUrl,
+            _apiOptions.Secret,
+            cancellationToken
+        );
 
         Console.WriteLine($"Found {guildMembers.Count} members in '{TargetGuildName}'.");
         Console.WriteLine("Fetching character-sheet details...");
@@ -165,7 +188,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = MaxDegreeOfParallelism,
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
             },
             async (member, ct) =>
             {
@@ -177,10 +200,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
                 {
                     Console.WriteLine($"Loaded {processed}/{guildMembers.Count} members");
                 }
-            });
+            }
+        );
 
-        var orderedRows = rows
-            .OrderBy(row => row.GuildRank)
+        var orderedRows = rows.OrderBy(row => row.GuildRank)
             .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Level)
             .ToList();
@@ -198,40 +221,43 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             sheetRows,
             WorkbookCellStyles,
             dataValidations,
-            cancellationToken);
+            cancellationToken
+        );
 
         var characterSheetCount = orderedRows.Count(row => row.CharacterSheetFetched);
         return new EndlessGuildExportResult(
             orderedRows.Count,
             characterSheetCount,
             orderedRows.Count - characterSheetCount,
-            outputPath);
+            outputPath
+        );
     }
 
     private async Task<List<GuildMemberRecord>> LoadGuildMembersAsync(
         HttpClient client,
         string apiUrl,
         string secret,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var response = await FetchResponseElementAsync(
             client,
             apiUrl,
             secret,
             "guild-info",
-            new
-            {
-                r = TargetApiRealm,
-                gn = TargetGuildName
-            },
-            cancellationToken);
+            new { r = TargetApiRealm, gn = TargetGuildName },
+            cancellationToken
+        );
 
-        if (response is null ||
-            !response.Value.TryGetProperty("guildList", out var guildListElement) ||
-            guildListElement.ValueKind != JsonValueKind.Object)
+        if (
+            response is null
+            || !response.Value.TryGetProperty("guildList", out var guildListElement)
+            || guildListElement.ValueKind != JsonValueKind.Object
+        )
         {
             throw new InvalidOperationException(
-                $"Guild '{TargetGuildName}' on {TargetDisplayRealm} was not found or returned no members.");
+                $"Guild '{TargetGuildName}' on {TargetDisplayRealm} was not found or returned no members."
+            );
         }
 
         return guildListElement
@@ -243,7 +269,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
                 ClassId: ReadInt(member, "class"),
                 RaceId: ReadInt(member, "race"),
                 GuildRank: ReadInt(member, "rank"),
-                GuildRankName: ReadString(member, "rank_name").Trim()))
+                GuildRankName: ReadString(member, "rank_name").Trim()
+            ))
             .Where(member => !string.IsNullOrWhiteSpace(member.Name))
             .OrderBy(member => member.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -254,7 +281,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         string apiUrl,
         string secret,
         GuildMemberRecord member,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (member.Name.Contains('#', StringComparison.Ordinal))
         {
@@ -268,16 +296,16 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
                 apiUrl,
                 secret,
                 "character-sheet",
-                new
-                {
-                    r = TargetApiRealm,
-                    n = member.Name
-                },
-                cancellationToken);
+                new { r = TargetApiRealm, n = member.Name },
+                cancellationToken
+            );
 
             if (response is null)
             {
-                return CreateFallbackRow(member, "guild-info fallback: character-sheet lookup failed");
+                return CreateFallbackRow(
+                    member,
+                    "guild-info fallback: character-sheet lookup failed"
+                );
             }
 
             var responseElement = response.Value;
@@ -304,7 +332,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
                 Status: professions.FoundAny
                     ? "character-sheet"
                     : "character-sheet (no profession fields detected)",
-                CharacterSheetFetched: true);
+                CharacterSheetFetched: true
+            );
         }
         catch (OperationCanceledException)
         {
@@ -335,7 +364,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             HonorableKills: 0,
             Faction: string.Empty,
             Status: status,
-            CharacterSheetFetched: false);
+            CharacterSheetFetched: false
+        );
     }
 
     private static ProfessionPair ExtractProfessions(JsonElement responseElement)
@@ -344,8 +374,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
         foreach (var propertyName in DirectProfessionPropertyNames)
         {
-            if (TryGetPropertyIgnoreCase(responseElement, propertyName, out var propertyValue) &&
-                TryResolveProfessionName(propertyValue, out var professionName))
+            if (
+                TryGetPropertyIgnoreCase(responseElement, propertyName, out var propertyValue)
+                && TryResolveProfessionName(propertyValue, out var professionName)
+            )
             {
                 candidates.Add(professionName);
             }
@@ -370,17 +402,20 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             .Where(candidate => PrimaryProfessionNames.Contains(candidate))
             .ToList();
 
-        var selected = primaryProfessions.Count > 0
-            ? primaryProfessions
-            : uniqueCandidates;
+        var selected = primaryProfessions.Count > 0 ? primaryProfessions : uniqueCandidates;
 
         return new ProfessionPair(
             selected.ElementAtOrDefault(0) ?? string.Empty,
             selected.ElementAtOrDefault(1) ?? string.Empty,
-            uniqueCandidates.Count > 0);
+            uniqueCandidates.Count > 0
+        );
     }
 
-    private static void CollectProfessionCandidates(JsonElement element, List<string> candidates, int depth)
+    private static void CollectProfessionCandidates(
+        JsonElement element,
+        List<string> candidates,
+        int depth
+    )
     {
         if (depth > 6)
         {
@@ -397,7 +432,13 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
                 foreach (var property in element.EnumerateObject())
                 {
-                    if (TryResolveProfessionFromProperty(property.Name, property.Value, out professionName))
+                    if (
+                        TryResolveProfessionFromProperty(
+                            property.Name,
+                            property.Value,
+                            out professionName
+                        )
+                    )
                     {
                         candidates.Add(professionName);
                     }
@@ -426,7 +467,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         }
     }
 
-    private static bool TryResolveProfessionFromObject(JsonElement element, out string professionName)
+    private static bool TryResolveProfessionFromObject(
+        JsonElement element,
+        out string professionName
+    )
     {
         professionName = string.Empty;
 
@@ -466,8 +510,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(candidateName) &&
-            TryNormalizeProfessionName(candidateName!, out professionName))
+        if (
+            !string.IsNullOrWhiteSpace(candidateName)
+            && TryNormalizeProfessionName(candidateName!, out professionName)
+        )
         {
             return true;
         }
@@ -481,7 +527,11 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         return false;
     }
 
-    private static bool TryResolveProfessionFromProperty(string propertyName, JsonElement propertyValue, out string professionName)
+    private static bool TryResolveProfessionFromProperty(
+        string propertyName,
+        JsonElement propertyValue,
+        out string professionName
+    )
     {
         professionName = string.Empty;
 
@@ -500,10 +550,18 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         switch (element.ValueKind)
         {
             case JsonValueKind.String:
-                return TryNormalizeProfessionName(element.GetString() ?? string.Empty, out professionName);
+                return TryNormalizeProfessionName(
+                    element.GetString() ?? string.Empty,
+                    out professionName
+                );
 
             case JsonValueKind.Number:
-                if (ProfessionNamesById.TryGetValue(ReadIntValue(element), out var mappedProfessionName))
+                if (
+                    ProfessionNamesById.TryGetValue(
+                        ReadIntValue(element),
+                        out var mappedProfessionName
+                    )
+                )
                 {
                     professionName = mappedProfessionName;
                     return true;
@@ -529,8 +587,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
         foreach (var knownProfession in KnownProfessionNames)
         {
-            if (string.Equals(value, knownProfession, StringComparison.OrdinalIgnoreCase) ||
-                value.Contains(knownProfession, StringComparison.OrdinalIgnoreCase))
+            if (
+                string.Equals(value, knownProfession, StringComparison.OrdinalIgnoreCase)
+                || value.Contains(knownProfession, StringComparison.OrdinalIgnoreCase)
+            )
             {
                 professionName = knownProfession;
                 return true;
@@ -542,11 +602,11 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
     private static bool ContainsProfessionKeyword(string value)
     {
-        return value.Contains("prof", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("skill", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("trade", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("primary", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("secondary", StringComparison.OrdinalIgnoreCase);
+        return value.Contains("prof", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("skill", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("trade", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("primary", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("secondary", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<JsonElement?> FetchResponseElementAsync(
@@ -555,19 +615,21 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         string secret,
         string endpoint,
         object parameters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var body = new
         {
             secret,
             url = endpoint,
-            @params = parameters
+            @params = parameters,
         };
 
         using var content = new StringContent(
             JsonSerializer.Serialize(body),
             Encoding.UTF8,
-            "application/json");
+            "application/json"
+        );
 
         using var response = await client.PostAsync(apiUrl, content, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -576,7 +638,10 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        using var document = await JsonDocument.ParseAsync(
+            stream,
+            cancellationToken: cancellationToken
+        );
 
         if (!document.RootElement.TryGetProperty("response", out var responseElement))
         {
@@ -609,9 +674,13 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     private static IReadOnlyList<IReadOnlyList<SimpleXlsxWriter.CellData>> BuildWorksheetRows(
         IReadOnlyList<ExportRow> orderedRows,
         IReadOnlyList<string> classStatisticNames,
-        IReadOnlyList<RankFilterOption> rankFilters)
+        IReadOnlyList<RankFilterOption> rankFilters
+    )
     {
-        var totalRowCount = Math.Max(orderedRows.Count, Math.Max(classStatisticNames.Count, rankFilters.Count));
+        var totalRowCount = Math.Max(
+            orderedRows.Count,
+            Math.Max(classStatisticNames.Count, rankFilters.Count)
+        );
         var dataEndRow = orderedRows.Count + 1;
         var rankFilterEndRow = rankFilters.Count + 1;
         var sheetRows = new List<IReadOnlyList<SimpleXlsxWriter.CellData>>(totalRowCount);
@@ -644,12 +713,12 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             if (index < classStatisticNames.Count)
             {
                 var className = classStatisticNames[index];
-                var classStyleKey = ClassCellStyles.ContainsKey(className)
-                    ? className
-                    : null;
+                var classStyleKey = ClassCellStyles.ContainsKey(className) ? className : null;
 
                 row.Add(new(className, classStyleKey));
-                row.Add(BuildClassCountFormulaCell(className, dataEndRow, rankFilterEndRow, orderedRows));
+                row.Add(
+                    BuildClassCountFormulaCell(className, dataEndRow, rankFilterEndRow, orderedRows)
+                );
             }
             else
             {
@@ -697,14 +766,16 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         return
         [
             .. ClassColorHexByName.Keys,
-            .. ClassNames.Values
-                .Where(className => !ClassColorHexByName.ContainsKey(className))
+            .. ClassNames
+                .Values.Where(className => !ClassColorHexByName.ContainsKey(className))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(className => className, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(className => className, StringComparer.OrdinalIgnoreCase),
         ];
     }
 
-    private static IReadOnlyList<RankFilterOption> BuildRankFilters(IReadOnlyList<ExportRow> orderedRows)
+    private static IReadOnlyList<RankFilterOption> BuildRankFilters(
+        IReadOnlyList<ExportRow> orderedRows
+    )
     {
         return orderedRows
             .Select(row => new RankFilterOption(row.GuildRank, row.GuildRankName))
@@ -714,7 +785,9 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             .ToList();
     }
 
-    private static IReadOnlyList<SimpleXlsxWriter.DataValidation> BuildDataValidations(int rankFilterCount)
+    private static IReadOnlyList<SimpleXlsxWriter.DataValidation> BuildDataValidations(
+        int rankFilterCount
+    )
     {
         if (rankFilterCount <= 0)
         {
@@ -726,7 +799,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             new SimpleXlsxWriter.DataValidation(
                 Sqref: $"M2:M{rankFilterCount + 1}",
                 Formula1: $"\"{CheckedSymbol},{UncheckedSymbol}\"",
-                AllowBlank: false)
+                AllowBlank: false
+            ),
         ];
     }
 
@@ -734,16 +808,20 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         string className,
         int dataEndRow,
         int rankFilterEndRow,
-        IReadOnlyList<ExportRow> orderedRows)
+        IReadOnlyList<ExportRow> orderedRows
+    )
     {
         var formula =
             $"SUMPRODUCT(--($B$2:$B${dataEndRow}=\"{EscapeFormulaString(className)}\"),--(COUNTIFS($K$2:$K${rankFilterEndRow},$F$2:$F${dataEndRow},$M$2:$M${rankFilterEndRow},\"{CheckedSymbol}\")>0))";
-        var cachedValue = orderedRows.Count(row => string.Equals(row.ClassName, className, StringComparison.OrdinalIgnoreCase));
+        var cachedValue = orderedRows.Count(row =>
+            string.Equals(row.ClassName, className, StringComparison.OrdinalIgnoreCase)
+        );
 
         return new SimpleXlsxWriter.CellData(
             cachedValue.ToString(),
             ValueKind: SimpleXlsxWriter.CellValueKind.FormulaNumber,
-            Formula: formula);
+            Formula: formula
+        );
     }
 
     private static IEnumerable<SimpleXlsxWriter.CellData> CreateEmptyCells(int count)
@@ -761,22 +839,23 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
     private static string LookupDisplayName(IReadOnlyDictionary<int, string> map, int id)
     {
-        return map.TryGetValue(id, out var name)
-            ? name
-            : id > 0
-                ? $"Unknown ({id})"
-                : string.Empty;
+        return map.TryGetValue(id, out var name) ? name
+            : id > 0 ? $"Unknown ({id})"
+            : string.Empty;
     }
 
     private static IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> BuildClassCellStyles()
     {
-        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(StringComparer.OrdinalIgnoreCase);
+        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(
+            StringComparer.OrdinalIgnoreCase
+        );
 
         foreach (var classColor in ClassColorHexByName)
         {
             styles[classColor.Key] = new SimpleXlsxWriter.CellStyle(
                 FillColorHex: classColor.Value,
-                FontColorHex: "000000");
+                FontColorHex: "000000"
+            );
         }
 
         return styles;
@@ -784,12 +863,15 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
     private static IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> BuildWorkbookCellStyles()
     {
-        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(StringComparer.OrdinalIgnoreCase)
+        var styles = new Dictionary<string, SimpleXlsxWriter.CellStyle>(
+            StringComparer.OrdinalIgnoreCase
+        )
         {
             [HeaderStyleKey] = new SimpleXlsxWriter.CellStyle(
                 FillColorHex: "C0C0C0",
                 FontColorHex: "000000",
-                IsBold: true)
+                IsBold: true
+            ),
         };
 
         foreach (var classStyle in ClassCellStyles)
@@ -800,7 +882,11 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         return styles;
     }
 
-    private static bool TryGetPropertyIgnoreCase(JsonElement parent, string propertyName, out JsonElement value)
+    private static bool TryGetPropertyIgnoreCase(
+        JsonElement parent,
+        string propertyName,
+        out JsonElement value
+    )
     {
         foreach (var property in parent.EnumerateObject())
         {
@@ -829,16 +915,22 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             return intValue;
         }
 
-        return value.ValueKind == JsonValueKind.String &&
-               int.TryParse(value.GetString(), out intValue)
+        return
+            value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out intValue)
             ? intValue
             : defaultValue;
     }
 
-    private static string ReadString(JsonElement parent, string propertyName, string defaultValue = "")
+    private static string ReadString(
+        JsonElement parent,
+        string propertyName,
+        string defaultValue = ""
+    )
     {
-        if (!parent.TryGetProperty(propertyName, out var property) ||
-            property.ValueKind != JsonValueKind.String)
+        if (
+            !parent.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.String
+        )
         {
             return defaultValue;
         }
@@ -858,16 +950,16 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         int ClassId,
         int RaceId,
         int GuildRank,
-        string GuildRankName);
+        string GuildRankName
+    );
 
-    private readonly record struct RankFilterOption(
-        int RankId,
-        string RankName);
+    private readonly record struct RankFilterOption(int RankId, string RankName);
 
     private readonly record struct ProfessionPair(
         string Profession1,
         string Profession2,
-        bool FoundAny);
+        bool FoundAny
+    );
 
     private readonly record struct ExportRow(
         string Name,
@@ -886,5 +978,6 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         int HonorableKills,
         string Faction,
         string Status,
-        bool CharacterSheetFetched);
+        bool CharacterSheetFetched
+    );
 }

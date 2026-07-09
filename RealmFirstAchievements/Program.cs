@@ -8,7 +8,14 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (!RealmFirstAchievementExportOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
+        if (
+            !RealmFirstAchievementExportOptions.TryParse(
+                args,
+                out var options,
+                out var errorMessage,
+                out var showHelp
+            )
+        )
         {
             if (!string.IsNullOrWhiteSpace(errorMessage))
             {
@@ -20,10 +27,17 @@ internal static class Program
             return showHelp ? 0 : 1;
         }
 
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "RealmFirstAchievements.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(
+            AppContext.BaseDirectory,
+            "RealmFirstAchievements.csproj"
+        );
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
-        var achievementLadderDataDirectory = Path.Combine(solutionRoot, "AchievementLadder", "Data");
+        var achievementLadderDataDirectory = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "Data"
+        );
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
@@ -43,7 +57,8 @@ internal static class Program
 
             var exporter = new RealmFirstAchievementExportService(
                 achievementLadderDataDirectory,
-                settings.TauriApi);
+                settings.TauriApi
+            );
 
             Console.WriteLine("Exporting achievement-firsts for Evermoon, Tauri, and WoD...");
             Console.WriteLine($"API parallelism: {settings.TauriApi.MaxConcurrentRequests}");
@@ -70,7 +85,11 @@ internal static class Program
 
     private static string ResolveSettingsPath(string projectRoot, string solutionRoot)
     {
-        var sharedSettingsPath = Path.Combine(solutionRoot, "AchievementLadder", "appsettings.json");
+        var sharedSettingsPath = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "appsettings.json"
+        );
         if (File.Exists(sharedSettingsPath))
         {
             return sharedSettingsPath;
@@ -84,6 +103,7 @@ internal static class Program
 
         throw new FileNotFoundException(
             "Could not find appsettings.json in either AchievementLadder or RealmFirstAchievements.",
-            sharedSettingsPath);
+            sharedSettingsPath
+        );
     }
 }

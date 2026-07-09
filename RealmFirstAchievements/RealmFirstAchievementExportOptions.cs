@@ -4,23 +4,24 @@ public sealed record RealmFirstAchievementExportOptions(int? Parallelism)
 {
     public static string UsageText =>
         """
-        RealmFirstAchievements - exports valid realm-first characters for Evermoon, Tauri, and WoD.
+            RealmFirstAchievements - exports valid realm-first characters for Evermoon, Tauri, and WoD.
 
-        Usage:
-          dotnet run --project RealmFirstAchievements
-          dotnet run --project RealmFirstAchievements -- --parallelism 30
+            Usage:
+              dotnet run --project RealmFirstAchievements
+              dotnet run --project RealmFirstAchievements -- --parallelism 30
 
-        Options:
-          --parallelism <n>  Optional API request parallelism for this run.
-                             Defaults to TauriApi.MaxConcurrentRequests from configuration.
-          --help            Show this help text.
-        """;
+            Options:
+              --parallelism <n>  Optional API request parallelism for this run.
+                                 Defaults to TauriApi.MaxConcurrentRequests from configuration.
+              --help            Show this help text.
+            """;
 
     public static bool TryParse(
         string[] args,
         out RealmFirstAchievementExportOptions? options,
         out string? errorMessage,
-        out bool showHelp)
+        out bool showHelp
+    )
     {
         options = null;
         errorMessage = null;
@@ -41,7 +42,15 @@ public sealed record RealmFirstAchievementExportOptions(int? Parallelism)
                     return false;
 
                 case "--parallelism":
-                    if (!TryReadValue(args, ref index, argument, out var rawParallelism, out errorMessage))
+                    if (
+                        !TryReadValue(
+                            args,
+                            ref index,
+                            argument,
+                            out var rawParallelism,
+                            out errorMessage
+                        )
+                    )
                     {
                         return false;
                     }
@@ -72,7 +81,8 @@ public sealed record RealmFirstAchievementExportOptions(int? Parallelism)
         ref int index,
         string optionName,
         out string? value,
-        out string? errorMessage)
+        out string? errorMessage
+    )
     {
         value = null;
         errorMessage = null;
@@ -90,9 +100,9 @@ public sealed record RealmFirstAchievementExportOptions(int? Parallelism)
     private static bool TryParsePositiveInt(string value, out int result)
     {
         result = 0;
-        return !string.IsNullOrWhiteSpace(value) &&
-               value.All(char.IsDigit) &&
-               int.TryParse(value, out result) &&
-               result > 0;
+        return !string.IsNullOrWhiteSpace(value)
+            && value.All(char.IsDigit)
+            && int.TryParse(value, out result)
+            && result > 0;
     }
 }

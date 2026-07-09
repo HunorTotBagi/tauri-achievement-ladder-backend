@@ -7,7 +7,10 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "GuildCharacterExporter.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(
+            AppContext.BaseDirectory,
+            "GuildCharacterExporter.csproj"
+        );
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
 
@@ -55,7 +58,11 @@ internal static class Program
 
     private static string ResolveSettingsPath(string projectRoot, string solutionRoot)
     {
-        var sharedSettingsPath = Path.Combine(solutionRoot, "AchievementLadder", "appsettings.json");
+        var sharedSettingsPath = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "appsettings.json"
+        );
         if (File.Exists(sharedSettingsPath))
         {
             return sharedSettingsPath;
@@ -69,6 +76,7 @@ internal static class Program
 
         throw new FileNotFoundException(
             "Could not find appsettings.json in either AchievementLadder or GuildCharacterExporter.",
-            sharedSettingsPath);
+            sharedSettingsPath
+        );
     }
 }

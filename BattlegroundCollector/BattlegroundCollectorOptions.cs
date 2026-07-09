@@ -5,44 +5,50 @@ public sealed record BattlegroundCollectorOptions(
     string ApiRealm,
     string DisplayRealm,
     string? OutputPath,
-    string? StatePath)
+    string? StatePath
+)
 {
-    private static readonly (string[] Aliases, string ApiRealm, string DisplayRealm)[] RealmAliases =
+    private static readonly (
+        string[] Aliases,
+        string ApiRealm,
+        string DisplayRealm
+    )[] RealmAliases =
     [
         (["evermoon", "[EN] Evermoon"], "[EN] Evermoon", "Evermoon"),
         (["tauri", "[HU] Tauri WoW Server"], "[HU] Tauri WoW Server", "Tauri"),
-        (["wod", "[HU] Warriors of Darkness"], "[HU] Warriors of Darkness", "WoD")
+        (["wod", "[HU] Warriors of Darkness"], "[HU] Warriors of Darkness", "WoD"),
     ];
 
     public static string UsageText =>
         """
-        BattlegroundCollector - collects battleground match metadata into JSON.
+            BattlegroundCollector - collects battleground match metadata into JSON.
 
-        Usage:
-          dotnet run --project BattlegroundCollector -- <startMatchId> [realm]
-          dotnet run --project BattlegroundCollector
-          dotnet run --project BattlegroundCollector -- --start <startMatchId> --realm evermoon
+            Usage:
+              dotnet run --project BattlegroundCollector -- <startMatchId> [realm]
+              dotnet run --project BattlegroundCollector
+              dotnet run --project BattlegroundCollector -- --start <startMatchId> --realm evermoon
 
-        Arguments:
-          startMatchId   Optional after the first run. The first match id to try.
-                         If omitted, the saved state file decides where to resume.
-          realm          Optional realm used to query matches. Defaults to evermoon.
-                         Accepts: evermoon, tauri, wod, or a full API realm name.
+            Arguments:
+              startMatchId   Optional after the first run. The first match id to try.
+                             If omitted, the saved state file decides where to resume.
+              realm          Optional realm used to query matches. Defaults to evermoon.
+                             Accepts: evermoon, tauri, wod, or a full API realm name.
 
-        Options:
-          --start <id>   Same as the positional startMatchId.
-          --realm <name> Same as the positional realm.
-          --output <path>
-                         Optional JSON output path. Relative paths are resolved from BattlegroundCollector.
-          --state <path> Optional resume-state JSON path. Relative paths are resolved from BattlegroundCollector.
-          --help         Show this help text.
-        """;
+            Options:
+              --start <id>   Same as the positional startMatchId.
+              --realm <name> Same as the positional realm.
+              --output <path>
+                             Optional JSON output path. Relative paths are resolved from BattlegroundCollector.
+              --state <path> Optional resume-state JSON path. Relative paths are resolved from BattlegroundCollector.
+              --help         Show this help text.
+            """;
 
     public static bool TryParse(
         string[] args,
         out BattlegroundCollectorOptions? options,
         out string? errorMessage,
-        out bool showHelp)
+        out bool showHelp
+    )
     {
         options = null;
         errorMessage = null;
@@ -68,7 +74,9 @@ public sealed record BattlegroundCollectorOptions(
 
                 case "--start":
                 case "--start-match-id":
-                    if (!TryReadValue(args, ref index, argument, out var rawStart, out errorMessage))
+                    if (
+                        !TryReadValue(args, ref index, argument, out var rawStart, out errorMessage)
+                    )
                     {
                         return false;
                     }
@@ -83,7 +91,9 @@ public sealed record BattlegroundCollectorOptions(
                     break;
 
                 case "--realm":
-                    if (!TryReadValue(args, ref index, argument, out var rawRealm, out errorMessage))
+                    if (
+                        !TryReadValue(args, ref index, argument, out var rawRealm, out errorMessage)
+                    )
                     {
                         return false;
                     }
@@ -135,7 +145,8 @@ public sealed record BattlegroundCollectorOptions(
 
         if (!TryResolveRealm(realmInput, out var apiRealm, out var displayRealm))
         {
-            errorMessage = $"Unknown realm '{realmInput}'. Valid values: evermoon, tauri, wod, or a full API realm name.";
+            errorMessage =
+                $"Unknown realm '{realmInput}'. Valid values: evermoon, tauri, wod, or a full API realm name.";
             return false;
         }
 
@@ -144,7 +155,8 @@ public sealed record BattlegroundCollectorOptions(
             apiRealm,
             displayRealm,
             outputPath?.Trim(),
-            statePath?.Trim());
+            statePath?.Trim()
+        );
 
         return true;
     }
@@ -154,7 +166,8 @@ public sealed record BattlegroundCollectorOptions(
         ref int index,
         string optionName,
         out string? value,
-        out string? errorMessage)
+        out string? errorMessage
+    )
     {
         value = null;
         errorMessage = null;
@@ -172,17 +185,25 @@ public sealed record BattlegroundCollectorOptions(
     private static bool TryParseMatchId(string value, out int matchId)
     {
         matchId = 0;
-        return !string.IsNullOrWhiteSpace(value) &&
-               value.All(char.IsDigit) &&
-               int.TryParse(value, out matchId) &&
-               matchId > 0;
+        return !string.IsNullOrWhiteSpace(value)
+            && value.All(char.IsDigit)
+            && int.TryParse(value, out matchId)
+            && matchId > 0;
     }
 
-    private static bool TryResolveRealm(string realmInput, out string apiRealm, out string displayRealm)
+    private static bool TryResolveRealm(
+        string realmInput,
+        out string apiRealm,
+        out string displayRealm
+    )
     {
         foreach (var (aliases, mappedApiRealm, mappedDisplayRealm) in RealmAliases)
         {
-            if (aliases.Any(alias => string.Equals(alias, realmInput, StringComparison.OrdinalIgnoreCase)))
+            if (
+                aliases.Any(alias =>
+                    string.Equals(alias, realmInput, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             {
                 apiRealm = mappedApiRealm;
                 displayRealm = mappedDisplayRealm;

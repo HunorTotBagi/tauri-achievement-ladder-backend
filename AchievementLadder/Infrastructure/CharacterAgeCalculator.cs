@@ -50,6 +50,7 @@ public static class CharacterAgeCalculator
             "{0} years {1} months {2} days",
             years,
             months,
-            days);
+            days
+        );
     }
 }

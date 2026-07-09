@@ -1,13 +1,16 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 using AchievementLadder.Configuration;
 using AchievementLadder.Infrastructure;
 using RealmFirstAchievements.Models;
 
 namespace RealmFirstAchievements.Services;
 
-public sealed class RealmFirstAchievementExportService(string achievementLadderDataDirectory, TauriApiOptions apiOptions)
+public sealed class RealmFirstAchievementExportService(
+    string achievementLadderDataDirectory,
+    TauriApiOptions apiOptions
+)
 {
     private const string Endpoint = "achievement-firsts";
     private const string CharacterSheetEndpoint = "character-sheet";
@@ -17,13 +20,17 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
     [
         new("Evermoon", "[EN] Evermoon"),
         new("Tauri", "[HU] Tauri WoW Server"),
-        new("WoD", "[HU] Warriors of Darkness")
+        new("WoD", "[HU] Warriors of Darkness"),
     ];
 
-    private readonly string _achievementLadderDataDirectory = Path.GetFullPath(achievementLadderDataDirectory);
+    private readonly string _achievementLadderDataDirectory = Path.GetFullPath(
+        achievementLadderDataDirectory
+    );
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
-    public async Task<RealmFirstAchievementExportResult> ExportAsync(CancellationToken cancellationToken)
+    public async Task<RealmFirstAchievementExportResult> ExportAsync(
+        CancellationToken cancellationToken
+    )
     {
         using var apiClient = new TauriApiClient(_apiOptions);
         var candidateCharacters = new ConcurrentBag<CharacterCandidate>();
@@ -32,8 +39,11 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
             RealmSources,
             new ParallelOptions
             {
-                MaxDegreeOfParallelism = Math.Min(RealmSources.Length, Math.Max(1, _apiOptions.MaxConcurrentRequests)),
-                CancellationToken = cancellationToken
+                MaxDegreeOfParallelism = Math.Min(
+                    RealmSources.Length,
+                    Math.Max(1, _apiOptions.MaxConcurrentRequests)
+                ),
+                CancellationToken = cancellationToken,
             },
             async (realm, ct) =>
             {
@@ -43,22 +53,24 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
                     Endpoint,
                     new { r = realm.ApiName },
                     realm.DisplayName,
-                    ct);
+                    ct
+                );
 
                 if (!result.Succeeded || result.ResponseElement is not { } response)
                 {
                     throw new InvalidOperationException(
-                        $"Could not export {realm.DisplayName}: {result.FailureMessage ?? "No response payload."}");
+                        $"Could not export {realm.DisplayName}: {result.FailureMessage ?? "No response payload."}"
+                    );
                 }
 
                 foreach (var characterName in ExtractCharacterNames(response))
                 {
-                    candidateCharacters.Add(new CharacterCandidate(
-                        characterName,
-                        realm.ApiName,
-                        realm.DisplayName));
+                    candidateCharacters.Add(
+                        new CharacterCandidate(characterName, realm.ApiName, realm.DisplayName)
+                    );
                 }
-            });
+            }
+        );
 
         var orderedCandidateCharacters = candidateCharacters
             .Distinct(new CharacterCandidateComparer())
@@ -66,21 +78,27 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
             .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var validCharacters = await ValidateCharactersAsync(orderedCandidateCharacters, cancellationToken);
+        var validCharacters = await ValidateCharactersAsync(
+            orderedCandidateCharacters,
+            cancellationToken
+        );
         var validCharactersPath = await WriteValidCharactersAsync(
             _achievementLadderDataDirectory,
             validCharacters,
-            cancellationToken);
+            cancellationToken
+        );
 
         return new RealmFirstAchievementExportResult(
             validCharactersPath,
             orderedCandidateCharacters.Count,
-            validCharacters.Count);
+            validCharacters.Count
+        );
     }
 
     private async Task<IReadOnlyList<CharacterCandidate>> ValidateCharactersAsync(
         IReadOnlyList<CharacterCandidate> characters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (characters.Count == 0)
         {
@@ -99,7 +117,7 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = Math.Max(1, _apiOptions.MaxConcurrentRequests),
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
             },
             async (character, ct) =>
             {
@@ -116,7 +134,8 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
                 {
                     Console.Write($"\rValidated characters: {processed}/{characters.Count}");
                 }
-            });
+            }
+        );
 
         Console.WriteLine();
 
@@ -130,23 +149,21 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
         HttpClient httpClient,
         string apiUrl,
         CharacterCandidate character,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var payload = new
         {
             secret = _apiOptions.Secret,
             url = CharacterSheetEndpoint,
-            @params = new
-            {
-                r = character.ApiRealm,
-                n = character.Name
-            }
+            @params = new { r = character.ApiRealm, n = character.Name },
         };
 
         using var content = new StringContent(
             JsonSerializer.Serialize(payload),
             Encoding.UTF8,
-            "application/json");
+            "application/json"
+        );
 
         try
         {
@@ -157,10 +174,13 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            using var document = await JsonDocument.ParseAsync(
+                stream,
+                cancellationToken: cancellationToken
+            );
 
-            return document.RootElement.TryGetProperty("response", out var responseElement) &&
-                   !IsEmptyResponse(responseElement);
+            return document.RootElement.TryGetProperty("response", out var responseElement)
+                && !IsEmptyResponse(responseElement);
         }
         catch (OperationCanceledException)
         {
@@ -169,7 +189,8 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
         catch (Exception ex)
         {
             Console.Error.WriteLine(
-                $"Could not validate {character.Name}-{character.DisplayRealm}: {ex.Message}");
+                $"Could not validate {character.Name}-{character.DisplayRealm}: {ex.Message}"
+            );
             return false;
         }
     }
@@ -177,7 +198,8 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
     private static async Task<string> WriteValidCharactersAsync(
         string outputDirectory,
         IReadOnlyList<CharacterCandidate> characters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         Directory.CreateDirectory(outputDirectory);
 
@@ -185,13 +207,16 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
         var temporaryPath = outputPath + ".tmp";
         var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        await using (var stream = new FileStream(
-                         temporaryPath,
-                         FileMode.Create,
-                         FileAccess.Write,
-                         FileShare.None,
-                         64 * 1024,
-                         useAsync: true))
+        await using (
+            var stream = new FileStream(
+                temporaryPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                64 * 1024,
+                useAsync: true
+            )
+        )
         await using (var writer = new StreamWriter(stream, encoding))
         {
             for (var index = 0; index < characters.Count; index++)
@@ -228,9 +253,11 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
 
             foreach (var entry in achievementProperty.Value.EnumerateArray())
             {
-                if (entry.ValueKind != JsonValueKind.Object ||
-                    !entry.TryGetProperty("charname", out var charNameProperty) ||
-                    charNameProperty.ValueKind != JsonValueKind.String)
+                if (
+                    entry.ValueKind != JsonValueKind.Object
+                    || !entry.TryGetProperty("charname", out var charNameProperty)
+                    || charNameProperty.ValueKind != JsonValueKind.String
+                )
                 {
                     continue;
                 }
@@ -244,11 +271,16 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
         }
     }
 
-    private static bool TryGetAchievementFirsts(JsonElement response, out JsonElement achievementFirsts)
+    private static bool TryGetAchievementFirsts(
+        JsonElement response,
+        out JsonElement achievementFirsts
+    )
     {
-        if (response.ValueKind == JsonValueKind.Object &&
-            response.TryGetProperty("achievementFirsts", out achievementFirsts) &&
-            achievementFirsts.ValueKind == JsonValueKind.Object)
+        if (
+            response.ValueKind == JsonValueKind.Object
+            && response.TryGetProperty("achievementFirsts", out achievementFirsts)
+            && achievementFirsts.ValueKind == JsonValueKind.Object
+        )
         {
             return true;
         }
@@ -258,8 +290,8 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
     }
 
     private static bool IsUsableCharacterName(string? characterName) =>
-        !string.IsNullOrWhiteSpace(characterName) &&
-        !characterName.Contains('#', StringComparison.Ordinal);
+        !string.IsNullOrWhiteSpace(characterName)
+        && !characterName.Contains('#', StringComparison.Ordinal);
 
     private static bool IsEmptyResponse(JsonElement responseElement)
     {
@@ -270,7 +302,7 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
             JsonValueKind.Object => !responseElement.EnumerateObject().Any(),
             JsonValueKind.Array => responseElement.GetArrayLength() == 0,
             JsonValueKind.String => string.IsNullOrWhiteSpace(responseElement.GetString()),
-            _ => false
+            _ => false,
         };
     }
 
@@ -298,15 +330,20 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
                 return false;
             }
 
-            return string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) &&
-                   string.Equals(x.DisplayRealm, y.DisplayRealm, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    x.DisplayRealm,
+                    y.DisplayRealm,
+                    StringComparison.OrdinalIgnoreCase
+                );
         }
 
         public int GetHashCode(CharacterCandidate obj)
         {
             return HashCode.Combine(
                 StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DisplayRealm));
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DisplayRealm)
+            );
         }
     }
 }

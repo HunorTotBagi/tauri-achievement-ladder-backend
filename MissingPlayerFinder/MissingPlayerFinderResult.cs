@@ -10,4 +10,5 @@ public sealed record MissingPlayerFinderResult(
     string PlayersCsvPath,
     string? RareAchievementsPath,
     string? LastUpdatedPath,
-    string MissingOutputPath);
+    string MissingOutputPath
+);

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -8,18 +7,50 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\AchievementLadder\Configuration\AppSettings.cs" Link="Configuration\AppSettings.cs" />
-    <Compile Include="..\AchievementLadder\Configuration\TauriApiOptions.cs" Link="Configuration\TauriApiOptions.cs" />
-    <Compile Include="..\AchievementLadder\Helpers\CharacterHelpers.cs" Link="Helpers\CharacterHelpers.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\CharacterAgeCalculator.cs" Link="Infrastructure\CharacterAgeCalculator.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\CharacterResponseMapper.cs" Link="Infrastructure\CharacterResponseMapper.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\ItemAppearanceCounter.cs" Link="Infrastructure\ItemAppearanceCounter.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs" Link="Infrastructure\ProjectPaths.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\RareAchievementExtractor.cs" Link="Infrastructure\RareAchievementExtractor.cs" />
-    <Compile Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs" Link="Infrastructure\TauriApiClient.cs" />
+    <Compile
+      Include="..\AchievementLadder\Configuration\AppSettings.cs"
+      Link="Configuration\AppSettings.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Configuration\TauriApiOptions.cs"
+      Link="Configuration\TauriApiOptions.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Helpers\CharacterHelpers.cs"
+      Link="Helpers\CharacterHelpers.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\CharacterAgeCalculator.cs"
+      Link="Infrastructure\CharacterAgeCalculator.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\CharacterResponseMapper.cs"
+      Link="Infrastructure\CharacterResponseMapper.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\ItemAppearanceCounter.cs"
+      Link="Infrastructure\ItemAppearanceCounter.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs"
+      Link="Infrastructure\ProjectPaths.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\RareAchievementExtractor.cs"
+      Link="Infrastructure\RareAchievementExtractor.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs"
+      Link="Infrastructure\TauriApiClient.cs"
+    />
     <Compile Include="..\AchievementLadder\Models\Player.cs" Link="Models\Player.cs" />
-    <Compile Include="..\AchievementLadder\Models\RareAchievementExport.cs" Link="Models\RareAchievementExport.cs" />
-    <Compile Include="..\AchievementLadder\Shared\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
+    <Compile
+      Include="..\AchievementLadder\Models\RareAchievementExport.cs"
+      Link="Models\RareAchievementExport.cs"
+    />
+    <Compile
+      Include="..\AchievementLadder\Shared\RareScanCatalog.cs"
+      Link="Shared\RareScanCatalog.cs"
+    />
   </ItemGroup>
-
 </Project>

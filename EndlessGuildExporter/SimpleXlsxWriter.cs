@@ -12,18 +12,28 @@ internal static class SimpleXlsxWriter
     {
         Text,
         Number,
-        FormulaNumber
+        FormulaNumber,
     }
 
     internal readonly record struct CellData(
         string Value,
         string? StyleKey = null,
         CellValueKind ValueKind = CellValueKind.Text,
-        string? Formula = null);
+        string? Formula = null
+    );
 
-    internal readonly record struct CellStyle(string FillColorHex, string FontColorHex, bool IsBold = false);
+    internal readonly record struct CellStyle(
+        string FillColorHex,
+        string FontColorHex,
+        bool IsBold = false
+    );
 
-    internal readonly record struct DataValidation(string Sqref, string Formula1, string Type = "list", bool AllowBlank = false);
+    internal readonly record struct DataValidation(
+        string Sqref,
+        string Formula1,
+        string Type = "list",
+        bool AllowBlank = false
+    );
 
     public static async Task WriteSingleWorksheetAsync(
         string outputPath,
@@ -32,7 +42,8 @@ internal static class SimpleXlsxWriter
         IReadOnlyList<IReadOnlyList<CellData>> rows,
         IReadOnlyDictionary<string, CellStyle>? cellStyles,
         IReadOnlyList<DataValidation>? dataValidations,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(sheetName);
@@ -56,26 +67,54 @@ internal static class SimpleXlsxWriter
             File.Delete(tempPath);
         }
 
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        await using (
+            var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None)
+        )
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await WriteXmlEntryAsync(archive, "[Content_Types].xml", writer => WriteContentTypesAsync(writer, hasStyles), cancellationToken);
-            await WriteXmlEntryAsync(archive, "_rels/.rels", WriteRootRelationshipsAsync, cancellationToken);
-            await WriteXmlEntryAsync(archive, "xl/workbook.xml", writer => WriteWorkbookAsync(writer, sheetName), cancellationToken);
-            await WriteXmlEntryAsync(archive, "xl/_rels/workbook.xml.rels", writer => WriteWorkbookRelationshipsAsync(writer, hasStyles), cancellationToken);
+            await WriteXmlEntryAsync(
+                archive,
+                "[Content_Types].xml",
+                writer => WriteContentTypesAsync(writer, hasStyles),
+                cancellationToken
+            );
+            await WriteXmlEntryAsync(
+                archive,
+                "_rels/.rels",
+                WriteRootRelationshipsAsync,
+                cancellationToken
+            );
+            await WriteXmlEntryAsync(
+                archive,
+                "xl/workbook.xml",
+                writer => WriteWorkbookAsync(writer, sheetName),
+                cancellationToken
+            );
+            await WriteXmlEntryAsync(
+                archive,
+                "xl/_rels/workbook.xml.rels",
+                writer => WriteWorkbookRelationshipsAsync(writer, hasStyles),
+                cancellationToken
+            );
 
             if (hasStyles)
             {
-                await WriteXmlEntryAsync(archive, "xl/styles.xml", writer => WriteStylesAsync(writer, styleDefinitions), cancellationToken);
+                await WriteXmlEntryAsync(
+                    archive,
+                    "xl/styles.xml",
+                    writer => WriteStylesAsync(writer, styleDefinitions),
+                    cancellationToken
+                );
             }
 
             await WriteXmlEntryAsync(
                 archive,
                 "xl/worksheets/sheet1.xml",
                 writer => WriteWorksheetAsync(writer, header, rows, styleIndexByKey, validations),
-                cancellationToken);
+                cancellationToken
+            );
         }
 
         File.Move(tempPath, outputPath, overwrite: true);
@@ -85,7 +124,8 @@ internal static class SimpleXlsxWriter
         ZipArchive archive,
         string entryName,
         Func<XmlWriter, Task> writeAsync,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
         await using var entryStream = entry.Open();
@@ -93,7 +133,7 @@ internal static class SimpleXlsxWriter
         {
             Async = true,
             Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-            Indent = false
+            Indent = false,
         };
 
         await using var writer = XmlWriter.Create(entryStream, settings);
@@ -105,10 +145,16 @@ internal static class SimpleXlsxWriter
     private static Task WriteContentTypesAsync(XmlWriter writer, bool hasStyles)
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("Types", "http://schemas.openxmlformats.org/package/2006/content-types");
+        writer.WriteStartElement(
+            "Types",
+            "http://schemas.openxmlformats.org/package/2006/content-types"
+        );
         writer.WriteStartElement("Default");
         writer.WriteAttributeString("Extension", "rels");
-        writer.WriteAttributeString("ContentType", "application/vnd.openxmlformats-package.relationships+xml");
+        writer.WriteAttributeString(
+            "ContentType",
+            "application/vnd.openxmlformats-package.relationships+xml"
+        );
         writer.WriteEndElement();
         writer.WriteStartElement("Default");
         writer.WriteAttributeString("Extension", "xml");
@@ -116,18 +162,27 @@ internal static class SimpleXlsxWriter
         writer.WriteEndElement();
         writer.WriteStartElement("Override");
         writer.WriteAttributeString("PartName", "/xl/workbook.xml");
-        writer.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml");
+        writer.WriteAttributeString(
+            "ContentType",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
+        );
         writer.WriteEndElement();
         writer.WriteStartElement("Override");
         writer.WriteAttributeString("PartName", "/xl/worksheets/sheet1.xml");
-        writer.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml");
+        writer.WriteAttributeString(
+            "ContentType",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
+        );
         writer.WriteEndElement();
 
         if (hasStyles)
         {
             writer.WriteStartElement("Override");
             writer.WriteAttributeString("PartName", "/xl/styles.xml");
-            writer.WriteAttributeString("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml");
+            writer.WriteAttributeString(
+                "ContentType",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"
+            );
             writer.WriteEndElement();
         }
 
@@ -139,10 +194,16 @@ internal static class SimpleXlsxWriter
     private static Task WriteRootRelationshipsAsync(XmlWriter writer)
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("Relationships", "http://schemas.openxmlformats.org/package/2006/relationships");
+        writer.WriteStartElement(
+            "Relationships",
+            "http://schemas.openxmlformats.org/package/2006/relationships"
+        );
         writer.WriteStartElement("Relationship");
         writer.WriteAttributeString("Id", "rId1");
-        writer.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument");
+        writer.WriteAttributeString(
+            "Type",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+        );
         writer.WriteAttributeString("Target", "xl/workbook.xml");
         writer.WriteEndElement();
         writer.WriteEndElement();
@@ -153,13 +214,26 @@ internal static class SimpleXlsxWriter
     private static Task WriteWorkbookAsync(XmlWriter writer, string sheetName)
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("workbook", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
-        writer.WriteAttributeString("xmlns", "r", null, "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
+        writer.WriteStartElement(
+            "workbook",
+            "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+        );
+        writer.WriteAttributeString(
+            "xmlns",
+            "r",
+            null,
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        );
         writer.WriteStartElement("sheets");
         writer.WriteStartElement("sheet");
         writer.WriteAttributeString("name", sheetName);
         writer.WriteAttributeString("sheetId", "1");
-        writer.WriteAttributeString("r", "id", "http://schemas.openxmlformats.org/officeDocument/2006/relationships", "rId1");
+        writer.WriteAttributeString(
+            "r",
+            "id",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            "rId1"
+        );
         writer.WriteEndElement();
         writer.WriteEndElement();
         writer.WriteStartElement("calcPr");
@@ -176,10 +250,16 @@ internal static class SimpleXlsxWriter
     private static Task WriteWorkbookRelationshipsAsync(XmlWriter writer, bool hasStyles)
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("Relationships", "http://schemas.openxmlformats.org/package/2006/relationships");
+        writer.WriteStartElement(
+            "Relationships",
+            "http://schemas.openxmlformats.org/package/2006/relationships"
+        );
         writer.WriteStartElement("Relationship");
         writer.WriteAttributeString("Id", "rId1");
-        writer.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet");
+        writer.WriteAttributeString(
+            "Type",
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+        );
         writer.WriteAttributeString("Target", "worksheets/sheet1.xml");
         writer.WriteEndElement();
 
@@ -187,7 +267,10 @@ internal static class SimpleXlsxWriter
         {
             writer.WriteStartElement("Relationship");
             writer.WriteAttributeString("Id", "rId2");
-            writer.WriteAttributeString("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles");
+            writer.WriteAttributeString(
+                "Type",
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"
+            );
             writer.WriteAttributeString("Target", "styles.xml");
             writer.WriteEndElement();
         }
@@ -202,10 +285,14 @@ internal static class SimpleXlsxWriter
         IReadOnlyList<CellData> header,
         IReadOnlyList<IReadOnlyList<CellData>> rows,
         IReadOnlyDictionary<string, int> styleIndexByKey,
-        IReadOnlyList<DataValidation> dataValidations)
+        IReadOnlyList<DataValidation> dataValidations
+    )
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("worksheet", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
+        writer.WriteStartElement(
+            "worksheet",
+            "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+        );
         writer.WriteStartElement("sheetData");
 
         WriteRow(writer, 1, header, styleIndexByKey);
@@ -227,10 +314,16 @@ internal static class SimpleXlsxWriter
         return Task.CompletedTask;
     }
 
-    private static Task WriteStylesAsync(XmlWriter writer, IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions)
+    private static Task WriteStylesAsync(
+        XmlWriter writer,
+        IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions
+    )
     {
         writer.WriteStartDocument();
-        writer.WriteStartElement("styleSheet", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
+        writer.WriteStartElement(
+            "styleSheet",
+            "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+        );
 
         WriteFonts(writer, styleDefinitions);
         WriteFills(writer, styleDefinitions);
@@ -254,7 +347,10 @@ internal static class SimpleXlsxWriter
         return Task.CompletedTask;
     }
 
-    private static void WriteFonts(XmlWriter writer, IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions)
+    private static void WriteFonts(
+        XmlWriter writer,
+        IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions
+    )
     {
         writer.WriteStartElement("fonts");
         writer.WriteAttributeString("count", (styleDefinitions.Count + 1).ToString());
@@ -304,7 +400,10 @@ internal static class SimpleXlsxWriter
         writer.WriteEndElement();
     }
 
-    private static void WriteFills(XmlWriter writer, IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions)
+    private static void WriteFills(
+        XmlWriter writer,
+        IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions
+    )
     {
         writer.WriteStartElement("fills");
         writer.WriteAttributeString("count", (styleDefinitions.Count + 2).ToString());
@@ -368,7 +467,10 @@ internal static class SimpleXlsxWriter
         writer.WriteEndElement();
     }
 
-    private static void WriteCellXfs(XmlWriter writer, IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions)
+    private static void WriteCellXfs(
+        XmlWriter writer,
+        IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions
+    )
     {
         writer.WriteStartElement("cellXfs");
         writer.WriteAttributeString("count", (styleDefinitions.Count + 1).ToString());
@@ -420,7 +522,10 @@ internal static class SimpleXlsxWriter
         writer.WriteEndElement();
     }
 
-    private static void WriteDataValidations(XmlWriter writer, IReadOnlyList<DataValidation> dataValidations)
+    private static void WriteDataValidations(
+        XmlWriter writer,
+        IReadOnlyList<DataValidation> dataValidations
+    )
     {
         writer.WriteStartElement("dataValidations");
         writer.WriteAttributeString("count", dataValidations.Count.ToString());
@@ -444,7 +549,8 @@ internal static class SimpleXlsxWriter
         XmlWriter writer,
         int rowIndex,
         IReadOnlyList<CellData> values,
-        IReadOnlyDictionary<string, int> styleIndexByKey)
+        IReadOnlyDictionary<string, int> styleIndexByKey
+    )
     {
         writer.WriteStartElement("row");
         writer.WriteAttributeString("r", rowIndex.ToString());
@@ -456,8 +562,10 @@ internal static class SimpleXlsxWriter
             writer.WriteStartElement("c");
             writer.WriteAttributeString("r", cellReference);
 
-            if (!string.IsNullOrWhiteSpace(cell.StyleKey) &&
-                styleIndexByKey.TryGetValue(cell.StyleKey, out var styleIndex))
+            if (
+                !string.IsNullOrWhiteSpace(cell.StyleKey)
+                && styleIndexByKey.TryGetValue(cell.StyleKey, out var styleIndex)
+            )
             {
                 writer.WriteAttributeString("s", styleIndex.ToString());
             }
@@ -470,7 +578,13 @@ internal static class SimpleXlsxWriter
                     writer.WriteStartElement("t");
 
                     var sanitizedValue = SanitizeForXml(cell.Value);
-                    if (!string.Equals(sanitizedValue, sanitizedValue.Trim(), StringComparison.Ordinal))
+                    if (
+                        !string.Equals(
+                            sanitizedValue,
+                            sanitizedValue.Trim(),
+                            StringComparison.Ordinal
+                        )
+                    )
                     {
                         writer.WriteAttributeString("xml", "space", null, "preserve");
                     }
@@ -487,7 +601,9 @@ internal static class SimpleXlsxWriter
                 case CellValueKind.FormulaNumber:
                     if (string.IsNullOrWhiteSpace(cell.Formula))
                     {
-                        throw new InvalidOperationException("Formula cells must provide a formula.");
+                        throw new InvalidOperationException(
+                            "Formula cells must provide a formula."
+                        );
                     }
 
                     writer.WriteElementString("f", cell.Formula);
@@ -495,7 +611,9 @@ internal static class SimpleXlsxWriter
                     break;
 
                 default:
-                    throw new InvalidOperationException($"Unsupported cell value kind '{cell.ValueKind}'.");
+                    throw new InvalidOperationException(
+                        $"Unsupported cell value kind '{cell.ValueKind}'."
+                    );
             }
 
             writer.WriteEndElement();
@@ -504,7 +622,9 @@ internal static class SimpleXlsxWriter
         writer.WriteEndElement();
     }
 
-    private static Dictionary<string, int> BuildStyleIndexByKey(IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions)
+    private static Dictionary<string, int> BuildStyleIndexByKey(
+        IReadOnlyList<KeyValuePair<string, CellStyle>> styleDefinitions
+    )
     {
         var styleIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
@@ -519,17 +639,17 @@ internal static class SimpleXlsxWriter
     private static string ToArgb(string hexColor)
     {
         var normalized = NormalizeHexColor(hexColor);
-        return normalized.Length == 8
-            ? normalized
-            : $"FF{normalized}";
+        return normalized.Length == 8 ? normalized : $"FF{normalized}";
     }
 
     private static string NormalizeHexColor(string hexColor)
     {
         var normalized = hexColor.Trim().TrimStart('#').ToUpperInvariant();
 
-        if ((normalized.Length != 6 && normalized.Length != 8) ||
-            normalized.Any(character => !Uri.IsHexDigit(character)))
+        if (
+            (normalized.Length != 6 && normalized.Length != 8)
+            || normalized.Any(character => !Uri.IsHexDigit(character))
+        )
         {
             throw new ArgumentException($"Invalid hex color '{hexColor}'.", nameof(hexColor));
         }

@@ -6,4 +6,5 @@ public sealed record SyncResult(
     string PlayersCsvPath,
     string RareAchievementsPath,
     string LastUpdatedPath,
-    string RetryOutputPath);
+    string RetryOutputPath
+);

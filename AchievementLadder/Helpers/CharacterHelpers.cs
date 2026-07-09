@@ -6,14 +6,19 @@ public static class CharacterHelpers
 {
     private const string RealmFirstCharactersFileName = "valid-realm-first-characters.txt";
 
-    private static readonly Dictionary<string, (string ApiRealm, string DisplayRealm)> Realms =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Evermoon"] = ("[EN] Evermoon", "Evermoon"),
-            ["Tauri"] = ("[HU] Tauri WoW Server", "Tauri"),
-            ["WoD"] = ("[HU] Warriors of Darkness", "WoD")
-        };
-    private static readonly (string FileName, string ApiRealm, string DisplayRealm)[] CharacterCollectionSources =
+    private static readonly Dictionary<string, (string ApiRealm, string DisplayRealm)> Realms = new(
+        StringComparer.OrdinalIgnoreCase
+    )
+    {
+        ["Evermoon"] = ("[EN] Evermoon", "Evermoon"),
+        ["Tauri"] = ("[HU] Tauri WoW Server", "Tauri"),
+        ["WoD"] = ("[HU] Warriors of Darkness", "WoD"),
+    };
+    private static readonly (
+        string FileName,
+        string ApiRealm,
+        string DisplayRealm
+    )[] CharacterCollectionSources =
     [
         ("evermoon-achi.txt", "[EN] Evermoon", "Evermoon"),
         ("evermoon-hk.txt", "[EN] Evermoon", "Evermoon"),
@@ -23,12 +28,24 @@ public static class CharacterHelpers
         ("tauri-playTime.txt", "[HU] Tauri WoW Server", "Tauri"),
         ("wod-achi.txt", "[HU] Warriors of Darkness", "WoD"),
         ("wod-hk.txt", "[HU] Warriors of Darkness", "WoD"),
-        ("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD")
+        ("wod-playTime.txt", "[HU] Warriors of Darkness", "WoD"),
     ];
-    private static readonly (string RelativePath, string ApiRealm, string DisplayRealm)[] AdditionalTextSources =
+    private static readonly (
+        string RelativePath,
+        string ApiRealm,
+        string DisplayRealm
+    )[] AdditionalTextSources =
     [
-        (Path.Combine("Data", "AdditionalCharacters", "tauri-ban-list.txt"), "[HU] Tauri WoW Server", "Tauri"),
-        (Path.Combine("Data", "AdditionalCharacters", "vengeful.txt"), "[HU] Tauri WoW Server", "Tauri")
+        (
+            Path.Combine("Data", "AdditionalCharacters", "tauri-ban-list.txt"),
+            "[HU] Tauri WoW Server",
+            "Tauri"
+        ),
+        (
+            Path.Combine("Data", "AdditionalCharacters", "vengeful.txt"),
+            "[HU] Tauri WoW Server",
+            "Tauri"
+        ),
     ];
 
     public static void LoadDefaultCharacterSources(
@@ -36,7 +53,8 @@ public static class CharacterHelpers
         List<(string Name, string ApiRealm, string DisplayRealm)> output,
         bool ignoreMissingGuildCharacters = false,
         bool includePvPSeasonCharacters = false,
-        bool includeRealmFirstCharacters = false)
+        bool includeRealmFirstCharacters = false
+    )
     {
         if (ignoreMissingGuildCharacters)
         {
@@ -44,9 +62,7 @@ public static class CharacterHelpers
             {
                 LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
             }
-            catch (FileNotFoundException)
-            {
-            }
+            catch (FileNotFoundException) { }
         }
         else
         {
@@ -55,12 +71,24 @@ public static class CharacterHelpers
 
         foreach (var source in CharacterCollectionSources)
         {
-            LoadCharacters(projectRoot, source.FileName, source.ApiRealm, source.DisplayRealm, output);
+            LoadCharacters(
+                projectRoot,
+                source.FileName,
+                source.ApiRealm,
+                source.DisplayRealm,
+                output
+            );
         }
 
         foreach (var source in AdditionalTextSources)
         {
-            LoadCharactersFromTextFile(projectRoot, source.RelativePath, source.ApiRealm, source.DisplayRealm, output);
+            LoadCharactersFromTextFile(
+                projectRoot,
+                source.RelativePath,
+                source.ApiRealm,
+                source.DisplayRealm,
+                output
+            );
         }
 
         if (includePvPSeasonCharacters)
@@ -74,7 +102,13 @@ public static class CharacterHelpers
         }
     }
 
-    public static void LoadCharacters(string projectRoot, string fileName, string apiRealm, string displayRealm, List<(string Name, string ApiRealm, string DisplayRealm)> output)
+    public static void LoadCharacters(
+        string projectRoot,
+        string fileName,
+        string apiRealm,
+        string displayRealm,
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         var filePath = Path.Combine(projectRoot, "Data", "CharacterCollection", fileName);
         if (!File.Exists(filePath))
@@ -85,10 +119,7 @@ public static class CharacterHelpers
         var content = File.ReadAllText(filePath);
         using var doc = JsonDocument.Parse(content);
 
-        var array = doc.RootElement
-            .EnumerateObject()
-            .First()
-            .Value;
+        var array = doc.RootElement.EnumerateObject().First().Value;
 
         foreach (var item in array.EnumerateArray())
         {
@@ -108,7 +139,8 @@ public static class CharacterHelpers
         string relativePath,
         string apiRealm,
         string displayRealm,
-        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         var filePath = Path.GetFullPath(relativePath, projectRoot);
         if (!File.Exists(filePath))
@@ -128,12 +160,16 @@ public static class CharacterHelpers
     public static void LoadGuildCharacters(
         string projectRoot,
         string fileName,
-        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         var filePath = Path.Combine(projectRoot, "Data", "GuildCharacters", fileName);
         if (!File.Exists(filePath))
         {
-            throw new FileNotFoundException($"Could not find guild character source file: {filePath}", filePath);
+            throw new FileNotFoundException(
+                $"Could not find guild character source file: {filePath}",
+                filePath
+            );
         }
 
         foreach (var rawLine in File.ReadLines(filePath))
@@ -168,7 +204,8 @@ public static class CharacterHelpers
 
     public static void LoadPvPSeasonCharacters(
         string projectRoot,
-        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         var directoryPath = Path.Combine(projectRoot, "Data", "PvPSeasonCharacters");
         if (!Directory.Exists(directoryPath))
@@ -176,9 +213,11 @@ public static class CharacterHelpers
             return;
         }
 
-        foreach (var filePath in Directory
-                     .EnumerateFiles(directoryPath, "*.txt", SearchOption.TopDirectoryOnly)
-                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        foreach (
+            var filePath in Directory
+                .EnumerateFiles(directoryPath, "*.txt", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+        )
         {
             LoadCharactersFromBatchFile(filePath, output);
         }
@@ -186,7 +225,8 @@ public static class CharacterHelpers
 
     public static void LoadRealmFirstCharacters(
         string projectRoot,
-        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         var filePath = Path.Combine(projectRoot, "Data", RealmFirstCharactersFileName);
         if (!File.Exists(filePath))
@@ -200,7 +240,8 @@ public static class CharacterHelpers
     public static bool TryResolveRealm(
         string? rawRealm,
         out string apiRealm,
-        out string displayRealm)
+        out string displayRealm
+    )
     {
         apiRealm = string.Empty;
         displayRealm = string.Empty;
@@ -214,9 +255,15 @@ public static class CharacterHelpers
 
         foreach (var entry in Realms)
         {
-            if (!string.Equals(realm, entry.Key, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(realm, entry.Value.ApiRealm, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(realm, entry.Value.DisplayRealm, StringComparison.OrdinalIgnoreCase))
+            if (
+                !string.Equals(realm, entry.Key, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(realm, entry.Value.ApiRealm, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(
+                    realm,
+                    entry.Value.DisplayRealm,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 continue;
             }
@@ -233,7 +280,8 @@ public static class CharacterHelpers
         string? rawLine,
         out string name,
         out string apiRealm,
-        out string displayRealm)
+        out string displayRealm
+    )
     {
         name = string.Empty;
         apiRealm = string.Empty;
@@ -259,9 +307,11 @@ public static class CharacterHelpers
         var candidateName = line[..separatorIndex].Trim();
         var rawRealm = line[(separatorIndex + 1)..].Trim();
 
-        if (string.IsNullOrWhiteSpace(candidateName) ||
-            candidateName.Contains('#', StringComparison.Ordinal) ||
-            !TryResolveRealm(rawRealm, out apiRealm, out displayRealm))
+        if (
+            string.IsNullOrWhiteSpace(candidateName)
+            || candidateName.Contains('#', StringComparison.Ordinal)
+            || !TryResolveRealm(rawRealm, out apiRealm, out displayRealm)
+        )
         {
             name = string.Empty;
             return false;
@@ -299,7 +349,10 @@ public static class CharacterHelpers
         }
 
         candidate = candidate.Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('#', StringComparison.Ordinal))
+        if (
+            string.IsNullOrWhiteSpace(candidate)
+            || candidate.Contains('#', StringComparison.Ordinal)
+        )
         {
             return false;
         }
@@ -310,11 +363,19 @@ public static class CharacterHelpers
 
     private static void LoadCharactersFromBatchFile(
         string filePath,
-        List<(string Name, string ApiRealm, string DisplayRealm)> output)
+        List<(string Name, string ApiRealm, string DisplayRealm)> output
+    )
     {
         foreach (var rawLine in File.ReadLines(filePath))
         {
-            if (!TryExtractCharacterWithRealm(rawLine, out var name, out var apiRealm, out var displayRealm))
+            if (
+                !TryExtractCharacterWithRealm(
+                    rawLine,
+                    out var name,
+                    out var apiRealm,
+                    out var displayRealm
+                )
+            )
             {
                 continue;
             }

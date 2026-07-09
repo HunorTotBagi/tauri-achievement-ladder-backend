@@ -15,9 +15,13 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private const int ProgressInterval = 250;
     private const int ProgressBarWidth = 30;
     private readonly int _characterWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
-    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions = RareScanCatalog.RareAchievementNames
-        .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
-        .ToList();
+    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions =
+        RareScanCatalog
+            .RareAchievementNames.Select(entry => new RareAchievementDefinition(
+                entry.Key,
+                entry.Value
+            ))
+            .ToList();
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
@@ -31,21 +35,24 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
         var distinctCharacters = allCharacters
             .Where(x =>
-                !string.IsNullOrWhiteSpace(x.Name) &&
-                !x.Name.Contains('#', StringComparison.Ordinal) &&
-                !string.IsNullOrWhiteSpace(x.ApiRealm) &&
-                !string.IsNullOrWhiteSpace(x.DisplayRealm))
+                !string.IsNullOrWhiteSpace(x.Name)
+                && !x.Name.Contains('#', StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(x.ApiRealm)
+                && !string.IsNullOrWhiteSpace(x.DisplayRealm)
+            )
             .Distinct(CharacterComparer)
             .ToList();
 
         Console.WriteLine($"Scanning {distinctCharacters.Count} characters...");
         Console.WriteLine(
-            $"API settings: concurrency={apiOptions.MaxConcurrentRequests}, timeout={apiOptions.RequestTimeoutSeconds}s, retries={apiOptions.MaxRetryAttempts}");
+            $"API settings: concurrency={apiOptions.MaxConcurrentRequests}, timeout={apiOptions.RequestTimeoutSeconds}s, retries={apiOptions.MaxRetryAttempts}"
+        );
         WriteProgress(0, distinctCharacters.Count);
 
         var players = new ConcurrentBag<Player>();
         var rareAchievementEntries = new ConcurrentBag<CharacterRareAchievementEntry>();
-        var retryCharacters = new ConcurrentBag<(string Name, string ApiRealm, string DisplayRealm)>();
+        var retryCharacters =
+            new ConcurrentBag<(string Name, string ApiRealm, string DisplayRealm)>();
         var totalCharacters = distinctCharacters.Count;
         var done = 0;
         var progressLock = new Lock();
@@ -55,7 +62,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = _characterWorkerCount,
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
             },
             async (character, ct) =>
             {
@@ -65,7 +72,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                     character.ApiRealm,
                     character.DisplayRealm,
                     scanStartedAt,
-                    ct);
+                    ct
+                );
 
                 if (syncResult.Player is { } player)
                 {
@@ -73,14 +81,17 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
 
                     if (syncResult.RareAchievements.Count > 0)
                     {
-                        rareAchievementEntries.Add(new CharacterRareAchievementEntry(
-                            player.Name,
-                            player.Realm,
-                            player.Race,
-                            player.Gender,
-                            player.Class,
-                            player.Guild,
-                            syncResult.RareAchievements));
+                        rareAchievementEntries.Add(
+                            new CharacterRareAchievementEntry(
+                                player.Name,
+                                player.Realm,
+                                player.Race,
+                                player.Gender,
+                                player.Class,
+                                player.Guild,
+                                syncResult.RareAchievements
+                            )
+                        );
                     }
                 }
 
@@ -97,7 +108,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                         WriteProgress(processed, totalCharacters);
                     }
                 }
-            });
+            }
+        );
 
         if (totalCharacters > 0)
         {
@@ -121,18 +133,25 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             .ToList();
         var generatedAt = DateTimeOffset.UtcNow;
 
-        var playersCsvPath = await csvStore.WriteAsync(orderedPlayers, "Players.csv", cancellationToken);
+        var playersCsvPath = await csvStore.WriteAsync(
+            orderedPlayers,
+            "Players.csv",
+            cancellationToken
+        );
         var rareAchievementsPath = await csvStore.WriteJsonAsync(
             "RareAchievements.json",
             new RareAchievementExport(
                 generatedAt,
                 RareAchievementDefinitions,
-                orderedRareAchievementEntries),
-            cancellationToken);
+                orderedRareAchievementEntries
+            ),
+            cancellationToken
+        );
         var lastUpdatedPath = await csvStore.WriteTextAsync(
             "lastUpdated.txt",
             generatedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
-            cancellationToken);
+            cancellationToken
+        );
 
         await WriteRetryCharactersAsync(retryOutputPath, orderedRetryCharacters, cancellationToken);
 
@@ -142,7 +161,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             playersCsvPath,
             rareAchievementsPath,
             lastUpdatedPath,
-            retryOutputPath);
+            retryOutputPath
+        );
 
         void LoadCharacterSources(List<(string Name, string ApiRealm, string DisplayRealm)> output)
         {
@@ -150,7 +170,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
                 projectRoot,
                 output,
                 includePvPSeasonCharacters: true,
-                includeRealmFirstCharacters: true);
+                includeRealmFirstCharacters: true
+            );
         }
     }
 
@@ -160,31 +181,44 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         string apiRealm,
         string displayRealm,
         DateTimeOffset scanStartedAt,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var responseResult = await apiClient.FetchResponseElementAsync(
             "character-achievements",
             new { r = apiRealm, n = name },
             $"{name}-{displayRealm}",
-            ct);
+            ct
+        );
 
         if (!responseResult.Succeeded || responseResult.ResponseElement is not { } response)
         {
             return CharacterSyncResult.Failure();
         }
 
-        var player = CharacterResponseMapper.CreatePlayer(response, name, displayRealm, scanStartedAt);
-        var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(response, RareAchievementDefinitions);
+        var player = CharacterResponseMapper.CreatePlayer(
+            response,
+            name,
+            displayRealm,
+            scanStartedAt
+        );
+        var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
+            response,
+            RareAchievementDefinitions
+        );
 
         var appearanceResponseResult = await apiClient.FetchResponseElementAsync(
             "character-itemappearances",
             new { r = apiRealm, n = name },
             $"{name}-{displayRealm}",
-            ct);
+            ct
+        );
 
-        if (!appearanceResponseResult.Succeeded ||
-            appearanceResponseResult.ResponseElement is not { } appearanceResponse ||
-            !ItemAppearanceCounter.TryCountOwned(appearanceResponse, out var appearanceCount))
+        if (
+            !appearanceResponseResult.Succeeded
+            || appearanceResponseResult.ResponseElement is not { } appearanceResponse
+            || !ItemAppearanceCounter.TryCountOwned(appearanceResponse, out var appearanceCount)
+        )
         {
             return CharacterSyncResult.Failure();
         }
@@ -197,7 +231,8 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private static async Task WriteRetryCharactersAsync(
         string outputPath,
         IReadOnlyList<(string Name, string ApiRealm, string DisplayRealm)> characters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
@@ -208,7 +243,16 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         var tempPath = outputPath + ".tmp";
         var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true))
+        await using (
+            var stream = new FileStream(
+                tempPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                64 * 1024,
+                useAsync: true
+            )
+        )
         await using (var writer = new StreamWriter(stream, encoding))
         {
             foreach (var character in characters)
@@ -230,7 +274,10 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         }
 
         var ratio = (double)processed / total;
-        var filledWidth = Math.Min(ProgressBarWidth, (int)Math.Round(ratio * ProgressBarWidth, MidpointRounding.AwayFromZero));
+        var filledWidth = Math.Min(
+            ProgressBarWidth,
+            (int)Math.Round(ratio * ProgressBarWidth, MidpointRounding.AwayFromZero)
+        );
         var bar = new string('#', filledWidth) + new string('-', ProgressBarWidth - filledWidth);
 
         Console.Write($"\rProgress: [{bar}] {processed}/{total} ({ratio:P1})");
@@ -239,30 +286,36 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private readonly record struct CharacterSyncResult(
         Player? Player,
         IReadOnlyList<CharacterRareAchievement> RareAchievements,
-        bool Succeeded)
+        bool Succeeded
+    )
     {
         public bool IsFullySuccessful => Succeeded;
 
-        public static CharacterSyncResult Success(Player player, IReadOnlyList<CharacterRareAchievement> rareAchievements) =>
-            new(player, rareAchievements, true);
+        public static CharacterSyncResult Success(
+            Player player,
+            IReadOnlyList<CharacterRareAchievement> rareAchievements
+        ) => new(player, rareAchievements, true);
 
         public static CharacterSyncResult Failure() =>
             new(null, Array.Empty<CharacterRareAchievement>(), false);
     }
 
-    private sealed class CharacterTargetComparer : IEqualityComparer<(string Name, string ApiRealm, string DisplayRealm)>
+    private sealed class CharacterTargetComparer
+        : IEqualityComparer<(string Name, string ApiRealm, string DisplayRealm)>
     {
         public bool Equals(
             (string Name, string ApiRealm, string DisplayRealm) x,
-            (string Name, string ApiRealm, string DisplayRealm) y) =>
-            string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.DisplayRealm, y.DisplayRealm, StringComparison.OrdinalIgnoreCase);
+            (string Name, string ApiRealm, string DisplayRealm) y
+        ) =>
+            string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.DisplayRealm, y.DisplayRealm, StringComparison.OrdinalIgnoreCase);
 
         public int GetHashCode((string Name, string ApiRealm, string DisplayRealm) obj)
         {
             return HashCode.Combine(
                 StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DisplayRealm));
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DisplayRealm)
+            );
         }
     }
 }

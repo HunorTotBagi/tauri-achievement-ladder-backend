@@ -7,7 +7,14 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (!BattlegroundCollectorOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
+        if (
+            !BattlegroundCollectorOptions.TryParse(
+                args,
+                out var options,
+                out var errorMessage,
+                out var showHelp
+            )
+        )
         {
             if (!string.IsNullOrWhiteSpace(errorMessage))
             {
@@ -19,7 +26,10 @@ internal static class Program
             return showHelp ? 0 : 1;
         }
 
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "BattlegroundCollector.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(
+            AppContext.BaseDirectory,
+            "BattlegroundCollector.csproj"
+        );
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
 
@@ -34,7 +44,12 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             var frontendSrcDirectory = ProjectPaths.GetFrontendSrcDirectory(solutionRoot);
-            var collector = new BattlegroundCollectorService(projectRoot, solutionRoot, frontendSrcDirectory, settings.TauriApi);
+            var collector = new BattlegroundCollectorService(
+                projectRoot,
+                solutionRoot,
+                frontendSrcDirectory,
+                settings.TauriApi
+            );
             var result = await collector.ExecuteAsync(options!, cancellationTokenSource.Token);
 
             Console.WriteLine();
@@ -63,7 +78,11 @@ internal static class Program
 
     private static string ResolveSettingsPath(string projectRoot, string solutionRoot)
     {
-        var sharedSettingsPath = Path.Combine(solutionRoot, "AchievementLadder", "appsettings.json");
+        var sharedSettingsPath = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "appsettings.json"
+        );
         if (File.Exists(sharedSettingsPath))
         {
             return sharedSettingsPath;
@@ -77,6 +96,7 @@ internal static class Program
 
         throw new FileNotFoundException(
             "Could not find appsettings.json in either AchievementLadder or BattlegroundCollector.",
-            sharedSettingsPath);
+            sharedSettingsPath
+        );
     }
 }

@@ -6,4 +6,5 @@ public sealed record GuildCharacterExportResult(
     int RetryGuildCount,
     string OutputPath,
     string RetryOutputPath,
-    bool UsedRetryInput);
+    bool UsedRetryInput
+);

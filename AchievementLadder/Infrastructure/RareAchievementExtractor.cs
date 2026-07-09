@@ -8,7 +8,8 @@ public static class RareAchievementExtractor
 {
     public static IReadOnlyList<CharacterRareAchievement> ExtractRareAchievements(
         JsonElement responseElement,
-        IReadOnlyList<RareAchievementDefinition> definitions)
+        IReadOnlyList<RareAchievementDefinition> definitions
+    )
     {
         var achievedAchievements = ExtractAchievements(responseElement);
 
@@ -22,7 +23,10 @@ public static class RareAchievementExtractor
     /// Returns the date a specific achievement was obtained, or <c>null</c> when the
     /// character does not have it (or the date cannot be parsed).
     /// </summary>
-    public static DateTimeOffset? TryGetAchievementObtainedAt(JsonElement responseElement, int achievementId)
+    public static DateTimeOffset? TryGetAchievementObtainedAt(
+        JsonElement responseElement,
+        int achievementId
+    )
     {
         var achievements = ExtractAchievements(responseElement);
         return achievements.TryGetValue(achievementId, out var obtainedAt) ? obtainedAt : null;
@@ -51,7 +55,10 @@ public static class RareAchievementExtractor
         {
             foreach (var item in achievementsElement.EnumerateArray())
             {
-                if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var achievementId))
+                if (
+                    item.ValueKind == JsonValueKind.Number
+                    && item.TryGetInt32(out var achievementId)
+                )
                 {
                     achievements[achievementId] = null;
                     continue;
@@ -62,7 +69,13 @@ public static class RareAchievementExtractor
                     continue;
                 }
 
-                achievementId = ReadInt(item, "id", "achievementId", "achievementID", "achievement");
+                achievementId = ReadInt(
+                    item,
+                    "id",
+                    "achievementId",
+                    "achievementID",
+                    "achievement"
+                );
                 if (achievementId > 0)
                 {
                     achievements[achievementId] = ReadAchievementObtainedAt(item);
@@ -85,21 +98,25 @@ public static class RareAchievementExtractor
             return null;
         }
 
-        foreach (var propertyName in new[]
-                 {
-                     "obtainedAt",
-                     "completedAt",
-                     "achievementDate",
-                     "completionDate",
-                     "date",
-                     "completed",
-                     "obtained",
-                     "timestamp",
-                     "time"
-                 })
+        foreach (
+            var propertyName in new[]
+            {
+                "obtainedAt",
+                "completedAt",
+                "achievementDate",
+                "completionDate",
+                "date",
+                "completed",
+                "obtained",
+                "timestamp",
+                "time",
+            }
+        )
         {
-            if (TryGetPropertyIgnoreCase(element, propertyName, out var property) &&
-                TryReadDateValue(property, out obtainedAt))
+            if (
+                TryGetPropertyIgnoreCase(element, propertyName, out var property)
+                && TryReadDateValue(property, out obtainedAt)
+            )
             {
                 return obtainedAt;
             }
@@ -109,8 +126,7 @@ public static class RareAchievementExtractor
         var month = ReadInt(element, "month", "m");
         var day = ReadInt(element, "day", "d");
 
-        if (year > 0 && month > 0 && day > 0 &&
-            TryCreateDate(year, month, day, out obtainedAt))
+        if (year > 0 && month > 0 && day > 0 && TryCreateDate(year, month, day, out obtainedAt))
         {
             return obtainedAt;
         }
@@ -134,20 +150,27 @@ public static class RareAchievementExtractor
 
             if (element.TryGetDouble(out var doubleValue))
             {
-                return TryParseNumericDate((long)Math.Round(doubleValue, MidpointRounding.AwayFromZero), out value);
+                return TryParseNumericDate(
+                    (long)Math.Round(doubleValue, MidpointRounding.AwayFromZero),
+                    out value
+                );
             }
         }
 
         if (element.ValueKind == JsonValueKind.Array)
         {
-            var parts = element.EnumerateArray()
+            var parts = element
+                .EnumerateArray()
                 .Take(3)
                 .Where(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out _))
                 .Select(item => item.GetInt32())
                 .ToArray();
 
-            if (parts.Length == 3 && parts[0] > 31 &&
-                TryCreateDate(parts[0], parts[1], parts[2], out value))
+            if (
+                parts.Length == 3
+                && parts[0] > 31
+                && TryCreateDate(parts[0], parts[1], parts[2], out value)
+            )
             {
                 return true;
             }
@@ -166,14 +189,28 @@ public static class RareAchievementExtractor
         }
 
         var trimmedValue = rawValue.Trim();
-        if (long.TryParse(trimmedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericValue) &&
-            TryParseNumericDate(numericValue, out value))
+        if (
+            long.TryParse(
+                trimmedValue,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var numericValue
+            ) && TryParseNumericDate(numericValue, out value)
+        )
         {
             return true;
         }
 
-        if (trimmedValue.Length == 8 &&
-            DateOnly.TryParseExact(trimmedValue, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+        if (
+            trimmedValue.Length == 8
+            && DateOnly.TryParseExact(
+                trimmedValue,
+                "yyyyMMdd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var dateOnly
+            )
+        )
         {
             value = new DateTimeOffset(dateOnly.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
             return true;
@@ -182,8 +219,11 @@ public static class RareAchievementExtractor
         return DateTimeOffset.TryParse(
             trimmedValue,
             CultureInfo.InvariantCulture,
-            DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out value);
+            DateTimeStyles.AllowWhiteSpaces
+                | DateTimeStyles.AssumeUniversal
+                | DateTimeStyles.AdjustToUniversal,
+            out value
+        );
     }
 
     private static bool TryParseNumericDate(long rawValue, out DateTimeOffset value)
@@ -202,16 +242,22 @@ public static class RareAchievementExtractor
                 return true;
             }
 
-            if (rawValue is >= 19000101 and <= 29991231 &&
-                DateOnly.TryParseExact(rawValue.ToString(CultureInfo.InvariantCulture), "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+            if (
+                rawValue is >= 19000101 and <= 29991231
+                && DateOnly.TryParseExact(
+                    rawValue.ToString(CultureInfo.InvariantCulture),
+                    "yyyyMMdd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var dateOnly
+                )
+            )
             {
                 value = new DateTimeOffset(dateOnly.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
                 return true;
             }
         }
-        catch (ArgumentOutOfRangeException)
-        {
-        }
+        catch (ArgumentOutOfRangeException) { }
 
         value = default;
         return false;
@@ -240,13 +286,23 @@ public static class RareAchievementExtractor
                 continue;
             }
 
-            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var intValue))
+            if (
+                property.ValueKind == JsonValueKind.Number
+                && property.TryGetInt32(out var intValue)
+            )
             {
                 return intValue;
             }
 
-            if (property.ValueKind == JsonValueKind.String &&
-                int.TryParse(property.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out intValue))
+            if (
+                property.ValueKind == JsonValueKind.String
+                && int.TryParse(
+                    property.GetString(),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out intValue
+                )
+            )
             {
                 return intValue;
             }
@@ -255,10 +311,16 @@ public static class RareAchievementExtractor
         return 0;
     }
 
-    private static bool TryGetPropertyIgnoreCase(JsonElement element, string propertyName, out JsonElement value)
+    private static bool TryGetPropertyIgnoreCase(
+        JsonElement element,
+        string propertyName,
+        out JsonElement value
+    )
     {
-        if (element.ValueKind == JsonValueKind.Object &&
-            element.TryGetProperty(propertyName, out value))
+        if (
+            element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty(propertyName, out value)
+        )
         {
             return true;
         }

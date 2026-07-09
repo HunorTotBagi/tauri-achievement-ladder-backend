@@ -7,7 +7,10 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "MissingPlayerFinder.csproj");
+        var projectRoot = ProjectPaths.FindProjectRoot(
+            AppContext.BaseDirectory,
+            "MissingPlayerFinder.csproj"
+        );
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var achievementLadderProjectRoot = Path.Combine(solutionRoot, "AchievementLadder");
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
@@ -26,7 +29,8 @@ internal static class Program
             var finder = new MissingPlayerFinderService(
                 solutionRoot,
                 achievementLadderProjectRoot,
-                settings.TauriApi);
+                settings.TauriApi
+            );
 
             Console.WriteLine("Starting missing player backfill...");
 
@@ -36,7 +40,9 @@ internal static class Program
             Console.WriteLine($"Players.csv characters before append: {result.CsvCharacterCount}");
             Console.WriteLine($"Missing characters at start: {result.MissingCharacterCount}");
             Console.WriteLine($"Characters appended: {result.AppendedCharacterCount}");
-            Console.WriteLine($"Rare achievement entries merged: {result.RareAchievementEntryCount}");
+            Console.WriteLine(
+                $"Rare achievement entries merged: {result.RareAchievementEntryCount}"
+            );
             Console.WriteLine($"Characters still missing: {result.RemainingMissingCharacterCount}");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
             if (result.RareAchievementsPath is not null)
@@ -65,7 +71,11 @@ internal static class Program
 
     private static string ResolveSettingsPath(string projectRoot, string solutionRoot)
     {
-        var sharedSettingsPath = Path.Combine(solutionRoot, "AchievementLadder", "appsettings.json");
+        var sharedSettingsPath = Path.Combine(
+            solutionRoot,
+            "AchievementLadder",
+            "appsettings.json"
+        );
         if (File.Exists(sharedSettingsPath))
         {
             return sharedSettingsPath;
@@ -79,6 +89,7 @@ internal static class Program
 
         throw new FileNotFoundException(
             "Could not find appsettings.json in either AchievementLadder or MissingPlayerFinder.",
-            sharedSettingsPath);
+            sharedSettingsPath
+        );
     }
 }
