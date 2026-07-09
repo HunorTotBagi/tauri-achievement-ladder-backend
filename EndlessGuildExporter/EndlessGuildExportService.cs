@@ -5,7 +5,7 @@ using AchievementLadder.Configuration;
 
 namespace EndlessGuildExporter;
 
-public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptions apiOptions)
+public sealed class EndlessGuildExportService(string projectRoot, TauriApiOptions apiOptions)
 {
     private const string TargetGuildName = "Endless";
     private const string TargetApiRealm = "[EN] Evermoon";
@@ -147,7 +147,7 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
     private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> ClassCellStyles = BuildClassCellStyles();
     private static readonly IReadOnlyDictionary<string, SimpleXlsxWriter.CellStyle> WorkbookCellStyles = BuildWorkbookCellStyles();
 
-    private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
+    private readonly string _projectRoot = Path.GetFullPath(projectRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
 
     public async Task<EndlessGuildExportResult> ExportAsync(string? requestedOutputPath, CancellationToken cancellationToken)
@@ -680,27 +680,18 @@ public sealed class EndlessGuildExportService(string solutionRoot, TauriApiOptio
 
     private string ResolveOutputPath(string? requestedOutputPath)
     {
-        var downloadsDirectory = GetDownloadsDirectory();
-        var fileName = string.IsNullOrWhiteSpace(requestedOutputPath)
-            ? DefaultExportFileName
-            : Path.GetFileName(requestedOutputPath.Trim());
-
-        return Path.Combine(
-            downloadsDirectory,
-            string.IsNullOrWhiteSpace(fileName)
-                ? DefaultExportFileName
-                : fileName);
-    }
-
-    private static string GetDownloadsDirectory()
-    {
-        var userProfileDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (string.IsNullOrWhiteSpace(userProfileDirectory))
+        if (string.IsNullOrWhiteSpace(requestedOutputPath))
         {
-            throw new InvalidOperationException("Could not resolve the user profile directory for the export path.");
+            return Path.Combine(_projectRoot, DefaultExportFileName);
         }
 
-        return Path.Combine(userProfileDirectory, "Downloads");
+        var trimmedOutputPath = requestedOutputPath.Trim();
+        if (Path.IsPathRooted(trimmedOutputPath))
+        {
+            return Path.GetFullPath(trimmedOutputPath);
+        }
+
+        return Path.GetFullPath(trimmedOutputPath, _projectRoot);
     }
 
     private static IReadOnlyList<string> BuildClassStatisticNames()

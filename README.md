@@ -50,7 +50,7 @@ To export the `Endless` guild on `Tauri` into a real Excel workbook with one row
 dotnet run --project EndlessGuildExporter
 ```
 
-The default workbook path is `artifacts/EndlessGuildExporter/Endless-Tauri-members.xlsx`. You can override it with `--output`.
+The default workbook path is `EndlessGuildExporter/Endless-Legion-Roster.xlsx`. You can override it with `--output`; relative output paths are resolved from the `EndlessGuildExporter` project root.
 
 To compare the current source inputs against `Players.csv`, fetch the missing characters from the Tauri API, append any successful lookups to `../tauriachievements.github.io/src/Players.csv`, and write any still-missing retries into `MissingPlayersToScan.txt`, run:
 

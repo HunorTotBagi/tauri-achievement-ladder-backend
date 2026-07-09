@@ -23,7 +23,7 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
-            var exporter = new EndlessGuildExportService(solutionRoot, settings.TauriApi);
+            var exporter = new EndlessGuildExportService(projectRoot, settings.TauriApi);
 
             Console.WriteLine("Exporting Endless guild members from Tauri to Excel...");
 
