@@ -70,14 +70,6 @@ You can raise or lower this run's API request parallelism with `--parallelism`:
 dotnet run --project RealmFirstAchievements -- --parallelism 30
 ```
 
-To prune a character batch file in place by removing rows whose Tauri `character-sheet` lookup returns no character payload, run:
-
-```bash
-dotnet run --project ArmoryCharacterPruner -- --names-file s15_6
-```
-
-This supports `Character-Realm` rows directly and also accepts `--realm` as a fallback for plain name lists. Pass `--output` if you want to write the filtered list to another file instead of rewriting the source file.
-
 To collect battleground metadata from consecutive `pvp-match` ids into JSON, seed the first run with a known match id:
 
 ```bash
