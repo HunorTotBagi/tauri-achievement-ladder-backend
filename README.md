@@ -58,6 +58,18 @@ To compare the current source inputs against `Players.csv`, fetch the missing ch
 dotnet run --project MissingPlayerFinder
 ```
 
+To rebuild the validated realm-first character source file, run:
+
+```bash
+dotnet run --project RealmFirstAchievements
+```
+
+You can raise or lower this run's API request parallelism with `--parallelism`:
+
+```bash
+dotnet run --project RealmFirstAchievements -- --parallelism 30
+```
+
 To prune a character batch file in place by removing rows whose Tauri `character-sheet` lookup returns no character payload, run:
 
 ```bash

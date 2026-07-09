@@ -6,8 +6,20 @@ namespace RealmFirstAchievements;
 
 internal static class Program
 {
-    public static async Task<int> Main()
+    public static async Task<int> Main(string[] args)
     {
+        if (!RealmFirstAchievementExportOptions.TryParse(args, out var options, out var errorMessage, out var showHelp))
+        {
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                Console.Error.WriteLine(errorMessage);
+                Console.Error.WriteLine();
+            }
+
+            Console.WriteLine(RealmFirstAchievementExportOptions.UsageText);
+            return showHelp ? 0 : 1;
+        }
+
         var projectRoot = ProjectPaths.FindProjectRoot(AppContext.BaseDirectory, "RealmFirstAchievements.csproj");
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var settingsPath = ResolveSettingsPath(projectRoot, solutionRoot);
@@ -24,11 +36,17 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
+            if (options!.Parallelism is { } parallelism)
+            {
+                settings.TauriApi.MaxConcurrentRequests = parallelism;
+            }
+
             var exporter = new RealmFirstAchievementExportService(
                 achievementLadderDataDirectory,
                 settings.TauriApi);
 
             Console.WriteLine("Exporting achievement-firsts for Evermoon, Tauri, and WoD...");
+            Console.WriteLine($"API parallelism: {settings.TauriApi.MaxConcurrentRequests}");
 
             var result = await exporter.ExportAsync(cancellationTokenSource.Token);
 

@@ -13,6 +13,7 @@ Christensen-Evermoon
 Chucknorris-Evermoon
 Coronaunholy-Evermoon
 Dannerx-Evermoon
+Deathdealing-Evermoon
 Deterrence-Evermoon
 Diaara-Evermoon
 Divinefist-Evermoon
@@ -20,10 +21,10 @@ Dusk-Evermoon
 Ebonshriek-Evermoon
 Ekan-Evermoon
 Eluuwa-Evermoon
-Erythromycin-Evermoon
 Es-Evermoon
 Exà-Evermoon
 Exâ-Evermoon
+Firefly-Evermoon
 Fitcha-Evermoon
 Frog-Evermoon
 Garwal-Evermoon
@@ -31,6 +32,7 @@ Glarewielder-Evermoon
 Grieve-Evermoon
 Hainzlol-Evermoon
 Hushie-Evermoon
+Hyperpala-Evermoon
 Idototems-Evermoon
 Ithilda-Evermoon
 Joe-Evermoon
@@ -40,7 +42,6 @@ Kodiaq-Evermoon
 Kogorm-Evermoon
 Lexane-Evermoon
 Life-Evermoon
-Lifestep-Evermoon
 Lineaa-Evermoon
 Lucecita-Evermoon
 Marigo-Evermoon
@@ -63,12 +64,13 @@ Pipera-Evermoon
 Psycobruttan-Evermoon
 Puddlechamp-Evermoon
 Renban-Evermoon
+Rhaenys-Evermoon
 Ruðolf-Evermoon
 Røckwell-Evermoon
 Sargarepa-Evermoon
-Snowdon-Evermoon
 Sophierain-Evermoon
 Stareyes-Evermoon
+Stormspear-Evermoon
 Tnarfnet-Evermoon
 Traevyn-Evermoon
 Venomalol-Evermoon
@@ -77,7 +79,6 @@ Wäkkä-Evermoon
 Xailyn-Evermoon
 Xeo-Evermoon
 Ynes-Evermoon
-Yølkø-Evermoon
 Zara-Evermoon
 Abgerimage-Tauri
 Ablakzsiráf-Tauri
@@ -338,9 +339,7 @@ Sømbra-Tauri
 Søsýø-Tauri
 Süticukor-Tauri
 Tahal-Tauri
-Tanked-Tauri
 Tarkinug-Tauri
-Tarrextwo-Tauri
 Taukau-Tauri
 Thebestplýrx-Tauri
 Thertine-Tauri
@@ -377,6 +376,7 @@ Yersinella-Tauri
 Yinash-Tauri
 Yuri-Tauri
 Yuumika-Tauri
+Yølkø-Tauri
 Zoican-Tauri
 Zombeedk-Tauri
 Zonta-Tauri

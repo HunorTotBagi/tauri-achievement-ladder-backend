@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text;
 using AchievementLadder.Configuration;
@@ -25,36 +26,42 @@ public sealed class RealmFirstAchievementExportService(string achievementLadderD
     public async Task<RealmFirstAchievementExportResult> ExportAsync(CancellationToken cancellationToken)
     {
         using var apiClient = new TauriApiClient(_apiOptions);
-        var candidateCharacters = new HashSet<CharacterCandidate>(new CharacterCandidateComparer());
+        var candidateCharacters = new ConcurrentBag<CharacterCandidate>();
 
-        foreach (var realm in RealmSources)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            Console.WriteLine($"Fetching {realm.DisplayName}...");
-
-            var result = await apiClient.FetchResponseElementAsync(
-                Endpoint,
-                new { r = realm.ApiName },
-                realm.DisplayName,
-                cancellationToken);
-
-            if (!result.Succeeded || result.ResponseElement is not { } response)
+        await Parallel.ForEachAsync(
+            RealmSources,
+            new ParallelOptions
             {
-                throw new InvalidOperationException(
-                    $"Could not export {realm.DisplayName}: {result.FailureMessage ?? "No response payload."}");
-            }
-
-            foreach (var characterName in ExtractCharacterNames(response))
+                MaxDegreeOfParallelism = Math.Min(RealmSources.Length, Math.Max(1, _apiOptions.MaxConcurrentRequests)),
+                CancellationToken = cancellationToken
+            },
+            async (realm, ct) =>
             {
-                candidateCharacters.Add(new CharacterCandidate(
-                    characterName,
-                    realm.ApiName,
-                    realm.DisplayName));
-            }
-        }
+                Console.WriteLine($"Fetching {realm.DisplayName}...");
+
+                var result = await apiClient.FetchResponseElementAsync(
+                    Endpoint,
+                    new { r = realm.ApiName },
+                    realm.DisplayName,
+                    ct);
+
+                if (!result.Succeeded || result.ResponseElement is not { } response)
+                {
+                    throw new InvalidOperationException(
+                        $"Could not export {realm.DisplayName}: {result.FailureMessage ?? "No response payload."}");
+                }
+
+                foreach (var characterName in ExtractCharacterNames(response))
+                {
+                    candidateCharacters.Add(new CharacterCandidate(
+                        characterName,
+                        realm.ApiName,
+                        realm.DisplayName));
+                }
+            });
 
         var orderedCandidateCharacters = candidateCharacters
+            .Distinct(new CharacterCandidateComparer())
             .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
             .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
