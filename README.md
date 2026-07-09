@@ -66,24 +66,6 @@ dotnet run --project ArmoryCharacterPruner -- --names-file s15_6
 
 This supports `Character-Realm` rows directly and also accepts `--realm` as a fallback for plain name lists. Pass `--output` if you want to write the filtered list to another file instead of rewriting the source file.
 
-To scan item appearances for specific item IDs, save a JSON report, and write unresolved retry characters into `MissingItemCharactersToScan.txt`, run:
-
-```bash
-dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710"
-```
-
-To scan a single character for those items:
-
-```bash
-dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710" --name Larahh --realm Tauri
-```
-
-To rerun only the unresolved characters from the retry file, pass it back in as `--names-file`:
-
-```bash
-dotnet run --project MissingItemFinder -- --item-ids "73712,73709,73710" --names-file .\MissingItemCharactersToScan.txt
-```
-
 To scan for rare achievements, target items, and rare mounts, run:
 
 ```bash
