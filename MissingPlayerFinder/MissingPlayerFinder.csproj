@@ -19,7 +19,7 @@
     <Compile Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs" Link="Infrastructure\TauriApiClient.cs" />
     <Compile Include="..\AchievementLadder\Models\Player.cs" Link="Models\Player.cs" />
     <Compile Include="..\AchievementLadder\Models\RareAchievementExport.cs" Link="Models\RareAchievementExport.cs" />
-    <Compile Include="..\RareAchiAndItemScan\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
+    <Compile Include="..\AchievementLadder\Shared\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
   </ItemGroup>
 
 </Project>

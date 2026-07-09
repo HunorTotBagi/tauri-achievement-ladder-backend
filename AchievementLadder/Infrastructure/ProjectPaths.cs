@@ -79,7 +79,7 @@ public static class ProjectPaths
             foreach (var fileName in ExpandBatchFileNames(trimmedInputPath))
             {
                 candidates.Add(Path.Combine(solutionRoot, "AchievementLadder", "Data", "PvPSeasonCharacters", fileName));
-                candidates.Add(Path.Combine(solutionRoot, "RareAchiAndItemScan", "Input", fileName));
+                candidates.Add(Path.Combine(solutionRoot, "AchievementLadder", "Data", "AdditionalCharacters", fileName));
             }
         }
 

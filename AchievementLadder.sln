@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuildCharacterExporter", "G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MissingPlayerFinder", "MissingPlayerFinder\MissingPlayerFinder.csproj", "{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RareAchiAndItemScan", "RareAchiAndItemScan\RareAchiAndItemScan.csproj", "{181067F1-1786-4214-996E-F08DD522494C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EndlessGuildExporter", "EndlessGuildExporter\EndlessGuildExporter.csproj", "{D0BFE3E4-2D25-4A40-9C20-6E857A6F8501}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArmoryCharacterPruner", "ArmoryCharacterPruner\ArmoryCharacterPruner.csproj", "{C4C2B7E0-8F7D-4A8E-A52B-38E0D996A44D}"
@@ -69,18 +67,6 @@ Global
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Release|x64.Build.0 = Release|Any CPU
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Release|x86.ActiveCfg = Release|Any CPU
 		{B7F6D3A4-7B46-4E32-9CFB-6F9F7A2B813A}.Release|x86.Build.0 = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|x64.Build.0 = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Debug|x86.Build.0 = Debug|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|x64.ActiveCfg = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|x64.Build.0 = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|x86.ActiveCfg = Release|Any CPU
-		{181067F1-1786-4214-996E-F08DD522494C}.Release|x86.Build.0 = Release|Any CPU
 		{D0BFE3E4-2D25-4A40-9C20-6E857A6F8501}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D0BFE3E4-2D25-4A40-9C20-6E857A6F8501}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D0BFE3E4-2D25-4A40-9C20-6E857A6F8501}.Debug|x64.ActiveCfg = Debug|Any CPU

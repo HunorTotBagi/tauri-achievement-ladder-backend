@@ -27,8 +27,8 @@ public static class CharacterHelpers
     ];
     private static readonly (string RelativePath, string ApiRealm, string DisplayRealm)[] AdditionalTextSources =
     [
-        (Path.Combine("..", "RareAchiAndItemScan", "Input", "tauri-ban-list.txt"), "[HU] Tauri WoW Server", "Tauri"),
-        (Path.Combine("..", "RareAchiAndItemScan", "Input", "vengeful.txt"), "[HU] Tauri WoW Server", "Tauri")
+        (Path.Combine("Data", "AdditionalCharacters", "tauri-ban-list.txt"), "[HU] Tauri WoW Server", "Tauri"),
+        (Path.Combine("Data", "AdditionalCharacters", "vengeful.txt"), "[HU] Tauri WoW Server", "Tauri")
     ];
 
     public static void LoadDefaultCharacterSources(

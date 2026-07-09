@@ -5,7 +5,7 @@ using AchievementLadder.Configuration;
 using AchievementLadder.Helpers;
 using AchievementLadder.Infrastructure;
 using AchievementLadder.Models;
-using RareAchiAndItemScan;
+using AchievementLadder.Shared;
 
 namespace AchievementLadder.Services;
 

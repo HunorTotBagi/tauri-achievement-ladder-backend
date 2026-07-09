@@ -1,4 +1,4 @@
-namespace RareAchiAndItemScan;
+namespace AchievementLadder.Shared;
 
 internal static class RareScanCatalog
 {

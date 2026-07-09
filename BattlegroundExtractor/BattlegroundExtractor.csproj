@@ -11,7 +11,7 @@
     <Compile Include="..\AchievementLadder\Configuration\AppSettings.cs" Link="Configuration\AppSettings.cs" />
     <Compile Include="..\AchievementLadder\Configuration\TauriApiOptions.cs" Link="Configuration\TauriApiOptions.cs" />
     <Compile Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs" Link="Infrastructure\ProjectPaths.cs" />
-    <Compile Include="..\RareAchiAndItemScan\RareScanCatalog.cs" Link="RareScanCatalog.cs" />
+    <Compile Include="..\AchievementLadder\Shared\RareScanCatalog.cs" Link="Shared\RareScanCatalog.cs" />
   </ItemGroup>
 
 </Project>

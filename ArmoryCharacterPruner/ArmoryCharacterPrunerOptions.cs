@@ -12,7 +12,7 @@ public sealed record ArmoryCharacterPrunerOptions(
         """
         Usage:
           dotnet run --project ArmoryCharacterPruner -- --names-file s15_6
-          dotnet run --project ArmoryCharacterPruner -- --names-file .\RareAchiAndItemScan\Input\tauri-ban-list.txt --realm Tauri
+          dotnet run --project ArmoryCharacterPruner -- --names-file .\AchievementLadder\Data\AdditionalCharacters\tauri-ban-list.txt --realm Tauri
           dotnet run --project ArmoryCharacterPruner -- --names-file s15_6 --output .\filtered-s15_6.txt
           dotnet run --project ArmoryCharacterPruner -- --names-file s15_6 --parallelism 5
 

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using AchievementLadder.Configuration;
-using RareAchiAndItemScan;
+using AchievementLadder.Shared;
 
 namespace BattlegroundExtractor;
 

@@ -7,10 +7,10 @@ This repository is now a plain `.NET 9` console app. It reads the local characte
 - `AchievementLadder/Data/CharacterCollection/*.txt`
 - `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
 - `AchievementLadder/Data/PvPSeasonCharacters/*.txt`
-- `RareAchiAndItemScan/Input/tauri-ban-list.txt`
-- `RareAchiAndItemScan/Input/vengeful.txt`
+- `AchievementLadder/Data/AdditionalCharacters/tauri-ban-list.txt`
+- `AchievementLadder/Data/AdditionalCharacters/vengeful.txt`
 
-The two `RareAchiAndItemScan/Input` files are treated as additional `Tauri` character sources.
+The two `AchievementLadder/Data/AdditionalCharacters` files are treated as additional `Tauri` character sources.
 
 There is no database, no EF Core migration flow, and no Docker setup anymore.
 
@@ -65,51 +65,6 @@ dotnet run --project ArmoryCharacterPruner -- --names-file s15_6
 ```
 
 This supports `Character-Realm` rows directly and also accepts `--realm` as a fallback for plain name lists. Pass `--output` if you want to write the filtered list to another file instead of rewriting the source file.
-
-To scan for rare achievements, target items, and rare mounts, run:
-
-```bash
-dotnet run --project RareAchiAndItemScan
-```
-
-The default source scan already combines:
-
-- `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
-- `RareAchiAndItemScan/Input/tauri-ban-list.txt`
-- `RareAchiAndItemScan/Input/vengeful.txt`
-- `AchievementLadder/Data/CharacterCollection/*.txt`
-
-To scan just one character, pass `--name` and `--realm`:
-
-```bash
-dotnet run --project RareAchiAndItemScan -- --name Larahh --realm Tauri
-```
-
-To scan every member of one guild, pass `--guild` and `--realm`:
-
-```bash
-dotnet run --project RareAchiAndItemScan -- --guild "Outlaws" --realm Tauri
-```
-
-To scan a custom batch from a text file, pass `--names-file`. The file can contain `Character-Realm` rows, one character name per line, or raw lines such as `[22191791]-Fluffy|186,Mining;...`. Use `--realm` only as a fallback for rows that do not already include `-Realm`:
-
-```bash
-dotnet run --project RareAchiAndItemScan -- --names-file .\RareAchiAndItemScan\Input\tauri-ban-list.txt --realm Tauri
-```
-
-For PvP season batch files under `AchievementLadder/Data/PvPSeasonCharacters`, you can pass just the file name:
-
-```bash
-dotnet run --project RareAchiAndItemScan -- --names-file s15_6 --scan achievements,items
-```
-
-By default the scan writes a JSON report under `RareAchiAndItemScan/Output`. You can limit the scan scope with `--scan achievements`, `--scan items`, `--scan mounts`, or any comma-separated combination such as `--scan achievements,items`.
-
-To scan the item-appearance endpoint only for specific item IDs across all default source characters, pass `--item-ids`:
-
-```bash
-dotnet run --project RareAchiAndItemScan -- --item-ids 22818,23075
-```
 
 To collect battleground metadata from consecutive `pvp-match` ids into JSON, seed the first run with a known match id:
 
