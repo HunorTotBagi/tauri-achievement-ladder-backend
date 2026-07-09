@@ -9,6 +9,7 @@ namespace GuildCharacterExporter;
 public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOptions apiOptions)
 {
     private const int ProgressInterval = 25;
+    private const string RetryFileName = "MissingGuildsToScan.txt";
 
     private static readonly RealmSource[] RealmSources =
     [
@@ -28,15 +29,44 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             throw new DirectoryNotFoundException($"Could not find guild data folder: {guildDataDirectory}");
         }
 
-        var guilds = LoadGuilds(guildDataDirectory)
+        var outputPath = Path.Combine(
+            _solutionRoot,
+            "AchievementLadder",
+            "Data",
+            "GuildCharacters",
+            "GuildCharacters.txt");
+        var retryOutputPath = Path.Combine(_solutionRoot, RetryFileName);
+        var retryInputGuilds = LoadRetryGuilds(retryOutputPath)
             .DistinctBy(guild => (guild.GuildName.ToLowerInvariant(), guild.ApiRealm))
             .ToList();
+        var usedRetryInput = retryInputGuilds.Count > 0;
+        var guilds = usedRetryInput
+            ? retryInputGuilds
+            : LoadGuilds(guildDataDirectory)
+                .DistinctBy(guild => (guild.GuildName.ToLowerInvariant(), guild.ApiRealm))
+                .ToList();
+
+        if (usedRetryInput)
+        {
+            Console.WriteLine($"Retry file found with {guilds.Count} guilds. Scanning only {RetryFileName} entries.");
+        }
+        else if (File.Exists(retryOutputPath))
+        {
+            Console.WriteLine($"{RetryFileName} has no guilds to retry. Running a full guild scan.");
+        }
 
         Console.WriteLine($"Scanning {guilds.Count} guilds...");
         Console.WriteLine(
             $"API settings: concurrency={_apiOptions.MaxConcurrentRequests}, timeout={_apiOptions.RequestTimeoutSeconds}s, retries={_apiOptions.MaxRetryAttempts}");
 
-        var characterLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var characterLines = usedRetryInput
+            ? LoadExistingCharacterLines(outputPath)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (usedRetryInput)
+        {
+            Console.WriteLine($"Loaded {characterLines.Count} existing character rows to merge retry results.");
+        }
+
         var retryGuilds = new List<GuildSource>();
         var processedGuildCount = 0;
 
@@ -64,13 +94,6 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             }
         }
 
-        var outputPath = Path.Combine(
-            _solutionRoot,
-            "AchievementLadder",
-            "Data",
-            "GuildCharacters",
-            "GuildCharacters.txt");
-        var retryOutputPath = Path.Combine(_solutionRoot, "MissingGuildsToScan.txt");
         var orderedRetryGuilds = retryGuilds
             .OrderBy(guild => guild.DisplayRealm, StringComparer.OrdinalIgnoreCase)
             .ThenBy(guild => guild.GuildName, StringComparer.OrdinalIgnoreCase)
@@ -89,7 +112,8 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             orderedLines.Count,
             orderedRetryGuilds.Count,
             outputPath,
-            retryOutputPath);
+            retryOutputPath,
+            usedRetryInput);
     }
 
     private static IEnumerable<GuildSource> LoadGuilds(string guildDataDirectory)
@@ -113,6 +137,70 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
                 yield return new GuildSource(guildName, source.ApiRealm, source.DisplayRealm);
             }
         }
+    }
+
+    private static IEnumerable<GuildSource> LoadRetryGuilds(string path)
+    {
+        if (!File.Exists(path))
+        {
+            yield break;
+        }
+
+        var lineNumber = 0;
+        foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
+        {
+            lineNumber++;
+
+            var line = rawLine?.Trim();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var parts = line.Split('\t', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            {
+                throw new InvalidDataException(
+                    $"Could not parse {Path.GetFileName(path)} line {lineNumber}. Expected format: Realm<TAB>GuildName.");
+            }
+
+            var source = ResolveRealmSource(parts[0]);
+            if (source is null)
+            {
+                var knownRealms = string.Join(", ", RealmSources.Select(realmSource => realmSource.DisplayRealm));
+                throw new InvalidDataException(
+                    $"Could not parse {Path.GetFileName(path)} line {lineNumber}: unknown realm '{parts[0]}'. Known realms: {knownRealms}.");
+            }
+
+            yield return new GuildSource(parts[1], source.ApiRealm, source.DisplayRealm);
+        }
+    }
+
+    private static RealmSource? ResolveRealmSource(string realmName)
+    {
+        return RealmSources.FirstOrDefault(source =>
+            string.Equals(source.DisplayRealm, realmName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(source.ApiRealm, realmName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static HashSet<string> LoadExistingCharacterLines(string path)
+    {
+        var lines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(path))
+        {
+            return lines;
+        }
+
+        foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
+        {
+            var line = rawLine?.Trim();
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                lines.Add(line);
+            }
+        }
+
+        return lines;
     }
 
     private static async Task<GuildLoadResult> LoadGuildMembersAsync(

@@ -5,6 +5,7 @@ Defiance
 Army of Divergent
 Yin Yang
 Impact
+Girls Gone WoW
 Shadow Hunters
 Fekete Hold
 Punishers
@@ -230,7 +231,7 @@ Hun
 Hungary Avangers
 HUNGARYmorek
 I n v i n c i b l e
-I Unión  Esencial I
+I Unión Esencial I
 Impact
 Incendia
 Infinity Castle
@@ -1334,7 +1335,6 @@ Vincent
 warlike
 Walmart
 warning
-Almighty
 Atlantis
 asphyxia
 autobahn
@@ -2439,7 +2439,6 @@ TEAM KOREA
 Guardian of Azeroth
 A V C I
 Coffee Knights HS
-Most Wanted
 GobliFans
 Exotic Fur Trade
 Digital Monster
@@ -2447,3 +2446,9 @@ Nefritor
 Traficantii de Acadele
 Que foi
 Polski Zwiazek Wedkarski
+Xaxas Bank
+Ascendant
+The Monday Haters
+Hunters
+Heart of the Phoenix
+Be happy
