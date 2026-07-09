@@ -79,8 +79,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         [9] = "Warlock",
         [10] = "Monk",
         [11] = "Druid",
-        [12] = "Demon Hunter",
-        [13] = "Evoker"
+        [12] = "Demon Hunter"
     };
 
     private static readonly IReadOnlyDictionary<string, string> ClassColorHexByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -88,7 +87,6 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         ["Death Knight"] = "C41E3A",
         ["Demon Hunter"] = "A330C9",
         ["Druid"] = "FF7C0A",
-        ["Evoker"] = "33937F",
         ["Hunter"] = "AAD372",
         ["Mage"] = "3FC7EB",
         ["Monk"] = "00FF98",
