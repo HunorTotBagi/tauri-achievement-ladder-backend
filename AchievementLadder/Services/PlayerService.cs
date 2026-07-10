@@ -15,13 +15,6 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     private const int ProgressInterval = 250;
     private const int ProgressBarWidth = 30;
     private readonly int _characterWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
-    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions =
-        RareScanCatalog
-            .RareAchievementNames.Select(entry => new RareAchievementDefinition(
-                entry.Key,
-                entry.Value
-            ))
-            .ToList();
 
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
@@ -142,7 +135,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             "RareAchievements.json",
             new RareAchievementExport(
                 generatedAt,
-                RareAchievementDefinitions,
+                RareScanCatalog.RareAchievementDefinitions,
                 orderedRareAchievementEntries
             ),
             cancellationToken
@@ -196,7 +189,10 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             return CharacterSyncResult.Failure();
         }
 
-        var achievements = RareAchievementExtractor.ExtractAchievements(response);
+        var achievements = RareAchievementExtractor.ExtractAchievements(
+            response,
+            RareScanCatalog.DateTrackedAchievementIds
+        );
         var player = CharacterResponseMapper.CreatePlayer(
             response,
             achievements,
@@ -206,7 +202,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
             achievements,
-            RareAchievementDefinitions
+            RareScanCatalog.RareAchievementDefinitions
         );
 
         var appearanceResponseResult = await apiClient.FetchResponseElementAsync(

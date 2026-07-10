@@ -401,6 +401,9 @@ public sealed class BattlegroundCollectorService(
         var knownGuildsByFile = new Dictionary<string, HashSet<string>>(
             StringComparer.OrdinalIgnoreCase
         );
+        var newGuildsByFile = new Dictionary<string, List<string>>(
+            StringComparer.OrdinalIgnoreCase
+        );
         var addedCount = 0;
         var skippedUnknownRealm = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var distinctMembers = members
@@ -439,9 +442,20 @@ public sealed class BattlegroundCollectorService(
                 continue;
             }
 
-            AppendGuildName(filePath, member.GuildName);
+            if (!newGuildsByFile.TryGetValue(fileName, out var newGuilds))
+            {
+                newGuilds = [];
+                newGuildsByFile[fileName] = newGuilds;
+            }
+
+            newGuilds.Add(member.GuildName);
             addedCount++;
             Console.WriteLine($"  + Added '{member.GuildName}' to {fileName}");
+        }
+
+        foreach (var (fileName, newGuilds) in newGuildsByFile)
+        {
+            AppendGuildNames(Path.Combine(_guildsDirectory, fileName), newGuilds);
         }
 
         Console.WriteLine(
@@ -623,14 +637,21 @@ public sealed class BattlegroundCollectorService(
         return guilds;
     }
 
-    private static void AppendGuildName(string filePath, string guildName)
+    private static void AppendGuildNames(string filePath, IReadOnlyList<string> guildNames)
     {
-        var needsLeadingNewline = File.Exists(filePath) && !EndsWithNewline(filePath);
-        var textToAppend =
-            (needsLeadingNewline ? Environment.NewLine : string.Empty)
-            + guildName
-            + Environment.NewLine;
-        File.AppendAllText(filePath, textToAppend, Utf8NoBom);
+        var builder = new StringBuilder();
+
+        if (File.Exists(filePath) && !EndsWithNewline(filePath))
+        {
+            builder.Append(Environment.NewLine);
+        }
+
+        foreach (var guildName in guildNames)
+        {
+            builder.Append(guildName).Append(Environment.NewLine);
+        }
+
+        File.AppendAllText(filePath, builder.ToString(), Utf8NoBom);
     }
 
     private static bool EndsWithNewline(string filePath)

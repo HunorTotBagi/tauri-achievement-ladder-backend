@@ -4,6 +4,11 @@ namespace Tauri.Core.Configuration;
 
 public sealed class AppSettings
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
     public TauriApiOptions TauriApi { get; set; } = new();
 
     public static AppSettings Load(string path)
@@ -15,10 +20,7 @@ public sealed class AppSettings
 
         var json = File.ReadAllText(path);
         var settings =
-            JsonSerializer.Deserialize<AppSettings>(
-                json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            ) ?? new AppSettings();
+            JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions) ?? new AppSettings();
 
         settings.TauriApi.ApplyEnvironmentOverrides();
         settings.TauriApi.Validate();

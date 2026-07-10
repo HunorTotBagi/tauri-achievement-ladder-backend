@@ -1,3 +1,7 @@
+using System.Collections.Frozen;
+using Tauri.Core.Infrastructure;
+using Tauri.Core.Models;
+
 namespace Tauri.Core.Shared;
 
 public static class RareScanCatalog
@@ -195,6 +199,19 @@ public static class RareScanCatalog
         { 6746, "RF Warlock 90" },
         { 6750, "RF Warrior 90" },
     };
+
+    public static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions =
+        RareAchievementNames
+            .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
+            .ToList();
+
+    /// <summary>
+    /// Achievement ids whose obtained dates are consumed downstream: the rare achievements
+    /// plus the "Level 10" achievement used to compute character age.
+    /// </summary>
+    public static readonly FrozenSet<int> DateTrackedAchievementIds = RareAchievementNames
+        .Keys.Append(CharacterResponseMapper.Level10AchievementId)
+        .ToFrozenSet();
 
     public static readonly IReadOnlySet<string> GladiatorMountNames = new HashSet<string>(
         StringComparer.OrdinalIgnoreCase

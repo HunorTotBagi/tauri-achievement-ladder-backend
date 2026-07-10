@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace BattlegroundCollector;
 
 public sealed record BattlegroundCollectorOptions(
@@ -184,10 +186,8 @@ public sealed record BattlegroundCollectorOptions(
 
     private static bool TryParseMatchId(string value, out int matchId)
     {
-        matchId = 0;
-        return !string.IsNullOrWhiteSpace(value)
-            && value.All(char.IsDigit)
-            && int.TryParse(value, out matchId)
+        // NumberStyles.None allows digits only (no sign, whitespace, or separators).
+        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out matchId)
             && matchId > 0;
     }
 

@@ -6,6 +6,29 @@ namespace Tauri.Core.Infrastructure;
 
 public static class RareAchievementExtractor
 {
+    private static readonly string[] ObtainedAtPropertyNames =
+    [
+        "obtainedAt",
+        "completedAt",
+        "achievementDate",
+        "completionDate",
+        "date",
+        "completed",
+        "obtained",
+        "timestamp",
+        "time",
+    ];
+    private static readonly string[] AchievementIdPropertyNames =
+    [
+        "id",
+        "achievementId",
+        "achievementID",
+        "achievement",
+    ];
+    private static readonly string[] YearPropertyNames = ["year", "y"];
+    private static readonly string[] MonthPropertyNames = ["month", "m"];
+    private static readonly string[] DayPropertyNames = ["day", "d"];
+
     public static IReadOnlyList<CharacterRareAchievement> ExtractRareAchievements(
         IReadOnlyDictionary<int, DateTimeOffset?> achievedAchievements,
         IReadOnlyList<RareAchievementDefinition> definitions
@@ -26,8 +49,14 @@ public static class RareAchievementExtractor
         return rareAchievements;
     }
 
+    /// <summary>
+    /// Extracts every achieved achievement id. Obtained dates are only parsed for ids in
+    /// <paramref name="dateTrackedIds"/>; all other entries are stored with a null date,
+    /// which skips the expensive multi-format date parsing for the vast majority of entries.
+    /// </summary>
     public static IReadOnlyDictionary<int, DateTimeOffset?> ExtractAchievements(
-        JsonElement responseElement
+        JsonElement responseElement,
+        IReadOnlySet<int> dateTrackedIds
     )
     {
         if (!responseElement.TryGetProperty("Achievements", out var achievementsElement))
@@ -43,7 +72,9 @@ public static class RareAchievementExtractor
             {
                 if (int.TryParse(property.Name, out var achievementId))
                 {
-                    achievements[achievementId] = ReadAchievementObtainedAt(property.Value);
+                    achievements[achievementId] = dateTrackedIds.Contains(achievementId)
+                        ? ReadAchievementObtainedAt(property.Value)
+                        : null;
                 }
             }
         }
@@ -65,16 +96,12 @@ public static class RareAchievementExtractor
                     continue;
                 }
 
-                achievementId = ReadInt(
-                    item,
-                    "id",
-                    "achievementId",
-                    "achievementID",
-                    "achievement"
-                );
+                achievementId = ReadInt(item, AchievementIdPropertyNames);
                 if (achievementId > 0)
                 {
-                    achievements[achievementId] = ReadAchievementObtainedAt(item);
+                    achievements[achievementId] = dateTrackedIds.Contains(achievementId)
+                        ? ReadAchievementObtainedAt(item)
+                        : null;
                 }
             }
         }
@@ -94,20 +121,7 @@ public static class RareAchievementExtractor
             return null;
         }
 
-        foreach (
-            var propertyName in new[]
-            {
-                "obtainedAt",
-                "completedAt",
-                "achievementDate",
-                "completionDate",
-                "date",
-                "completed",
-                "obtained",
-                "timestamp",
-                "time",
-            }
-        )
+        foreach (var propertyName in ObtainedAtPropertyNames)
         {
             if (
                 TryGetPropertyIgnoreCase(element, propertyName, out var property)
@@ -118,9 +132,9 @@ public static class RareAchievementExtractor
             }
         }
 
-        var year = ReadInt(element, "year", "y");
-        var month = ReadInt(element, "month", "m");
-        var day = ReadInt(element, "day", "d");
+        var year = ReadInt(element, YearPropertyNames);
+        var month = ReadInt(element, MonthPropertyNames);
+        var day = ReadInt(element, DayPropertyNames);
 
         if (year > 0 && month > 0 && day > 0 && TryCreateDate(year, month, day, out obtainedAt))
         {

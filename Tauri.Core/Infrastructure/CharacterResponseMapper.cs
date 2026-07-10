@@ -6,7 +6,7 @@ namespace Tauri.Core.Infrastructure;
 public static class CharacterResponseMapper
 {
     // "Level 10" achievement; its obtained date marks when the character was created/started.
-    private const int Level10AchievementId = 6;
+    public const int Level10AchievementId = 6;
 
     public static Player CreatePlayer(
         JsonElement response,

@@ -22,13 +22,6 @@ public sealed class MissingPlayerFinderService(
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
     };
-    private static readonly IReadOnlyList<RareAchievementDefinition> RareAchievementDefinitions =
-        RareScanCatalog
-            .RareAchievementNames.Select(entry => new RareAchievementDefinition(
-                entry.Key,
-                entry.Value
-            ))
-            .ToList();
     private const int ProgressInterval = 100;
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
@@ -405,7 +398,10 @@ public sealed class MissingPlayerFinderService(
             return CharacterBackfillResult.Failure();
         }
 
-        var achievements = RareAchievementExtractor.ExtractAchievements(response);
+        var achievements = RareAchievementExtractor.ExtractAchievements(
+            response,
+            RareScanCatalog.DateTrackedAchievementIds
+        );
         var player = CharacterResponseMapper.CreatePlayer(
             response,
             achievements,
@@ -415,7 +411,7 @@ public sealed class MissingPlayerFinderService(
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
             achievements,
-            RareAchievementDefinitions
+            RareScanCatalog.RareAchievementDefinitions
         );
 
         if (target.RequiresPlayerBackfill)
@@ -527,7 +523,7 @@ public sealed class MissingPlayerFinderService(
         {
             existingExport = new RareAchievementExport(
                 DateTimeOffset.UtcNow,
-                RareAchievementDefinitions,
+                RareScanCatalog.RareAchievementDefinitions,
                 []
             );
         }
@@ -547,7 +543,7 @@ public sealed class MissingPlayerFinderService(
 
         var updatedExport = new RareAchievementExport(
             DateTimeOffset.UtcNow,
-            RareAchievementDefinitions,
+            RareScanCatalog.RareAchievementDefinitions,
             mergedCharacters
         );
 
