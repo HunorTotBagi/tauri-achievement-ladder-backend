@@ -41,7 +41,6 @@ Keselowski-Evermoon
 Kodiaq-Evermoon
 Kogorm-Evermoon
 Lexane-Evermoon
-Life-Evermoon
 Lineaa-Evermoon
 Lucecita-Evermoon
 Marigo-Evermoon
@@ -70,6 +69,7 @@ Røckwell-Evermoon
 Sargarepa-Evermoon
 Sophierain-Evermoon
 Stareyes-Evermoon
+Stareyez-Evermoon
 Stormspear-Evermoon
 Tnarfnet-Evermoon
 Traevyn-Evermoon
