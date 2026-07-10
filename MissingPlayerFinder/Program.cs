@@ -26,10 +26,12 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
+            using var apiClient = new TauriApiClient(settings.TauriApi);
             var finder = new MissingPlayerFinderService(
                 solutionRoot,
                 achievementLadderProjectRoot,
-                settings.TauriApi
+                settings.TauriApi,
+                apiClient
             );
 
             Console.WriteLine("Starting missing player backfill...");

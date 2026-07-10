@@ -7,7 +7,11 @@ using Tauri.Core.Infrastructure;
 
 namespace GuildCharacterExporter;
 
-public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOptions apiOptions)
+public sealed class GuildCharacterExportService(
+    string solutionRoot,
+    TauriApiOptions apiOptions,
+    ITauriApiClient apiClient
+)
 {
     private const int ProgressInterval = 25;
     private const string RetryFileName = "MissingGuildsToScan.txt";
@@ -21,6 +25,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly ITauriApiClient _apiClient = apiClient;
     private readonly int _guildWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
 
     public async Task<GuildCharacterExportResult> ExportAsync(CancellationToken cancellationToken)
@@ -87,8 +92,6 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
         var processedGuildCount = 0;
         var progressLock = new Lock();
 
-        using var apiClient = new TauriApiClient(_apiOptions);
-
         await Parallel.ForEachAsync(
             guilds,
             new ParallelOptions
@@ -98,7 +101,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             },
             async (guild, ct) =>
             {
-                var result = await LoadGuildMembersAsync(apiClient, guild, ct);
+                var result = await LoadGuildMembersAsync(_apiClient, guild, ct);
                 if (result.Succeeded)
                 {
                     foreach (var memberName in result.Members)
@@ -243,7 +246,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
     }
 
     private static async Task<GuildLoadResult> LoadGuildMembersAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         GuildSource guild,
         CancellationToken cancellationToken
     )

@@ -1,11 +1,10 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using Tauri.Core.Configuration;
 using Tauri.Core.Infrastructure;
 
 namespace EndlessGuildExporter;
 
-public sealed class EndlessGuildExportService(string projectRoot, TauriApiOptions apiOptions)
+public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClient apiClient)
 {
     private const string TargetGuildName = "Endless";
     private const string TargetApiRealm = "[EN] Evermoon";
@@ -161,15 +160,14 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     > WorkbookCellStyles = BuildWorkbookCellStyles();
 
     private readonly string _projectRoot = Path.GetFullPath(projectRoot);
-    private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly ITauriApiClient _apiClient = apiClient;
 
     public async Task<EndlessGuildExportResult> ExportAsync(
         string? requestedOutputPath,
         CancellationToken cancellationToken
     )
     {
-        using var apiClient = new TauriApiClient(_apiOptions);
-        var guildMembers = await LoadGuildMembersAsync(apiClient, cancellationToken);
+        var guildMembers = await LoadGuildMembersAsync(_apiClient, cancellationToken);
 
         Console.WriteLine($"Found {guildMembers.Count} members in '{TargetGuildName}'.");
         Console.WriteLine("Fetching character-sheet details...");
@@ -186,7 +184,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             },
             async (member, ct) =>
             {
-                var row = await BuildExportRowAsync(apiClient, member, ct);
+                var row = await BuildExportRowAsync(_apiClient, member, ct);
                 rows.Add(row);
 
                 var processed = Interlocked.Increment(ref processedCount);
@@ -228,7 +226,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     }
 
     private async Task<List<GuildMemberRecord>> LoadGuildMembersAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         CancellationToken cancellationToken
     )
     {
@@ -273,7 +271,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     }
 
     private async Task<ExportRow> BuildExportRowAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         GuildMemberRecord member,
         CancellationToken cancellationToken
     )

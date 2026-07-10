@@ -9,7 +9,12 @@ using Tauri.Core.Shared;
 
 namespace AchievementLadder.Services;
 
-public class PlayerService(string projectRoot, TauriApiOptions apiOptions, PlayerCsvStore csvStore)
+public class PlayerService(
+    string projectRoot,
+    TauriApiOptions apiOptions,
+    ITauriApiClient apiClient,
+    PlayerCsvStore csvStore
+)
 {
     private static readonly CharacterTargetComparer CharacterComparer = new();
     private const int ProgressInterval = 250;
@@ -19,7 +24,6 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     public async Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken)
     {
         var scanStartedAt = DateTimeOffset.UtcNow;
-        using var apiClient = new TauriApiClient(apiOptions);
 
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var retryOutputPath = Path.Combine(solutionRoot, "MissingPlayersToScan.txt");
@@ -169,7 +173,7 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
     }
 
     private static async Task<CharacterSyncResult> FetchCharacterSyncAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         string name,
         string apiRealm,
         string displayRealm,

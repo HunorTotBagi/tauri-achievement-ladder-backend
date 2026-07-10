@@ -26,7 +26,8 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
-            var exporter = new EndlessGuildExportService(projectRoot, settings.TauriApi);
+            using var apiClient = new TauriApiClient(settings.TauriApi);
+            var exporter = new EndlessGuildExportService(projectRoot, apiClient);
 
             Console.WriteLine("Exporting Endless guild members from Tauri to Excel...");
 

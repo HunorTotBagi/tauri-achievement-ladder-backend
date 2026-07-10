@@ -55,9 +55,13 @@ internal static class Program
                 settings.TauriApi.MaxConcurrentRequests = parallelism;
             }
 
+            // Create the client after the parallelism override so it sizes its
+            // request gate from the effective MaxConcurrentRequests.
+            using var apiClient = new TauriApiClient(settings.TauriApi);
             var exporter = new RealmFirstAchievementExportService(
                 achievementLadderDataDirectory,
-                settings.TauriApi
+                settings.TauriApi,
+                apiClient
             );
 
             Console.WriteLine("Exporting achievement-firsts for Evermoon, Tauri, and WoD...");

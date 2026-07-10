@@ -13,7 +13,8 @@ namespace MissingPlayerFinder;
 public sealed class MissingPlayerFinderService(
     string solutionRoot,
     string achievementLadderProjectRoot,
-    TauriApiOptions apiOptions
+    TauriApiOptions apiOptions,
+    ITauriApiClient apiClient
 )
 {
     private static readonly CharacterKeyComparer CharacterComparer = new();
@@ -29,6 +30,7 @@ public sealed class MissingPlayerFinderService(
         achievementLadderProjectRoot
     );
     private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly ITauriApiClient _apiClient = apiClient;
     private readonly int _characterWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
 
     public async Task<MissingPlayerFinderResult> GenerateAsync(CancellationToken cancellationToken)
@@ -74,8 +76,6 @@ public sealed class MissingPlayerFinderService(
         var unresolvedCharacters = new ConcurrentBag<CharacterToScan>();
         var processedCount = 0;
 
-        using var apiClient = new TauriApiClient(_apiOptions);
-
         await Parallel.ForEachAsync(
             targets,
             new ParallelOptions
@@ -85,7 +85,7 @@ public sealed class MissingPlayerFinderService(
             },
             async (target, ct) =>
             {
-                var result = await FetchBackfillAsync(apiClient, target, scanStartedAt, ct);
+                var result = await FetchBackfillAsync(_apiClient, target, scanStartedAt, ct);
 
                 if (target.RequiresPlayerBackfill && result.Player is { } fetchedPlayer)
                 {
@@ -375,7 +375,7 @@ public sealed class MissingPlayerFinderService(
     }
 
     private static async Task<CharacterBackfillResult> FetchBackfillAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         BackfillTarget target,
         DateTimeOffset scanStartedAt,
         CancellationToken cancellationToken

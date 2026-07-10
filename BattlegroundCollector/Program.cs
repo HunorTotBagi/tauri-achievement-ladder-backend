@@ -44,11 +44,12 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             var frontendSrcDirectory = ProjectPaths.GetFrontendSrcDirectory(solutionRoot);
+            using var apiClient = new TauriApiClient(settings.TauriApi);
             var collector = new BattlegroundCollectorService(
                 projectRoot,
                 solutionRoot,
                 frontendSrcDirectory,
-                settings.TauriApi
+                apiClient
             );
             var result = await collector.ExecuteAsync(options!, cancellationTokenSource.Token);
 

@@ -25,7 +25,12 @@ internal static class Program
         try
         {
             var settings = AppSettings.Load(settingsPath);
-            var exporter = new GuildCharacterExportService(solutionRoot, settings.TauriApi);
+            using var apiClient = new TauriApiClient(settings.TauriApi);
+            var exporter = new GuildCharacterExportService(
+                solutionRoot,
+                settings.TauriApi,
+                apiClient
+            );
 
             Console.WriteLine("Starting guild character export...");
 

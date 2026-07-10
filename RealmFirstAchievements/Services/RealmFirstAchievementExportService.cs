@@ -9,7 +9,8 @@ namespace RealmFirstAchievements.Services;
 
 public sealed class RealmFirstAchievementExportService(
     string achievementLadderDataDirectory,
-    TauriApiOptions apiOptions
+    TauriApiOptions apiOptions,
+    ITauriApiClient apiClient
 )
 {
     private const string Endpoint = "achievement-firsts";
@@ -27,12 +28,12 @@ public sealed class RealmFirstAchievementExportService(
         achievementLadderDataDirectory
     );
     private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly ITauriApiClient _apiClient = apiClient;
 
     public async Task<RealmFirstAchievementExportResult> ExportAsync(
         CancellationToken cancellationToken
     )
     {
-        using var apiClient = new TauriApiClient(_apiOptions);
         var candidateCharacters = new ConcurrentBag<CharacterCandidate>();
 
         await Parallel.ForEachAsync(
@@ -49,7 +50,7 @@ public sealed class RealmFirstAchievementExportService(
             {
                 Console.WriteLine($"Fetching {realm.DisplayName}...");
 
-                var result = await apiClient.FetchResponseElementAsync(
+                var result = await _apiClient.FetchResponseElementAsync(
                     Endpoint,
                     new { r = realm.ApiName },
                     realm.DisplayName,
@@ -79,7 +80,7 @@ public sealed class RealmFirstAchievementExportService(
             .ToList();
 
         var validCharacters = await ValidateCharactersAsync(
-            apiClient,
+            _apiClient,
             orderedCandidateCharacters,
             cancellationToken
         );
@@ -97,7 +98,7 @@ public sealed class RealmFirstAchievementExportService(
     }
 
     private async Task<IReadOnlyList<CharacterCandidate>> ValidateCharactersAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         IReadOnlyList<CharacterCandidate> characters,
         CancellationToken cancellationToken
     )
@@ -145,7 +146,7 @@ public sealed class RealmFirstAchievementExportService(
     }
 
     private static async Task<bool> CharacterExistsAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         CharacterCandidate character,
         CancellationToken cancellationToken
     )

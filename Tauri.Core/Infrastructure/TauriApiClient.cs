@@ -5,7 +5,7 @@ using Tauri.Core.Configuration;
 
 namespace Tauri.Core.Infrastructure;
 
-public sealed class TauriApiClient : IDisposable
+public sealed class TauriApiClient : ITauriApiClient, IDisposable
 {
     private const int MaxRetryDelayMilliseconds = 15_000;
 

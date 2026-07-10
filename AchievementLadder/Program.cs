@@ -28,7 +28,13 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             var csvStore = new PlayerCsvStore(exportDirectory);
-            var playerService = new PlayerService(projectRoot, settings.TauriApi, csvStore);
+            using var apiClient = new TauriApiClient(settings.TauriApi);
+            var playerService = new PlayerService(
+                projectRoot,
+                settings.TauriApi,
+                apiClient,
+                csvStore
+            );
 
             Console.WriteLine("Starting player sync...");
 

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Tauri.Core.Configuration;
 using Tauri.Core.Infrastructure;
 
 namespace BattlegroundCollector;
@@ -11,7 +10,7 @@ public sealed class BattlegroundCollectorService(
     string projectRoot,
     string solutionRoot,
     string frontendSrcDirectory,
-    TauriApiOptions apiOptions
+    ITauriApiClient apiClient
 )
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -50,7 +49,7 @@ public sealed class BattlegroundCollectorService(
         "Guilds"
     );
     private readonly string _frontendSrcDirectory = Path.GetFullPath(frontendSrcDirectory);
-    private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly ITauriApiClient _apiClient = apiClient;
 
     public async Task<BattlegroundCollectionResult> ExecuteAsync(
         BattlegroundCollectorOptions options,
@@ -73,8 +72,6 @@ public sealed class BattlegroundCollectorService(
             .Select(GetRecordKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        using var apiClient = new TauriApiClient(_apiOptions);
-
         Console.WriteLine(
             $"Scanning battlegrounds on {options.DisplayRealm} from match id {startMatchId}..."
         );
@@ -85,7 +82,7 @@ public sealed class BattlegroundCollectorService(
             cancellationToken.ThrowIfCancellationRequested();
 
             var fetchResult = await FetchBattlegroundAsync(
-                apiClient,
+                _apiClient,
                 options.ApiRealm,
                 currentMatchId,
                 cancellationToken
@@ -155,7 +152,7 @@ public sealed class BattlegroundCollectorService(
     }
 
     private static async Task<BattlegroundFetchResult> FetchBattlegroundAsync(
-        TauriApiClient apiClient,
+        ITauriApiClient apiClient,
         string apiRealm,
         int matchId,
         CancellationToken cancellationToken
