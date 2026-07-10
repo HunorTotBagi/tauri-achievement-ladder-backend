@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using System.Text;
 using System.Text.Json;
 using AchievementLadder.Configuration;
+using AchievementLadder.Infrastructure;
 
 namespace EndlessGuildExporter;
 
@@ -168,14 +168,8 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         CancellationToken cancellationToken
     )
     {
-        using var client = new HttpClient();
-        var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
-        var guildMembers = await LoadGuildMembersAsync(
-            client,
-            apiUrl,
-            _apiOptions.Secret,
-            cancellationToken
-        );
+        using var apiClient = new TauriApiClient(_apiOptions);
+        var guildMembers = await LoadGuildMembersAsync(apiClient, cancellationToken);
 
         Console.WriteLine($"Found {guildMembers.Count} members in '{TargetGuildName}'.");
         Console.WriteLine("Fetching character-sheet details...");
@@ -192,7 +186,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             },
             async (member, ct) =>
             {
-                var row = await BuildExportRowAsync(client, apiUrl, _apiOptions.Secret, member, ct);
+                var row = await BuildExportRowAsync(apiClient, member, ct);
                 rows.Add(row);
 
                 var processed = Interlocked.Increment(ref processedCount);
@@ -234,24 +228,26 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     }
 
     private async Task<List<GuildMemberRecord>> LoadGuildMembersAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
+        TauriApiClient apiClient,
         CancellationToken cancellationToken
     )
     {
-        var response = await FetchResponseElementAsync(
-            client,
-            apiUrl,
-            secret,
+        var result = await apiClient.FetchResponseElementAsync(
             "guild-info",
             new { r = TargetApiRealm, gn = TargetGuildName },
+            $"guild '{TargetGuildName}' on {TargetDisplayRealm}",
             cancellationToken
         );
 
+        if (!result.Succeeded || result.ResponseElement is not { } response)
+        {
+            throw new InvalidOperationException(
+                $"Could not load guild '{TargetGuildName}' on {TargetDisplayRealm}: {result.FailureMessage ?? "No response payload."}"
+            );
+        }
+
         if (
-            response is null
-            || !response.Value.TryGetProperty("guildList", out var guildListElement)
+            !response.TryGetProperty("guildList", out var guildListElement)
             || guildListElement.ValueKind != JsonValueKind.Object
         )
         {
@@ -277,9 +273,7 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
     }
 
     private async Task<ExportRow> BuildExportRowAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
+        TauriApiClient apiClient,
         GuildMemberRecord member,
         CancellationToken cancellationToken
     )
@@ -291,24 +285,21 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
 
         try
         {
-            var response = await FetchResponseElementAsync(
-                client,
-                apiUrl,
-                secret,
+            var result = await apiClient.FetchResponseElementAsync(
                 "character-sheet",
                 new { r = TargetApiRealm, n = member.Name },
+                $"{member.Name}-{TargetDisplayRealm}",
                 cancellationToken
             );
 
-            if (response is null)
+            if (!result.Succeeded || result.ResponseElement is not { } responseElement)
             {
                 return CreateFallbackRow(
                     member,
-                    "guild-info fallback: character-sheet lookup failed"
+                    $"guild-info fallback: {result.FailureMessage ?? "character-sheet lookup failed"}"
                 );
             }
 
-            var responseElement = response.Value;
             var classId = ReadInt(responseElement, "class", member.ClassId);
             var raceId = ReadInt(responseElement, "race", member.RaceId);
             var professions = ExtractProfessions(responseElement);
@@ -609,48 +600,6 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
             || value.Contains("secondary", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<JsonElement?> FetchResponseElementAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
-        string endpoint,
-        object parameters,
-        CancellationToken cancellationToken
-    )
-    {
-        var body = new
-        {
-            secret,
-            url = endpoint,
-            @params = parameters,
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json"
-        );
-
-        using var response = await client.PostAsync(apiUrl, content, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(
-            stream,
-            cancellationToken: cancellationToken
-        );
-
-        if (!document.RootElement.TryGetProperty("response", out var responseElement))
-        {
-            return null;
-        }
-
-        return responseElement.Clone();
-    }
-
     private static IReadOnlyList<SimpleXlsxWriter.CellData> BuildHeaderRow()
     {
         return
@@ -936,12 +885,6 @@ public sealed class EndlessGuildExportService(string projectRoot, TauriApiOption
         }
 
         return property.GetString()?.Trim() ?? defaultValue;
-    }
-
-    private static string BuildApiUrl(string baseUrl, string apiKey)
-    {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
     }
 
     private readonly record struct GuildMemberRecord(

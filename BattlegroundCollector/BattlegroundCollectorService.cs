@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AchievementLadder.Configuration;
+using AchievementLadder.Infrastructure;
 
 namespace BattlegroundCollector;
 
@@ -61,7 +62,6 @@ public sealed class BattlegroundCollectorService(
         var existingRecords = await LoadExistingRecordsAsync(outputPath, cancellationToken);
         var existingState = await LoadStateAsync(statePath, cancellationToken);
         var startMatchId = ResolveStartMatchId(options, existingState, statePath);
-        var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
         var currentMatchId = startMatchId;
         var newRecords = new List<BattlegroundRecord>();
         var newMembers = new List<MatchMember>();
@@ -73,10 +73,7 @@ public sealed class BattlegroundCollectorService(
             .Select(GetRecordKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        using var client = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(_apiOptions.RequestTimeoutSeconds),
-        };
+        using var apiClient = new TauriApiClient(_apiOptions);
 
         Console.WriteLine(
             $"Scanning battlegrounds on {options.DisplayRealm} from match id {startMatchId}..."
@@ -88,9 +85,7 @@ public sealed class BattlegroundCollectorService(
             cancellationToken.ThrowIfCancellationRequested();
 
             var fetchResult = await FetchBattlegroundAsync(
-                client,
-                apiUrl,
-                _apiOptions.Secret,
+                apiClient,
                 options.ApiRealm,
                 currentMatchId,
                 cancellationToken
@@ -160,57 +155,32 @@ public sealed class BattlegroundCollectorService(
     }
 
     private static async Task<BattlegroundFetchResult> FetchBattlegroundAsync(
-        HttpClient client,
-        string apiUrl,
-        string secret,
+        TauriApiClient apiClient,
         string apiRealm,
         int matchId,
         CancellationToken cancellationToken
     )
     {
-        var body = new
-        {
-            secret,
-            url = "pvp-match",
-            @params = new
+        var result = await apiClient.FetchResponseElementAsync(
+            "pvp-match",
+            new
             {
                 r = apiRealm,
                 matchid = matchId.ToString(CultureInfo.InvariantCulture),
             },
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json"
+            $"battleground match {matchId} on {apiRealm}",
+            cancellationToken
         );
 
-        using var response = await client.PostAsync(apiUrl, content, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!result.Succeeded || result.ResponseElement is not { } responseElement)
         {
             return BattlegroundFetchResult.Stop(
-                $"API returned {(int)response.StatusCode} {response.ReasonPhrase}"
+                $"API request failed: {result.FailureMessage ?? "No response payload."}"
             );
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(
-            stream,
-            cancellationToken: cancellationToken
-        );
-        var root = document.RootElement;
-
         if (
-            root.TryGetProperty("success", out var successElement)
-            && IsExplicitFalse(successElement)
-        )
-        {
-            return BattlegroundFetchResult.Stop("API returned success=false.");
-        }
-
-        if (
-            !root.TryGetProperty("response", out var responseElement)
-            || responseElement.ValueKind
+            responseElement.ValueKind
                 is JsonValueKind.Null
                     or JsonValueKind.Undefined
                     or JsonValueKind.False
@@ -243,18 +213,6 @@ public sealed class BattlegroundCollectorService(
         var members = ReadMembers(responseElement);
 
         return BattlegroundFetchResult.Found(record, members);
-    }
-
-    private static bool IsExplicitFalse(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.False)
-        {
-            return true;
-        }
-
-        return element.ValueKind == JsonValueKind.String
-            && bool.TryParse(element.GetString(), out var value)
-            && !value;
     }
 
     private int ResolveStartMatchId(
@@ -762,11 +720,6 @@ public sealed class BattlegroundCollectorService(
         return $"{(long)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
     }
 
-    private static string BuildApiUrl(string baseUrl, string apiKey)
-    {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
-    }
 }
 
 public sealed record BattlegroundRecord(

@@ -19,5 +19,9 @@
       Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs"
       Link="Infrastructure\ProjectPaths.cs"
     />
+    <Compile
+      Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs"
+      Link="Infrastructure\TauriApiClient.cs"
+    />
   </ItemGroup>
 </Project>

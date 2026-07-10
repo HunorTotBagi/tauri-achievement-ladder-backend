@@ -79,6 +79,7 @@ public sealed class RealmFirstAchievementExportService(
             .ToList();
 
         var validCharacters = await ValidateCharactersAsync(
+            apiClient,
             orderedCandidateCharacters,
             cancellationToken
         );
@@ -96,6 +97,7 @@ public sealed class RealmFirstAchievementExportService(
     }
 
     private async Task<IReadOnlyList<CharacterCandidate>> ValidateCharactersAsync(
+        TauriApiClient apiClient,
         IReadOnlyList<CharacterCandidate> characters,
         CancellationToken cancellationToken
     )
@@ -105,12 +107,9 @@ public sealed class RealmFirstAchievementExportService(
             return [];
         }
 
-        var apiUrl = BuildApiUrl(_apiOptions.BaseUrl, _apiOptions.ApiKey);
         var validCharacters = new List<CharacterCandidate>();
         var validCharactersLock = new Lock();
         var processedCount = 0;
-
-        using var httpClient = new HttpClient();
 
         await Parallel.ForEachAsync(
             characters,
@@ -121,7 +120,7 @@ public sealed class RealmFirstAchievementExportService(
             },
             async (character, ct) =>
             {
-                if (await CharacterExistsAsync(httpClient, apiUrl, character, ct))
+                if (await CharacterExistsAsync(apiClient, character, ct))
                 {
                     lock (validCharactersLock)
                     {
@@ -145,54 +144,25 @@ public sealed class RealmFirstAchievementExportService(
             .ToList();
     }
 
-    private async Task<bool> CharacterExistsAsync(
-        HttpClient httpClient,
-        string apiUrl,
+    private static async Task<bool> CharacterExistsAsync(
+        TauriApiClient apiClient,
         CharacterCandidate character,
         CancellationToken cancellationToken
     )
     {
-        var payload = new
-        {
-            secret = _apiOptions.Secret,
-            url = CharacterSheetEndpoint,
-            @params = new { r = character.ApiRealm, n = character.Name },
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(payload),
-            Encoding.UTF8,
-            "application/json"
+        var result = await apiClient.FetchResponseElementAsync(
+            CharacterSheetEndpoint,
+            new { r = character.ApiRealm, n = character.Name },
+            $"{character.Name}-{character.DisplayRealm}",
+            cancellationToken
         );
 
-        try
+        if (!result.Succeeded || result.ResponseElement is not { } response)
         {
-            using var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                return false;
-            }
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var document = await JsonDocument.ParseAsync(
-                stream,
-                cancellationToken: cancellationToken
-            );
-
-            return document.RootElement.TryGetProperty("response", out var responseElement)
-                && !IsEmptyResponse(responseElement);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(
-                $"Could not validate {character.Name}-{character.DisplayRealm}: {ex.Message}"
-            );
             return false;
         }
+
+        return !IsEmptyResponse(response);
     }
 
     private static async Task<string> WriteValidCharactersAsync(
@@ -304,12 +274,6 @@ public sealed class RealmFirstAchievementExportService(
             JsonValueKind.String => string.IsNullOrWhiteSpace(responseElement.GetString()),
             _ => false,
         };
-    }
-
-    private static string BuildApiUrl(string baseUrl, string apiKey)
-    {
-        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        return $"{baseUrl}{separator}apikey={Uri.EscapeDataString(apiKey)}";
     }
 
     private sealed record RealmSource(string DisplayName, string ApiName);
