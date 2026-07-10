@@ -196,14 +196,16 @@ public class PlayerService(string projectRoot, TauriApiOptions apiOptions, Playe
             return CharacterSyncResult.Failure();
         }
 
+        var achievements = RareAchievementExtractor.ExtractAchievements(response);
         var player = CharacterResponseMapper.CreatePlayer(
             response,
+            achievements,
             name,
             displayRealm,
             scanStartedAt
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
-            response,
+            achievements,
             RareAchievementDefinitions
         );
 

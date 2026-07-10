@@ -420,14 +420,16 @@ public sealed class MissingPlayerFinderService(
             return CharacterBackfillResult.Failure();
         }
 
+        var achievements = RareAchievementExtractor.ExtractAchievements(response);
         var player = CharacterResponseMapper.CreatePlayer(
             response,
+            achievements,
             target.Character.Name,
             target.Character.DisplayRealm,
             scanStartedAt
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
-            response,
+            achievements,
             RareAchievementDefinitions
         );
 

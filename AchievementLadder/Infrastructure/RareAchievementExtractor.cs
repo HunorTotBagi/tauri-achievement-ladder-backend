@@ -7,36 +7,32 @@ namespace AchievementLadder.Infrastructure;
 public static class RareAchievementExtractor
 {
     public static IReadOnlyList<CharacterRareAchievement> ExtractRareAchievements(
-        JsonElement responseElement,
+        IReadOnlyDictionary<int, DateTimeOffset?> achievedAchievements,
         IReadOnlyList<RareAchievementDefinition> definitions
     )
     {
-        var achievedAchievements = ExtractAchievements(responseElement);
+        var rareAchievements = new List<CharacterRareAchievement>();
 
-        return definitions
-            .Where(entry => achievedAchievements.ContainsKey(entry.Id))
-            .Select(entry => new CharacterRareAchievement(entry.Id, achievedAchievements[entry.Id]))
-            .ToList();
+        foreach (var definition in definitions)
+        {
+            if (achievedAchievements.TryGetValue(definition.Id, out var obtainedAt))
+            {
+                rareAchievements.Add(
+                    new CharacterRareAchievement(definition.Id, obtainedAt)
+                );
+            }
+        }
+
+        return rareAchievements;
     }
 
-    /// <summary>
-    /// Returns the date a specific achievement was obtained, or <c>null</c> when the
-    /// character does not have it (or the date cannot be parsed).
-    /// </summary>
-    public static DateTimeOffset? TryGetAchievementObtainedAt(
-        JsonElement responseElement,
-        int achievementId
+    public static IReadOnlyDictionary<int, DateTimeOffset?> ExtractAchievements(
+        JsonElement responseElement
     )
-    {
-        var achievements = ExtractAchievements(responseElement);
-        return achievements.TryGetValue(achievementId, out var obtainedAt) ? obtainedAt : null;
-    }
-
-    private static Dictionary<int, DateTimeOffset?> ExtractAchievements(JsonElement responseElement)
     {
         if (!responseElement.TryGetProperty("Achievements", out var achievementsElement))
         {
-            return [];
+            return new Dictionary<int, DateTimeOffset?>();
         }
 
         var achievements = new Dictionary<int, DateTimeOffset?>();

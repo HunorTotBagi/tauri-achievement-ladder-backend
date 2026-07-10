@@ -10,6 +10,7 @@ public static class CharacterResponseMapper
 
     public static Player CreatePlayer(
         JsonElement response,
+        IReadOnlyDictionary<int, DateTimeOffset?> achievements,
         string name,
         string displayRealm,
         DateTimeOffset scanStartedAt
@@ -29,10 +30,12 @@ public static class CharacterResponseMapper
             ? (value.GetString() ?? string.Empty)
             : string.Empty;
 
-        var level10ObtainedAt = RareAchievementExtractor.TryGetAchievementObtainedAt(
-            response,
-            Level10AchievementId
-        );
+        var level10ObtainedAt = achievements.TryGetValue(
+            Level10AchievementId,
+            out var obtainedAt
+        )
+            ? obtainedAt
+            : null;
         var characterAge = CharacterAgeCalculator.Format(level10ObtainedAt, scanStartedAt);
 
         return new Player
