@@ -63,9 +63,13 @@ public sealed class MissingPlayerFinderService(
 
         var scanStartedAt = DateTimeOffset.UtcNow;
         var sourceCharacters = LoadSourceCharacters(cancellationToken);
-        var csvPlayers = LoadCsvPlayers(playersCsvPath, cancellationToken);
+        var csvCharacterKeys = LoadCsvCharacterKeys(playersCsvPath, cancellationToken);
         var retryCharacters = LoadRetryCharacters(retryOutputPath, cancellationToken);
-        var targets = BuildBackfillTargets(sourceCharacters, csvPlayers, retryCharacters);
+        var targets = BuildBackfillTargets(
+            sourceCharacters,
+            csvCharacterKeys,
+            retryCharacters
+        );
 
         Console.WriteLine($"Missing characters at start: {targets.Count}");
         Console.WriteLine(
@@ -168,7 +172,7 @@ public sealed class MissingPlayerFinderService(
 
         return new MissingPlayerFinderResult(
             sourceCharacters.Count,
-            csvPlayers.Count,
+            csvCharacterKeys.Count,
             targets.Count,
             orderedPlayers.Count,
             orderedRareEntries.Count,
@@ -217,7 +221,7 @@ public sealed class MissingPlayerFinderService(
         return result;
     }
 
-    private Dictionary<CharacterKey, Player> LoadCsvPlayers(
+    private HashSet<CharacterKey> LoadCsvCharacterKeys(
         string playersCsvPath,
         CancellationToken cancellationToken
     )
@@ -225,7 +229,7 @@ public sealed class MissingPlayerFinderService(
         using var lines = File.ReadLines(playersCsvPath).GetEnumerator();
         if (!lines.MoveNext())
         {
-            return new Dictionary<CharacterKey, Player>(CharacterComparer);
+            return new HashSet<CharacterKey>(CharacterComparer);
         }
 
         var header = ParseCsvLine(lines.Current);
@@ -237,15 +241,7 @@ public sealed class MissingPlayerFinderService(
             throw new InvalidDataException("Players.csv must contain Name and Realm columns.");
         }
 
-        var raceIndex = FindColumnIndex(header, "Race");
-        var genderIndex = FindColumnIndex(header, "Gender");
-        var classIndex = FindColumnIndex(header, "Class");
-        var guildIndex = FindColumnIndex(header, "Guild");
-        var achievementPointsIndex = FindColumnIndex(header, "AchievementPoints");
-        var honorableKillsIndex = FindColumnIndex(header, "HonorableKills");
-        var factionIndex = FindColumnIndex(header, "Faction");
         var appearanceCountIndex = FindColumnIndex(header, "AppearanceCount");
-        var characterAgeIndex = FindColumnIndex(header, "CharacterAge");
 
         if (appearanceCountIndex < 0)
         {
@@ -254,7 +250,7 @@ public sealed class MissingPlayerFinderService(
             );
         }
 
-        var result = new Dictionary<CharacterKey, Player>(CharacterComparer);
+        var result = new HashSet<CharacterKey>(CharacterComparer);
 
         while (lines.MoveNext())
         {
@@ -280,22 +276,7 @@ public sealed class MissingPlayerFinderService(
                 continue;
             }
 
-            var player = new Player
-            {
-                Name = name,
-                Realm = realm,
-                Race = ReadIntValue(values, raceIndex),
-                Gender = ReadIntValue(values, genderIndex),
-                Class = ReadIntValue(values, classIndex),
-                Guild = ReadStringValue(values, guildIndex),
-                AchievementPoints = ReadIntValue(values, achievementPointsIndex),
-                HonorableKills = ReadIntValue(values, honorableKillsIndex),
-                Faction = ReadStringValue(values, factionIndex),
-                AppearanceCount = ReadIntValue(values, appearanceCountIndex),
-                CharacterAge = ReadStringValue(values, characterAgeIndex),
-            };
-
-            result[new CharacterKey(name, realm)] = player;
+            result.Add(new CharacterKey(name, realm));
         }
 
         return result;
@@ -303,7 +284,7 @@ public sealed class MissingPlayerFinderService(
 
     private List<BackfillTarget> BuildBackfillTargets(
         HashSet<CharacterToScan> sourceCharacters,
-        Dictionary<CharacterKey, Player> csvPlayers,
+        HashSet<CharacterKey> csvCharacterKeys,
         IReadOnlyList<CharacterToScan> retryCharacters
     )
     {
@@ -313,7 +294,11 @@ public sealed class MissingPlayerFinderService(
 
         foreach (var character in sourceCharacters)
         {
-            if (!csvPlayers.ContainsKey(new CharacterKey(character.Name, character.DisplayRealm)))
+            if (
+                !csvCharacterKeys.Contains(
+                    new CharacterKey(character.Name, character.DisplayRealm)
+                )
+            )
             {
                 UpsertTarget(
                     character,
@@ -325,7 +310,7 @@ public sealed class MissingPlayerFinderService(
 
         foreach (var retryCharacter in retryCharacters)
         {
-            var requiresPlayerBackfill = !csvPlayers.ContainsKey(
+            var requiresPlayerBackfill = !csvCharacterKeys.Contains(
                 new CharacterKey(retryCharacter.Name, retryCharacter.DisplayRealm)
             );
             UpsertTarget(
@@ -726,33 +711,6 @@ public sealed class MissingPlayerFinderService(
 
         values.Add(current.ToString());
         return values;
-    }
-
-    private static int ReadIntValue(IReadOnlyList<string> values, int index)
-    {
-        if (index < 0 || index >= values.Count)
-        {
-            return 0;
-        }
-
-        return int.TryParse(
-            values[index],
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out var parsedValue
-        )
-            ? parsedValue
-            : 0;
-    }
-
-    private static string ReadStringValue(IReadOnlyList<string> values, int index)
-    {
-        if (index < 0 || index >= values.Count)
-        {
-            return string.Empty;
-        }
-
-        return values[index].Trim();
     }
 
     private static string BuildCsvLine(Player player)
