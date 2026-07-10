@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using AchievementLadder.Configuration;
@@ -20,6 +21,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
 
     private readonly string _solutionRoot = Path.GetFullPath(solutionRoot);
     private readonly TauriApiOptions _apiOptions = apiOptions;
+    private readonly int _guildWorkerCount = Math.Max(4, apiOptions.MaxConcurrentRequests * 2);
 
     public async Task<GuildCharacterExportResult> ExportAsync(CancellationToken cancellationToken)
     {
@@ -67,9 +69,13 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             $"API settings: concurrency={_apiOptions.MaxConcurrentRequests}, timeout={_apiOptions.RequestTimeoutSeconds}s, retries={_apiOptions.MaxRetryAttempts}"
         );
 
-        var characterLines = usedRetryInput
+        var existingCharacterLines = usedRetryInput
             ? LoadExistingCharacterLines(outputPath)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var characterLines = new ConcurrentDictionary<string, byte>(
+            existingCharacterLines.Select(line => new KeyValuePair<string, byte>(line, 0)),
+            StringComparer.OrdinalIgnoreCase
+        );
         if (usedRetryInput)
         {
             Console.WriteLine(
@@ -77,32 +83,44 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
             );
         }
 
-        var retryGuilds = new List<GuildSource>();
+        var retryGuilds = new ConcurrentBag<GuildSource>();
         var processedGuildCount = 0;
+        var progressLock = new Lock();
 
         using var apiClient = new TauriApiClient(_apiOptions);
 
-        foreach (var guild in guilds)
-        {
-            var result = await LoadGuildMembersAsync(apiClient, guild, cancellationToken);
-            if (result.Succeeded)
+        await Parallel.ForEachAsync(
+            guilds,
+            new ParallelOptions
             {
-                foreach (var memberName in result.Members)
+                MaxDegreeOfParallelism = _guildWorkerCount,
+                CancellationToken = cancellationToken,
+            },
+            async (guild, ct) =>
+            {
+                var result = await LoadGuildMembersAsync(apiClient, guild, ct);
+                if (result.Succeeded)
                 {
-                    characterLines.Add($"{memberName}-{guild.DisplayRealm}");
+                    foreach (var memberName in result.Members)
+                    {
+                        characterLines.TryAdd($"{memberName}-{guild.DisplayRealm}", 0);
+                    }
+                }
+                else
+                {
+                    retryGuilds.Add(guild);
+                }
+
+                var processed = Interlocked.Increment(ref processedGuildCount);
+                if (processed % ProgressInterval == 0 || processed == guilds.Count)
+                {
+                    lock (progressLock)
+                    {
+                        Console.WriteLine($"Loaded guilds {processed}/{guilds.Count}");
+                    }
                 }
             }
-            else
-            {
-                retryGuilds.Add(guild);
-            }
-
-            processedGuildCount++;
-            if (processedGuildCount % ProgressInterval == 0 || processedGuildCount == guilds.Count)
-            {
-                Console.WriteLine($"Loaded guilds {processedGuildCount}/{guilds.Count}");
-            }
-        }
+        );
 
         var orderedRetryGuilds = retryGuilds
             .OrderBy(guild => guild.DisplayRealm, StringComparer.OrdinalIgnoreCase)
@@ -111,7 +129,7 @@ public sealed class GuildCharacterExportService(string solutionRoot, TauriApiOpt
 
         await WriteRetryGuildsAsync(retryOutputPath, orderedRetryGuilds, cancellationToken);
 
-        var orderedLines = characterLines
+        var orderedLines = characterLines.Keys
             .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
