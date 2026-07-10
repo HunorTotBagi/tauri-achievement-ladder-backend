@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
-using AchievementLadder.Configuration;
-using AchievementLadder.Dtos;
-using AchievementLadder.Infrastructure;
+using Tauri.Core.Configuration;
+using Tauri.Core.Dtos;
+using Tauri.Core.Infrastructure;
 
 namespace GuildCharacterExporter;
 

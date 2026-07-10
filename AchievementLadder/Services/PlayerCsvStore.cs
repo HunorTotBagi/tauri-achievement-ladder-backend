@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using AchievementLadder.Models;
+using Tauri.Core.Models;
 
 namespace AchievementLadder.Services;
 

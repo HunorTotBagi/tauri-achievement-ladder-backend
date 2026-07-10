@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using AchievementLadder.Configuration;
+using Tauri.Core.Configuration;
 
-namespace AchievementLadder.Infrastructure;
+namespace Tauri.Core.Infrastructure;
 
 public sealed class TauriApiClient : IDisposable
 {

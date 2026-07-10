@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Tauri.Core\Tauri.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Data\GuildCharacters\" />
   </ItemGroup>
 </Project>

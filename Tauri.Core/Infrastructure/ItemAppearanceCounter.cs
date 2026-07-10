@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace AchievementLadder.Infrastructure;
+namespace Tauri.Core.Infrastructure;
 
 public static class ItemAppearanceCounter
 {

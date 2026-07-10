@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace AchievementLadder.Helpers;
+namespace Tauri.Core.Helpers;
 
 public static class CharacterHelpers
 {

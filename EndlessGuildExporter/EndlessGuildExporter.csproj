@@ -7,21 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile
-      Include="..\AchievementLadder\Configuration\AppSettings.cs"
-      Link="Configuration\AppSettings.cs"
-    />
-    <Compile
-      Include="..\AchievementLadder\Configuration\TauriApiOptions.cs"
-      Link="Configuration\TauriApiOptions.cs"
-    />
-    <Compile
-      Include="..\AchievementLadder\Infrastructure\ProjectPaths.cs"
-      Link="Infrastructure\ProjectPaths.cs"
-    />
-    <Compile
-      Include="..\AchievementLadder\Infrastructure\TauriApiClient.cs"
-      Link="Infrastructure\TauriApiClient.cs"
-    />
+    <ProjectReference Include="..\Tauri.Core\Tauri.Core.csproj" />
   </ItemGroup>
 </Project>

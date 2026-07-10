@@ -1,4 +1,4 @@
-namespace AchievementLadder.Configuration;
+namespace Tauri.Core.Configuration;
 
 public sealed class TauriApiOptions
 {

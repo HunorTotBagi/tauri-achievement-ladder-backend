@@ -1,4 +1,4 @@
-namespace AchievementLadder.Dtos;
+namespace Tauri.Core.Dtos;
 
 public class GuildInfoResponse
 {

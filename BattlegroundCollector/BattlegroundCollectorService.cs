@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using AchievementLadder.Configuration;
-using AchievementLadder.Infrastructure;
+using Tauri.Core.Configuration;
+using Tauri.Core.Infrastructure;
 
 namespace BattlegroundCollector;
 

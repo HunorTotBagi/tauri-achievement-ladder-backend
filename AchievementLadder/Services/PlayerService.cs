@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
-using AchievementLadder.Configuration;
-using AchievementLadder.Helpers;
-using AchievementLadder.Infrastructure;
-using AchievementLadder.Models;
-using AchievementLadder.Shared;
+using Tauri.Core.Configuration;
+using Tauri.Core.Helpers;
+using Tauri.Core.Infrastructure;
+using Tauri.Core.Models;
+using Tauri.Core.Shared;
 
 namespace AchievementLadder.Services;
 

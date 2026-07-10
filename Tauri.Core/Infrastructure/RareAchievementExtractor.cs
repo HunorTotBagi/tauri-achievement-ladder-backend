@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
-using AchievementLadder.Models;
+using Tauri.Core.Models;
 
-namespace AchievementLadder.Infrastructure;
+namespace Tauri.Core.Infrastructure;
 
 public static class RareAchievementExtractor
 {

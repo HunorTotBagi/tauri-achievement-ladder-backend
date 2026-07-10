@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace AchievementLadder.Infrastructure;
+namespace Tauri.Core.Infrastructure;
 
 /// <summary>
 /// Computes a human-readable "Character Age" from the date a character earned the

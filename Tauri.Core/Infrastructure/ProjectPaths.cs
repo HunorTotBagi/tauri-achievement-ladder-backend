@@ -1,4 +1,4 @@
-namespace AchievementLadder.Infrastructure;
+namespace Tauri.Core.Infrastructure;
 
 public static class ProjectPaths
 {

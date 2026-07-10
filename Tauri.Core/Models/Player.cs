@@ -1,4 +1,4 @@
-namespace AchievementLadder.Models
+namespace Tauri.Core.Models
 {
     public class Player
     {

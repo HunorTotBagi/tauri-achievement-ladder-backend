@@ -1,5 +1,5 @@
-using AchievementLadder.Configuration;
-using AchievementLadder.Infrastructure;
+using Tauri.Core.Configuration;
+using Tauri.Core.Infrastructure;
 
 namespace EndlessGuildExporter;
 

@@ -1,6 +1,6 @@
-namespace AchievementLadder.Shared;
+namespace Tauri.Core.Shared;
 
-internal static class RareScanCatalog
+public static class RareScanCatalog
 {
     public static readonly IReadOnlyDictionary<int, string> TargetItems = new Dictionary<
         int,
