@@ -200,10 +200,18 @@ public sealed class BattlegroundCollectorService(
         }
 
         var startTimeUnix = ReadLong(responseElement, "starttime");
+        var mapName = ReadString(responseElement, "mapname");
+        if (string.IsNullOrWhiteSpace(mapName) || startTimeUnix <= 0)
+        {
+            return BattlegroundFetchResult.Stop(
+                "Response did not contain complete battleground details."
+            );
+        }
+
         var durationMilliseconds = ReadLong(responseElement, "length");
         var record = new BattlegroundRecord(
             apiMatchId,
-            ReadString(responseElement, "mapname", fallback: "Unknown Battleground"),
+            mapName,
             FormatUnixTimestamp(startTimeUnix),
             FormatDuration(durationMilliseconds)
         );
