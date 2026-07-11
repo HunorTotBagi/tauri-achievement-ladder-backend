@@ -32,7 +32,6 @@ Glarewielder-Evermoon
 Grieve-Evermoon
 Hainzlol-Evermoon
 Hushie-Evermoon
-Hyperpala-Evermoon
 Idototems-Evermoon
 Ithilda-Evermoon
 Joe-Evermoon
@@ -41,6 +40,7 @@ Keselowski-Evermoon
 Kodiaq-Evermoon
 Kogorm-Evermoon
 Lexane-Evermoon
+Life-Evermoon
 Lineaa-Evermoon
 Lucecita-Evermoon
 Marigo-Evermoon
