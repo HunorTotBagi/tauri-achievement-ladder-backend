@@ -433,6 +433,23 @@ public sealed class MissingPlayerFinderService(
             }
 
             player.AppearanceCount = appearanceCount;
+
+            var sheetResponseResult = await apiClient.FetchResponseElementAsync(
+                "character-sheet-minimal",
+                new { r = target.Character.ApiRealm, n = target.Character.Name },
+                $"{target.Character.Name}-{target.Character.DisplayRealm}",
+                cancellationToken
+            );
+
+            if (
+                !sheetResponseResult.Succeeded
+                || sheetResponseResult.ResponseElement is not { } sheetResponse
+            )
+            {
+                return CharacterBackfillResult.Failure();
+            }
+
+            CharacterResponseMapper.ApplyMinimalSheet(sheetResponse, player);
         }
 
         return CharacterBackfillResult.Success(player, rareAchievements);
@@ -472,7 +489,7 @@ public sealed class MissingPlayerFinderService(
         if (writeHeader)
         {
             await writer.WriteLineAsync(
-                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\""
+                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\""
             );
         }
         else if (needsLeadingNewLine)
@@ -726,7 +743,9 @@ public sealed class MissingPlayerFinderService(
             player.HonorableKills.ToString(CultureInfo.InvariantCulture),
             Quote(player.Faction),
             player.AppearanceCount.ToString(CultureInfo.InvariantCulture),
-            Quote(player.CharacterAge)
+            Quote(player.CharacterAge),
+            player.PlayedTime.ToString(CultureInfo.InvariantCulture),
+            player.AchievementsTotal.ToString(CultureInfo.InvariantCulture)
         );
     }
 

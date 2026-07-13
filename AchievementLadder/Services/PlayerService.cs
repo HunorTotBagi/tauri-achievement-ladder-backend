@@ -227,6 +227,23 @@ public class PlayerService(
 
         player.AppearanceCount = appearanceCount;
 
+        var sheetResponseResult = await apiClient.FetchResponseElementAsync(
+            "character-sheet-minimal",
+            new { r = apiRealm, n = name },
+            $"{name}-{displayRealm}",
+            ct
+        );
+
+        if (
+            !sheetResponseResult.Succeeded
+            || sheetResponseResult.ResponseElement is not { } sheetResponse
+        )
+        {
+            return CharacterSyncResult.Failure();
+        }
+
+        CharacterResponseMapper.ApplyMinimalSheet(sheetResponse, player);
+
         return CharacterSyncResult.Success(player, rareAchievements);
     }
 

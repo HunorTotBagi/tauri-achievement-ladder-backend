@@ -44,7 +44,7 @@ public sealed class PlayerCsvStore
         await using (var writer = new StreamWriter(stream, utf8))
         {
             await writer.WriteLineAsync(
-                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\""
+                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\""
             );
 
             foreach (var p in players)
@@ -65,7 +65,9 @@ public sealed class PlayerCsvStore
                     p.HonorableKills.ToString(CultureInfo.InvariantCulture),
                     Q(p.Faction),
                     p.AppearanceCount.ToString(CultureInfo.InvariantCulture),
-                    Q(p.CharacterAge)
+                    Q(p.CharacterAge),
+                    p.PlayedTime.ToString(CultureInfo.InvariantCulture),
+                    p.AchievementsTotal.ToString(CultureInfo.InvariantCulture)
                 );
 
                 await writer.WriteLineAsync(line);

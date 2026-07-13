@@ -52,4 +52,14 @@ public static class CharacterResponseMapper
             CharacterAge = characterAge,
         };
     }
+
+    public static void ApplyMinimalSheet(JsonElement response, Player player)
+    {
+        player.PlayedTime = response.TryGetProperty("played_time", out var value)
+            ? value.GetInt64()
+            : 0;
+        player.AchievementsTotal = response.TryGetProperty("achievements_total", out value)
+            ? value.GetInt32()
+            : 0;
+    }
 }

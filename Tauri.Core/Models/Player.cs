@@ -14,5 +14,7 @@ namespace Tauri.Core.Models
         public string Faction { get; set; } = string.Empty;
         public int AppearanceCount { get; set; }
         public string CharacterAge { get; set; } = string.Empty;
+        public long PlayedTime { get; set; }
+        public int AchievementsTotal { get; set; }
     }
 }
