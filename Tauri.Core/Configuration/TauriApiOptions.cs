@@ -6,7 +6,7 @@ public sealed class TauriApiOptions
     private const string PlaceholderSecret = "YOUR_REAL_SECRET_HERE";
     private const int DefaultMaxConcurrentRequests = 50;
     private const int DefaultRequestTimeoutSeconds = 30;
-    private const int DefaultMaxRetryAttempts = 5;
+    private const int DefaultMaxRetryAttempts = 8;
     private const int DefaultInitialRetryDelayMilliseconds = 750;
 
     public string BaseUrl { get; set; } = string.Empty;

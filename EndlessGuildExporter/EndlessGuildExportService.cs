@@ -278,8 +278,14 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     {
         if (member.Name.Contains('#', StringComparison.Ordinal))
         {
-            return CreateFallbackRow(member, "guild-info fallback: placeholder name");
+            return CreateFallbackRow(member, "guild-info fallback: placeholder name", ArtifactSummary.Empty);
         }
+
+        var artifactSummary = await FetchArtifactSummaryAsync(
+            apiClient,
+            member.Name,
+            cancellationToken
+        );
 
         try
         {
@@ -294,7 +300,8 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             {
                 return CreateFallbackRow(
                     member,
-                    $"guild-info fallback: {result.FailureMessage ?? "character-sheet lookup failed"}"
+                    $"guild-info fallback: {result.FailureMessage ?? "character-sheet lookup failed"}",
+                    artifactSummary
                 );
             }
 
@@ -321,7 +328,8 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
                 Status: professions.FoundAny
                     ? "character-sheet"
                     : "character-sheet (no profession fields detected)",
-                CharacterSheetFetched: true
+                CharacterSheetFetched: true,
+                Artifact: artifactSummary
             );
         }
         catch (OperationCanceledException)
@@ -330,11 +338,73 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         }
         catch (Exception ex)
         {
-            return CreateFallbackRow(member, $"guild-info fallback: {ex.Message}");
+            return CreateFallbackRow(member, $"guild-info fallback: {ex.Message}", artifactSummary);
         }
     }
 
-    private static ExportRow CreateFallbackRow(GuildMemberRecord member, string status)
+    private async Task<ArtifactSummary> FetchArtifactSummaryAsync(
+        ITauriApiClient apiClient,
+        string characterName,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            var result = await apiClient.FetchResponseElementAsync(
+                "character-artifact",
+                new { r = TargetApiRealm, n = characterName },
+                $"{characterName}-{TargetDisplayRealm} artifact",
+                cancellationToken
+            );
+
+            if (!result.Succeeded || result.ResponseElement is not { } responseElement)
+            {
+                return ArtifactSummary.Empty;
+            }
+
+            if (
+                !responseElement.TryGetProperty("artifacts", out var artifactsElement)
+                || artifactsElement.ValueKind != JsonValueKind.Array
+                || artifactsElement.GetArrayLength() == 0
+            )
+            {
+                return ArtifactSummary.Empty;
+            }
+
+            var artifactElement = artifactsElement[0];
+            var itemLevel = ReadInt(artifactElement, "ItemLevel");
+            var traitsSpent = 0;
+
+            if (
+                artifactElement.TryGetProperty("artifact", out var artifactInfoElement)
+                && artifactInfoElement.ValueKind == JsonValueKind.Object
+                && artifactInfoElement.TryGetProperty("artifactpowers", out var powersElement)
+                && powersElement.ValueKind == JsonValueKind.Array
+            )
+            {
+                foreach (var powerElement in powersElement.EnumerateArray())
+                {
+                    traitsSpent += ReadInt(powerElement, "purchasedrank");
+                }
+            }
+
+            return new ArtifactSummary(itemLevel, traitsSpent, Found: true);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return ArtifactSummary.Empty;
+        }
+    }
+
+    private static ExportRow CreateFallbackRow(
+        GuildMemberRecord member,
+        string status,
+        ArtifactSummary artifactSummary
+    )
     {
         return new ExportRow(
             Name: member.Name,
@@ -353,7 +423,8 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             HonorableKills: 0,
             Faction: string.Empty,
             Status: status,
-            CharacterSheetFetched: false
+            CharacterSheetFetched: false,
+            Artifact: artifactSummary
         );
     }
 
@@ -607,6 +678,8 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             new("Race", HeaderStyleKey),
             new("Rank", HeaderStyleKey),
             new("Level", HeaderStyleKey),
+            new("Artifact ilvl", HeaderStyleKey),
+            new("Traits", HeaderStyleKey),
             new("RankId", HeaderStyleKey),
             new(string.Empty),
             new("Class", HeaderStyleKey),
@@ -634,7 +707,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
 
         for (var index = 0; index < totalRowCount; index++)
         {
-            var row = new List<SimpleXlsxWriter.CellData>(13);
+            var row = new List<SimpleXlsxWriter.CellData>(15);
 
             if (index < orderedRows.Count)
             {
@@ -648,11 +721,13 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
                 row.Add(new(exportRow.RaceName));
                 row.Add(new(exportRow.GuildRankName));
                 row.Add(new(exportRow.Level.ToString()));
+                row.Add(BuildArtifactNumberCell(exportRow.Artifact, exportRow.Artifact.ItemLevel));
+                row.Add(BuildArtifactNumberCell(exportRow.Artifact, exportRow.Artifact.TraitsSpent));
                 row.Add(new(exportRow.GuildRank.ToString()));
             }
             else
             {
-                row.AddRange(CreateEmptyCells(6));
+                row.AddRange(CreateEmptyCells(8));
             }
 
             row.Add(new(string.Empty));
@@ -744,7 +819,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         return
         [
             new SimpleXlsxWriter.DataValidation(
-                Sqref: $"M2:M{rankFilterCount + 1}",
+                Sqref: $"O2:O{rankFilterCount + 1}",
                 Formula1: $"\"{CheckedSymbol},{UncheckedSymbol}\"",
                 AllowBlank: false
             ),
@@ -759,7 +834,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     )
     {
         var formula =
-            $"SUMPRODUCT(--($B$2:$B${dataEndRow}=\"{EscapeFormulaString(className)}\"),--(COUNTIFS($K$2:$K${rankFilterEndRow},$F$2:$F${dataEndRow},$M$2:$M${rankFilterEndRow},\"{CheckedSymbol}\")>0))";
+            $"SUMPRODUCT(--($B$2:$B${dataEndRow}=\"{EscapeFormulaString(className)}\"),--(COUNTIFS($M$2:$M${rankFilterEndRow},$H$2:$H${dataEndRow},$O$2:$O${rankFilterEndRow},\"{CheckedSymbol}\")>0))";
         var cachedValue = orderedRows.Count(row =>
             string.Equals(row.ClassName, className, StringComparison.OrdinalIgnoreCase)
         );
@@ -768,6 +843,22 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             cachedValue.ToString(),
             ValueKind: SimpleXlsxWriter.CellValueKind.FormulaNumber,
             Formula: formula
+        );
+    }
+
+    private static SimpleXlsxWriter.CellData BuildArtifactNumberCell(
+        ArtifactSummary artifactSummary,
+        int value
+    )
+    {
+        if (!artifactSummary.Found)
+        {
+            return new SimpleXlsxWriter.CellData(string.Empty);
+        }
+
+        return new SimpleXlsxWriter.CellData(
+            value.ToString(),
+            ValueKind: SimpleXlsxWriter.CellValueKind.Number
         );
     }
 
@@ -919,6 +1010,12 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         int HonorableKills,
         string Faction,
         string Status,
-        bool CharacterSheetFetched
+        bool CharacterSheetFetched,
+        ArtifactSummary Artifact
     );
+
+    private readonly record struct ArtifactSummary(int ItemLevel, int TraitsSpent, bool Found)
+    {
+        public static ArtifactSummary Empty => new(0, 0, false);
+    }
 }

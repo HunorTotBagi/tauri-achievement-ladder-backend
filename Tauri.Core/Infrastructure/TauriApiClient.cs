@@ -7,7 +7,7 @@ namespace Tauri.Core.Infrastructure;
 
 public sealed class TauriApiClient : ITauriApiClient, IDisposable
 {
-    private const int MaxRetryDelayMilliseconds = 15_000;
+    private const int MaxRetryDelayMilliseconds = 60_000;
 
     private readonly HttpClient _httpClient;
     private readonly SemaphoreSlim _requestGate;
