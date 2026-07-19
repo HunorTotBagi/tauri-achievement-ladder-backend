@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using Tauri.Core.Infrastructure;
 
@@ -13,7 +12,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     private const string HeaderStyleKey = "Header";
     private const string CheckedSymbol = "☑";
     private const string UncheckedSymbol = "☐";
-    private const int MaxDegreeOfParallelism = 8;
+    private const int MaxConcurrentMemberFetches = 16;
 
     private static readonly string[] DirectProfessionPropertyNames =
     [
@@ -172,20 +171,19 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         Console.WriteLine($"Found {guildMembers.Count} members in '{TargetGuildName}'.");
         Console.WriteLine("Fetching character-sheet details...");
 
-        var rows = new ConcurrentBag<ExportRow>();
+        var rows = new ExportRow[guildMembers.Count];
         var processedCount = 0;
 
         await Parallel.ForEachAsync(
-            guildMembers,
+            Enumerable.Range(0, guildMembers.Count),
             new ParallelOptions
             {
-                MaxDegreeOfParallelism = MaxDegreeOfParallelism,
+                MaxDegreeOfParallelism = MaxConcurrentMemberFetches,
                 CancellationToken = cancellationToken,
             },
-            async (member, ct) =>
+            async (index, ct) =>
             {
-                var row = await BuildExportRowAsync(_apiClient, member, ct);
-                rows.Add(row);
+                rows[index] = await BuildExportRowAsync(_apiClient, guildMembers[index], ct);
 
                 var processed = Interlocked.Increment(ref processedCount);
                 if (processed % 10 == 0 || processed == guildMembers.Count)
@@ -213,6 +211,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             sheetRows,
             WorkbookCellStyles,
             dataValidations,
+            $"A1:H{orderedRows.Count + 1}",
             cancellationToken
         );
 
@@ -281,7 +280,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             return CreateFallbackRow(member, "guild-info fallback: placeholder name", ArtifactSummary.Empty);
         }
 
-        var artifactSummary = await FetchArtifactSummaryAsync(
+        var artifactSummaryTask = FetchArtifactSummaryAsync(
             apiClient,
             member.Name,
             cancellationToken
@@ -295,6 +294,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
                 $"{member.Name}-{TargetDisplayRealm}",
                 cancellationToken
             );
+            var artifactSummary = await artifactSummaryTask;
 
             if (!result.Succeeded || result.ResponseElement is not { } responseElement)
             {
@@ -322,6 +322,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
                 RaceName: LookupDisplayName(RaceNames, raceId),
                 Profession1: professions.Profession1,
                 Profession2: professions.Profession2,
+                AvgItemLevel: ReadInt(responseElement, "avgitemlevel"),
                 AchievementPoints: ReadInt(responseElement, "pts"),
                 HonorableKills: ReadInt(responseElement, "playerHonorKills"),
                 Faction: ReadString(responseElement, "faction_string_class"),
@@ -338,7 +339,11 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         }
         catch (Exception ex)
         {
-            return CreateFallbackRow(member, $"guild-info fallback: {ex.Message}", artifactSummary);
+            return CreateFallbackRow(
+                member,
+                $"guild-info fallback: {ex.Message}",
+                await artifactSummaryTask
+            );
         }
     }
 
@@ -419,6 +424,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             RaceName: LookupDisplayName(RaceNames, member.RaceId),
             Profession1: string.Empty,
             Profession2: string.Empty,
+            AvgItemLevel: 0,
             AchievementPoints: 0,
             HonorableKills: 0,
             Faction: string.Empty,
@@ -678,7 +684,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             new("Race", HeaderStyleKey),
             new("Rank", HeaderStyleKey),
             new("Level", HeaderStyleKey),
-            new("Artifact ilvl", HeaderStyleKey),
+            new("ilvl", HeaderStyleKey),
             new("Traits", HeaderStyleKey),
             new("RankId", HeaderStyleKey),
             new(string.Empty),
@@ -721,8 +727,18 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
                 row.Add(new(exportRow.RaceName));
                 row.Add(new(exportRow.GuildRankName));
                 row.Add(new(exportRow.Level.ToString()));
-                row.Add(BuildArtifactNumberCell(exportRow.Artifact, exportRow.Artifact.ItemLevel));
-                row.Add(BuildArtifactNumberCell(exportRow.Artifact, exportRow.Artifact.TraitsSpent));
+                row.Add(
+                    new(
+                        exportRow.AvgItemLevel.ToString(),
+                        ValueKind: SimpleXlsxWriter.CellValueKind.Number
+                    )
+                );
+                row.Add(
+                    new(
+                        exportRow.Artifact.TraitsSpent.ToString(),
+                        ValueKind: SimpleXlsxWriter.CellValueKind.Number
+                    )
+                );
                 row.Add(new(exportRow.GuildRank.ToString()));
             }
             else
@@ -843,22 +859,6 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             cachedValue.ToString(),
             ValueKind: SimpleXlsxWriter.CellValueKind.FormulaNumber,
             Formula: formula
-        );
-    }
-
-    private static SimpleXlsxWriter.CellData BuildArtifactNumberCell(
-        ArtifactSummary artifactSummary,
-        int value
-    )
-    {
-        if (!artifactSummary.Found)
-        {
-            return new SimpleXlsxWriter.CellData(string.Empty);
-        }
-
-        return new SimpleXlsxWriter.CellData(
-            value.ToString(),
-            ValueKind: SimpleXlsxWriter.CellValueKind.Number
         );
     }
 
@@ -1006,6 +1006,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         string RaceName,
         string Profession1,
         string Profession2,
+        int AvgItemLevel,
         int AchievementPoints,
         int HonorableKills,
         string Faction,

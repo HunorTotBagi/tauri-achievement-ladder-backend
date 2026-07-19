@@ -42,6 +42,7 @@ internal static class SimpleXlsxWriter
         IReadOnlyList<IReadOnlyList<CellData>> rows,
         IReadOnlyDictionary<string, CellStyle>? cellStyles,
         IReadOnlyList<DataValidation>? dataValidations,
+        string? autoFilterRef,
         CancellationToken cancellationToken
     )
     {
@@ -112,7 +113,14 @@ internal static class SimpleXlsxWriter
             await WriteXmlEntryAsync(
                 archive,
                 "xl/worksheets/sheet1.xml",
-                writer => WriteWorksheetAsync(writer, header, rows, styleIndexByKey, validations),
+                writer => WriteWorksheetAsync(
+                    writer,
+                    header,
+                    rows,
+                    styleIndexByKey,
+                    validations,
+                    autoFilterRef
+                ),
                 cancellationToken
             );
         }
@@ -285,7 +293,8 @@ internal static class SimpleXlsxWriter
         IReadOnlyList<CellData> header,
         IReadOnlyList<IReadOnlyList<CellData>> rows,
         IReadOnlyDictionary<string, int> styleIndexByKey,
-        IReadOnlyList<DataValidation> dataValidations
+        IReadOnlyList<DataValidation> dataValidations,
+        string? autoFilterRef
     )
     {
         writer.WriteStartDocument();
@@ -303,6 +312,13 @@ internal static class SimpleXlsxWriter
         }
 
         writer.WriteEndElement();
+
+        if (!string.IsNullOrWhiteSpace(autoFilterRef))
+        {
+            writer.WriteStartElement("autoFilter");
+            writer.WriteAttributeString("ref", autoFilterRef);
+            writer.WriteEndElement();
+        }
 
         if (dataValidations.Count > 0)
         {
