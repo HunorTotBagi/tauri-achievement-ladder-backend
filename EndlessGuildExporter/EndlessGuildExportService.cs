@@ -13,6 +13,10 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     private const string CheckedSymbol = "☑";
     private const string UncheckedSymbol = "☐";
     private const int MaxConcurrentMemberFetches = 16;
+    private const int MaxRetryPasses = 3;
+    private const int MaxConcurrentRetryFetches = 4;
+    private static readonly TimeSpan RetryPassDelay = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan RequestPacingInterval = TimeSpan.FromSeconds(1);
 
     private static readonly string[] DirectProfessionPropertyNames =
     [
@@ -160,6 +164,30 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
 
     private readonly string _projectRoot = Path.GetFullPath(projectRoot);
     private readonly ITauriApiClient _apiClient = apiClient;
+    private readonly SemaphoreSlim _requestPacer = new(1, 1);
+    private DateTime _nextRequestSlotUtc = DateTime.MinValue;
+
+    private async Task WaitForRequestSlotAsync(CancellationToken cancellationToken)
+    {
+        TimeSpan delay;
+        await _requestPacer.WaitAsync(cancellationToken);
+        try
+        {
+            var now = DateTime.UtcNow;
+            var scheduledUtc = _nextRequestSlotUtc > now ? _nextRequestSlotUtc : now;
+            delay = scheduledUtc - now;
+            _nextRequestSlotUtc = scheduledUtc + RequestPacingInterval;
+        }
+        finally
+        {
+            _requestPacer.Release();
+        }
+
+        if (delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay, cancellationToken);
+        }
+    }
 
     public async Task<EndlessGuildExportResult> ExportAsync(
         string? requestedOutputPath,
@@ -193,6 +221,8 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
             }
         );
 
+        await RetryIncompleteRowsAsync(guildMembers, rows, cancellationToken);
+
         var orderedRows = rows.OrderBy(row => row.GuildRank)
             .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Level)
@@ -224,11 +254,66 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         );
     }
 
+    private async Task RetryIncompleteRowsAsync(
+        IReadOnlyList<GuildMemberRecord> guildMembers,
+        ExportRow[] rows,
+        CancellationToken cancellationToken
+    )
+    {
+        var retryIndexes = CollectIncompleteRowIndexes(guildMembers, rows);
+
+        for (var pass = 1; pass <= MaxRetryPasses && retryIndexes.Count > 0; pass++)
+        {
+            Console.WriteLine(
+                $"Retrying {retryIndexes.Count} members with incomplete data (pass {pass}/{MaxRetryPasses}, waiting {RetryPassDelay.TotalSeconds:0}s for the API to recover)..."
+            );
+            await Task.Delay(RetryPassDelay, cancellationToken);
+
+            await Parallel.ForEachAsync(
+                retryIndexes,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = MaxConcurrentRetryFetches,
+                    CancellationToken = cancellationToken,
+                },
+                async (index, ct) =>
+                {
+                    rows[index] = await BuildExportRowAsync(_apiClient, guildMembers[index], ct);
+                }
+            );
+
+            retryIndexes = CollectIncompleteRowIndexes(guildMembers, rows);
+        }
+
+        if (retryIndexes.Count > 0)
+        {
+            Console.WriteLine(
+                $"Still incomplete after {MaxRetryPasses} retry passes: "
+                    + string.Join(", ", retryIndexes.Select(index => guildMembers[index].Name))
+            );
+        }
+    }
+
+    private static List<int> CollectIncompleteRowIndexes(
+        IReadOnlyList<GuildMemberRecord> guildMembers,
+        ExportRow[] rows
+    )
+    {
+        return Enumerable
+            .Range(0, rows.Length)
+            .Where(index =>
+                !guildMembers[index].Name.Contains('#', StringComparison.Ordinal)
+                && (!rows[index].CharacterSheetFetched || rows[index].Artifact.FetchFailed)
+            )
+            .ToList();
+    }
+
     private async Task<List<GuildMemberRecord>> LoadGuildMembersAsync(
         ITauriApiClient apiClient,
         CancellationToken cancellationToken
     )
     {
+        await WaitForRequestSlotAsync(cancellationToken);
         var result = await apiClient.FetchResponseElementAsync(
             "guild-info",
             new { r = TargetApiRealm, gn = TargetGuildName },
@@ -288,6 +373,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
 
         try
         {
+            await WaitForRequestSlotAsync(cancellationToken);
             var result = await apiClient.FetchResponseElementAsync(
                 "character-sheet",
                 new { r = TargetApiRealm, n = member.Name },
@@ -355,6 +441,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     {
         try
         {
+            await WaitForRequestSlotAsync(cancellationToken);
             var result = await apiClient.FetchResponseElementAsync(
                 "character-artifact",
                 new { r = TargetApiRealm, n = characterName },
@@ -364,7 +451,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
 
             if (!result.Succeeded || result.ResponseElement is not { } responseElement)
             {
-                return ArtifactSummary.Empty;
+                return ArtifactSummary.Failed;
             }
 
             if (
@@ -401,7 +488,7 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         }
         catch
         {
-            return ArtifactSummary.Empty;
+            return ArtifactSummary.Failed;
         }
     }
 
@@ -1015,8 +1102,15 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
         ArtifactSummary Artifact
     );
 
-    private readonly record struct ArtifactSummary(int ItemLevel, int TraitsSpent, bool Found)
+    private readonly record struct ArtifactSummary(
+        int ItemLevel,
+        int TraitsSpent,
+        bool Found,
+        bool FetchFailed = false
+    )
     {
         public static ArtifactSummary Empty => new(0, 0, false);
+
+        public static ArtifactSummary Failed => new(0, 0, false, FetchFailed: true);
     }
 }
