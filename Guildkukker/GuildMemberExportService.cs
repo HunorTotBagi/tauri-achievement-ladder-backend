@@ -85,11 +85,11 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                     playerName,
                     ct
                 );
-                var relics = reputation.IsLevel110
-                    ? await LoadRelicCountAsync(apiRealmName, playerName, ct)
-                    : RelicResult.Excluded;
+                var artifact = reputation.IsLevel110
+                    ? await LoadArtifactDetailsAsync(apiRealmName, playerName, ct)
+                    : ArtifactResult.Excluded;
 
-                characterResults[playerName] = new CharacterScanResult(reputation, relics);
+                characterResults[playerName] = new CharacterScanResult(reputation, artifact);
 
                 var processed = Interlocked.Increment(ref processedPlayerCount);
                 if (processed % 25 == 0 || processed == playerNames.Count)
@@ -138,7 +138,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         );
     }
 
-    private async Task<RelicResult> LoadRelicCountAsync(
+    private async Task<ArtifactResult> LoadArtifactDetailsAsync(
         string realmName,
         string playerName,
         CancellationToken cancellationToken
@@ -157,7 +157,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             || response.ValueKind != JsonValueKind.Object
         )
         {
-            return RelicResult.Missing;
+            return ArtifactResult.Missing;
         }
 
         if (
@@ -165,25 +165,48 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             || artifacts.ValueKind != JsonValueKind.Array
         )
         {
-            return RelicResult.Missing;
+            return ArtifactResult.Missing;
         }
 
         if (artifacts.GetArrayLength() == 0)
         {
-            return new RelicResult(true, 0);
+            return new ArtifactResult(true, 0, 0);
         }
 
         var artifact = artifacts[0];
-        if (
-            artifact.ValueKind != JsonValueKind.Object
-            || !artifact.TryGetProperty("SocketContainedGem", out var gems)
-            || gems.ValueKind != JsonValueKind.Array
-        )
+        if (artifact.ValueKind != JsonValueKind.Object)
         {
-            return new RelicResult(true, 0);
+            return ArtifactResult.Missing;
         }
 
-        return new RelicResult(true, gems.GetArrayLength());
+        var relicCount =
+            artifact.TryGetProperty("SocketContainedGem", out var gems)
+            && gems.ValueKind == JsonValueKind.Array
+                ? gems.GetArrayLength()
+                : 0;
+
+        var traitCount = 0;
+        if (
+            artifact.TryGetProperty("artifact", out var artifactInfo)
+            && artifactInfo.ValueKind == JsonValueKind.Object
+            && artifactInfo.TryGetProperty("artifactpowers", out var artifactPowers)
+            && artifactPowers.ValueKind == JsonValueKind.Array
+        )
+        {
+            foreach (var artifactPower in artifactPowers.EnumerateArray())
+            {
+                if (
+                    artifactPower.ValueKind == JsonValueKind.Object
+                    && artifactPower.TryGetProperty("purchasedrank", out var purchasedRank)
+                    && purchasedRank.TryGetInt32(out var rank)
+                )
+                {
+                    traitCount += rank;
+                }
+            }
+        }
+
+        return new ArtifactResult(true, relicCount, traitCount);
     }
 
     private static IReadOnlyList<string> BuildOutputLines(IReadOnlyList<OutputRow> rows)
@@ -212,14 +235,22 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         var relicsWidth = Math.Max(
             "Relics".Length,
             rows
-                .Where(row => row.Result.Relics.Found)
-                .Select(row => row.Result.Relics.Count.ToString().Length)
+                .Where(row => row.Result.Artifact.Found)
+                .Select(row => row.Result.Artifact.RelicCount.ToString().Length)
+                .DefaultIfEmpty("N/A".Length)
+                .Max()
+        );
+        var traitsWidth = Math.Max(
+            "Trait".Length,
+            rows
+                .Where(row => row.Result.Artifact.Found)
+                .Select(row => row.Result.Artifact.TraitCount.ToString().Length)
                 .DefaultIfEmpty("N/A".Length)
                 .Max()
         );
 
         var separator =
-            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}-+-{new string('-', relicsWidth)}";
+            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}-+-{new string('-', relicsWidth)}-+-{new string('-', traitsWidth)}";
         var capLabel = " CAP: 8000 / 12000 ";
         var capSeparator =
             capLabel.Length >= separator.Length
@@ -229,7 +260,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         var lines = new List<string>
         {
-            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)} | {PadLeft("Relics", relicsWidth)}",
+            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)} | {PadLeft("Relics", relicsWidth)} | {PadLeft("Trait", traitsWidth)}",
             separator,
         };
 
@@ -238,12 +269,15 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             var row = rows[index];
             var rep = row.Reputation.Found ? row.Reputation.Reputation.ToString() : "N/A";
             var max = row.Reputation.Found ? row.Reputation.Maximum.ToString() : "N/A";
-            var relics = row.Result.Relics.Found
-                ? row.Result.Relics.Count.ToString()
+            var relics = row.Result.Artifact.Found
+                ? row.Result.Artifact.RelicCount.ToString()
+                : "N/A";
+            var traits = row.Result.Artifact.Found
+                ? row.Result.Artifact.TraitCount.ToString()
                 : "N/A";
 
             lines.Add(
-                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)} | {PadLeft(relics, relicsWidth)}"
+                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)} | {PadLeft(relics, relicsWidth)} | {PadLeft(traits, traitsWidth)}"
             );
 
             var nextRow = index + 1 < rows.Count ? rows[index + 1] : null;
@@ -431,16 +465,20 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         public static ReputationResult Missing => new(true, false, 0, 0);
     }
 
-    private readonly record struct RelicResult(bool Found, int Count)
+    private readonly record struct ArtifactResult(
+        bool Found,
+        int RelicCount,
+        int TraitCount
+    )
     {
-        public static RelicResult Excluded => new(false, 0);
+        public static ArtifactResult Excluded => new(false, 0, 0);
 
-        public static RelicResult Missing => new(false, 0);
+        public static ArtifactResult Missing => new(false, 0, 0);
     }
 
     private readonly record struct CharacterScanResult(
         ReputationResult Reputation,
-        RelicResult Relics
+        ArtifactResult Artifact
     );
 
     private sealed record OutputRow(string PlayerName, CharacterScanResult Result)

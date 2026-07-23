@@ -56,9 +56,12 @@ The text file is written to the `Guildkukker` project folder with one row per le
 Characters below level 110 are excluded. Level 110 players without available
 Nightfallen data are shown as `N/A`. For every level 110 character, Guildkukker then
 calls `character-artifact` and counts the entries in the first artifact's
-`SocketContainedGem` array. The aligned `No. | Character | Rep | Max | Relics` table
-is printed to the console and file. The `No.` column is the player's position in the
-sorted ranking. Rows are grouped by maximum reputation in `21000`,
+`SocketContainedGem` array. It also calculates the character's artifact traits by
+summing `purchasedrank` across the first artifact's `artifactpowers`, matching the
+logic used by `EndlessGuildExporter`. The aligned
+`No. | Character | Rep | Max | Relics | Trait` table is printed to the console and
+file. The `No.` column is the player's position in the sorted ranking. Rows are
+grouped by maximum reputation in `21000`,
 `12000`, `6000`, `3000`, then `N/A` order. Within each numeric group, the highest
 current reputation appears first. A labeled cap line separates players at or above
 `8000 / 12000` from those below the cap. For example,
