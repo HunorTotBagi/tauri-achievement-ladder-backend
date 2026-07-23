@@ -66,7 +66,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         Console.WriteLine($"Loading The Nightfallen reputation for {playerNames.Count} players...");
 
-        var reputationRows = new ConcurrentDictionary<string, ReputationResult>(
+        var characterResults = new ConcurrentDictionary<string, CharacterScanResult>(
             StringComparer.OrdinalIgnoreCase
         );
         var processedPlayerCount = 0;
@@ -80,25 +80,30 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             },
             async (playerName, ct) =>
             {
-                reputationRows[playerName] = await LoadNightfallenReputationAsync(
+                var reputation = await LoadNightfallenReputationAsync(
                     apiRealmName,
                     playerName,
                     ct
                 );
+                var relics = reputation.IsLevel110
+                    ? await LoadRelicCountAsync(apiRealmName, playerName, ct)
+                    : RelicResult.Excluded;
+
+                characterResults[playerName] = new CharacterScanResult(reputation, relics);
 
                 var processed = Interlocked.Increment(ref processedPlayerCount);
                 if (processed % 25 == 0 || processed == playerNames.Count)
                 {
                     Console.WriteLine(
-                        $"Loaded character reputations {processed}/{playerNames.Count}"
+                        $"Scanned character reputations and artifacts {processed}/{playerNames.Count}"
                     );
                 }
             }
         );
 
         var sortedRows = playerNames
-            .Where(playerName => reputationRows[playerName].IsLevel110)
-            .Select(playerName => new OutputRow(playerName, reputationRows[playerName]))
+            .Where(playerName => characterResults[playerName].Reputation.IsLevel110)
+            .Select(playerName => new OutputRow(playerName, characterResults[playerName]))
             .OrderBy(row => GetMaximumSortOrder(row.Reputation))
             .ThenByDescending(row => row.Reputation.Reputation)
             .ThenBy(row => row.PlayerName, StringComparer.OrdinalIgnoreCase)
@@ -120,8 +125,10 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         var outputPath = Path.Combine(_outputDirectory, fileName);
         await WriteLinesAsync(outputPath, outputLines, cancellationToken);
 
-        var level110Count = reputationRows.Values.Count(reputation => reputation.IsLevel110);
-        var reputationCount = reputationRows.Values.Count(reputation => reputation.Found);
+        var level110Count = characterResults.Values.Count(result =>
+            result.Reputation.IsLevel110
+        );
+        var reputationCount = characterResults.Values.Count(result => result.Reputation.Found);
         return new GuildMemberExportResult(
             playerNames.Count,
             level110Count,
@@ -129,6 +136,54 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             level110Count - reputationCount,
             outputPath
         );
+    }
+
+    private async Task<RelicResult> LoadRelicCountAsync(
+        string realmName,
+        string playerName,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _apiClient.FetchResponseElementAsync(
+            "character-artifact",
+            new { r = realmName, n = playerName },
+            $"character artifact for '{playerName}' on {realmName}",
+            cancellationToken
+        );
+
+        if (
+            !result.Succeeded
+            || result.ResponseElement is not { } response
+            || response.ValueKind != JsonValueKind.Object
+        )
+        {
+            return RelicResult.Missing;
+        }
+
+        if (
+            !response.TryGetProperty("artifacts", out var artifacts)
+            || artifacts.ValueKind != JsonValueKind.Array
+        )
+        {
+            return RelicResult.Missing;
+        }
+
+        if (artifacts.GetArrayLength() == 0)
+        {
+            return new RelicResult(true, 0);
+        }
+
+        var artifact = artifacts[0];
+        if (
+            artifact.ValueKind != JsonValueKind.Object
+            || !artifact.TryGetProperty("SocketContainedGem", out var gems)
+            || gems.ValueKind != JsonValueKind.Array
+        )
+        {
+            return new RelicResult(true, 0);
+        }
+
+        return new RelicResult(true, gems.GetArrayLength());
     }
 
     private static IReadOnlyList<string> BuildOutputLines(IReadOnlyList<OutputRow> rows)
@@ -154,9 +209,17 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                 .DefaultIfEmpty("N/A".Length)
                 .Max()
         );
+        var relicsWidth = Math.Max(
+            "Relics".Length,
+            rows
+                .Where(row => row.Result.Relics.Found)
+                .Select(row => row.Result.Relics.Count.ToString().Length)
+                .DefaultIfEmpty("N/A".Length)
+                .Max()
+        );
 
         var separator =
-            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}";
+            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}-+-{new string('-', relicsWidth)}";
         var capLabel = " CAP: 8000 / 12000 ";
         var capSeparator =
             capLabel.Length >= separator.Length
@@ -166,7 +229,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         var lines = new List<string>
         {
-            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)}",
+            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)} | {PadLeft("Relics", relicsWidth)}",
             separator,
         };
 
@@ -175,9 +238,12 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             var row = rows[index];
             var rep = row.Reputation.Found ? row.Reputation.Reputation.ToString() : "N/A";
             var max = row.Reputation.Found ? row.Reputation.Maximum.ToString() : "N/A";
+            var relics = row.Result.Relics.Found
+                ? row.Result.Relics.Count.ToString()
+                : "N/A";
 
             lines.Add(
-                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)}"
+                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)} | {PadLeft(relics, relicsWidth)}"
             );
 
             var nextRow = index + 1 < rows.Count ? rows[index + 1] : null;
@@ -365,5 +431,20 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         public static ReputationResult Missing => new(true, false, 0, 0);
     }
 
-    private sealed record OutputRow(string PlayerName, ReputationResult Reputation);
+    private readonly record struct RelicResult(bool Found, int Count)
+    {
+        public static RelicResult Excluded => new(false, 0);
+
+        public static RelicResult Missing => new(false, 0);
+    }
+
+    private readonly record struct CharacterScanResult(
+        ReputationResult Reputation,
+        RelicResult Relics
+    );
+
+    private sealed record OutputRow(string PlayerName, CharacterScanResult Result)
+    {
+        public ReputationResult Reputation => Result.Reputation;
+    }
 }

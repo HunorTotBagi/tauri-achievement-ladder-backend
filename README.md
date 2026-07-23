@@ -54,7 +54,9 @@ dotnet run --project Guildkukker -- Evermoon Endless
 The text file is written to the `Guildkukker` project folder with one row per level
 110 player in `Character | rep | max` format for The Nightfallen reputation.
 Characters below level 110 are excluded. Level 110 players without available
-Nightfallen data are shown as `N/A`. The aligned `No. | Character | Rep | Max` table
+Nightfallen data are shown as `N/A`. For every level 110 character, Guildkukker then
+calls `character-artifact` and counts the entries in the first artifact's
+`SocketContainedGem` array. The aligned `No. | Character | Rep | Max | Relics` table
 is printed to the console and file. The `No.` column is the player's position in the
 sorted ranking. Rows are grouped by maximum reputation in `21000`,
 `12000`, `6000`, `3000`, then `N/A` order. Within each numeric group, the highest
