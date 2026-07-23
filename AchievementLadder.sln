@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BattlegroundCollector", "Ba
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tauri.Core", "Tauri.Core\Tauri.Core.csproj", "{CA38320E-6A8B-4694-89A0-1963C8E97FE3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guildkukker", "Guildkukker\Guildkukker.csproj", "{34A67387-6F49-4C0E-890F-F283D090316E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -111,6 +113,18 @@ Global
 		{CA38320E-6A8B-4694-89A0-1963C8E97FE3}.Release|x64.Build.0 = Release|Any CPU
 		{CA38320E-6A8B-4694-89A0-1963C8E97FE3}.Release|x86.ActiveCfg = Release|Any CPU
 		{CA38320E-6A8B-4694-89A0-1963C8E97FE3}.Release|x86.Build.0 = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|x64.Build.0 = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Debug|x86.Build.0 = Debug|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|x64.ActiveCfg = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|x64.Build.0 = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|x86.ActiveCfg = Release|Any CPU
+		{34A67387-6F49-4C0E-890F-F283D090316E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
