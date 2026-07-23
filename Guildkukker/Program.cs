@@ -40,7 +40,7 @@ internal static class Program
             using var apiClient = new TauriApiClient(settings.TauriApi);
             var outputDirectory = arguments.OutputDirectory is null
                 ? projectRoot
-                : Path.GetFullPath(arguments.OutputDirectory);
+                : Path.GetFullPath(arguments.OutputDirectory.Trim().Trim('"'));
             var exporter = new GuildMemberExportService(outputDirectory, apiClient);
 
             var result = await exporter.ExportAsync(
@@ -53,7 +53,8 @@ internal static class Program
             Console.WriteLine($"Exported {result.PlayerCount} level 110 players.");
             Console.WriteLine($"Nightfallen reputations found: {result.ReputationCount}");
             Console.WriteLine($"Missing reputation data: {result.MissingReputationCount}");
-            Console.WriteLine($"File: {result.OutputPath}");
+            Console.WriteLine($"Text file: {result.OutputPath}");
+            Console.WriteLine($"Spreadsheet: {result.SpreadsheetOutputPath}");
             return 0;
         }
         catch (OperationCanceledException)

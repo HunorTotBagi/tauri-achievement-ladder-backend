@@ -1,6 +1,6 @@
-using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using EndlessGuildExporter;
 using Tauri.Core.Dtos;
 using Tauri.Core.Infrastructure;
 
@@ -66,40 +66,55 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         Console.WriteLine($"Loading The Nightfallen reputation for {playerNames.Count} players...");
 
-        var characterResults = new ConcurrentDictionary<string, CharacterScanResult>(
+        var characterResults = new Dictionary<string, CharacterScanResult>(
             StringComparer.OrdinalIgnoreCase
         );
         var processedPlayerCount = 0;
 
-        await Parallel.ForEachAsync(
-            playerNames,
-            new ParallelOptions
+        foreach (var playerName in playerNames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var reputation = await LoadNightfallenReputationAsync(
+                apiRealmName,
+                playerName,
+                cancellationToken
+            );
+            ArtifactResult artifact;
+            ItemLevelResult itemLevel;
+            if (reputation.IsLevel110)
             {
-                MaxDegreeOfParallelism = 20,
-                CancellationToken = cancellationToken,
-            },
-            async (playerName, ct) =>
-            {
-                var reputation = await LoadNightfallenReputationAsync(
+                artifact = await LoadArtifactDetailsAsync(
                     apiRealmName,
                     playerName,
-                    ct
+                    cancellationToken
                 );
-                var artifact = reputation.IsLevel110
-                    ? await LoadArtifactDetailsAsync(apiRealmName, playerName, ct)
-                    : ArtifactResult.Excluded;
-
-                characterResults[playerName] = new CharacterScanResult(reputation, artifact);
-
-                var processed = Interlocked.Increment(ref processedPlayerCount);
-                if (processed % 25 == 0 || processed == playerNames.Count)
-                {
-                    Console.WriteLine(
-                        $"Scanned character reputations and artifacts {processed}/{playerNames.Count}"
-                    );
-                }
+                itemLevel = await LoadItemLevelAsync(
+                    apiRealmName,
+                    playerName,
+                    cancellationToken
+                );
             }
-        );
+            else
+            {
+                artifact = ArtifactResult.Excluded;
+                itemLevel = ItemLevelResult.Excluded;
+            }
+
+            characterResults[playerName] = new CharacterScanResult(
+                reputation,
+                artifact,
+                itemLevel
+            );
+
+            processedPlayerCount++;
+            if (processedPlayerCount % 25 == 0 || processedPlayerCount == playerNames.Count)
+            {
+                Console.WriteLine(
+                    $"Scanned character reputations, artifacts, and item levels {processedPlayerCount}/{playerNames.Count}"
+                );
+            }
+        }
 
         var sortedRows = playerNames
             .Where(playerName => characterResults[playerName].Reputation.IsLevel110)
@@ -121,9 +136,11 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             "dd-MMM-yyyy-HH-mm",
             System.Globalization.CultureInfo.InvariantCulture
         );
-        var fileName = $"{MakeFileNamePart(guildName)}-{timestamp}.txt";
-        var outputPath = Path.Combine(_outputDirectory, fileName);
+        var outputName = $"{MakeFileNamePart(guildName)}-{timestamp}";
+        var outputPath = Path.Combine(_outputDirectory, outputName + ".txt");
+        var spreadsheetOutputPath = Path.Combine(_outputDirectory, outputName + ".xlsx");
         await WriteLinesAsync(outputPath, outputLines, cancellationToken);
+        await WriteSpreadsheetAsync(spreadsheetOutputPath, guildName, sortedRows, cancellationToken);
 
         var level110Count = characterResults.Values.Count(result =>
             result.Reputation.IsLevel110
@@ -134,7 +151,8 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             level110Count,
             reputationCount,
             level110Count - reputationCount,
-            outputPath
+            outputPath,
+            spreadsheetOutputPath
         );
     }
 
@@ -209,6 +227,115 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         return new ArtifactResult(true, relicCount, traitCount);
     }
 
+    private async Task<ItemLevelResult> LoadItemLevelAsync(
+        string realmName,
+        string playerName,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _apiClient.FetchResponseElementAsync(
+            "character-sheet",
+            new { r = realmName, n = playerName },
+            $"character sheet for '{playerName}' on {realmName}",
+            cancellationToken
+        );
+
+        if (
+            !result.Succeeded
+            || result.ResponseElement is not { } response
+            || response.ValueKind != JsonValueKind.Object
+            || !response.TryGetProperty("characterItems", out var characterItems)
+            || characterItems.ValueKind != JsonValueKind.Array
+        )
+        {
+            return ItemLevelResult.Missing;
+        }
+
+        var equippedItems = characterItems
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.Object)
+            .Select(item => new EquippedItem(
+                ReadInt(item, "InventoryType"),
+                ReadInt(item, "ilevel"),
+                ReadInt(item, "rarity"),
+                item.TryGetProperty("artifact", out var artifact)
+                    && artifact.ValueKind == JsonValueKind.Object
+            ))
+            .Where(item => IsCombatEquipment(item.InventoryType) && item.ItemLevel > 0)
+            .ToList();
+
+        if (equippedItems.Count == 0)
+        {
+            return ItemLevelResult.Missing;
+        }
+
+        var mainHand = equippedItems.FirstOrDefault(item =>
+            item.InventoryType is 13 or 15 or 17 or 21 or 25 or 26
+        );
+        var offHandIndex = equippedItems.FindIndex(item => item.InventoryType is 14 or 22 or 23);
+        if (
+            mainHand is not null
+            && mainHand.IsArtifact
+            && offHandIndex >= 0
+            && equippedItems[offHandIndex] is { ItemLevel: 750, Rarity: 6 }
+        )
+        {
+            equippedItems[offHandIndex] = equippedItems[offHandIndex] with
+            {
+                ItemLevel = mainHand.ItemLevel,
+            };
+        }
+
+        var itemLevelTotal = equippedItems.Sum(item => item.ItemLevel);
+        var itemCount = equippedItems.Count;
+
+        // WoW counts a two-handed weapon in both the main-hand and off-hand slots.
+        if (
+            mainHand is not null
+            && mainHand.InventoryType is 17 or 26
+            && offHandIndex < 0
+        )
+        {
+            itemLevelTotal += mainHand.ItemLevel;
+            itemCount++;
+        }
+
+        return new ItemLevelResult(
+            true,
+            Math.Round((decimal)itemLevelTotal / itemCount, 2, MidpointRounding.AwayFromZero)
+        );
+    }
+
+    private static bool IsCombatEquipment(int inventoryType) =>
+        inventoryType is
+            1
+            or 2
+            or 3
+            or 5
+            or 6
+            or 7
+            or 8
+            or 9
+            or 10
+            or 11
+            or 12
+            or 13
+            or 14
+            or 15
+            or 16
+            or 17
+            or 21
+            or 22
+            or 23
+            or 25
+            or 26;
+
+    private static int ReadInt(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property)
+        && property.TryGetInt32(out var value)
+            ? value
+            : 0;
+
     private static IReadOnlyList<string> BuildOutputLines(IReadOnlyList<OutputRow> rows)
     {
         var numberWidth = Math.Max("No.".Length, rows.Count.ToString().Length);
@@ -248,9 +375,17 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                 .DefaultIfEmpty("N/A".Length)
                 .Max()
         );
+        var itemLevelWidth = Math.Max(
+            "ilvl".Length,
+            rows
+                .Where(row => row.Result.ItemLevel.Found)
+                .Select(row => FormatItemLevel(row.Result.ItemLevel.Average).Length)
+                .DefaultIfEmpty("N/A".Length)
+                .Max()
+        );
 
         var separator =
-            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}-+-{new string('-', relicsWidth)}-+-{new string('-', traitsWidth)}";
+            $"{new string('-', numberWidth)}-+-{new string('-', characterWidth)}-+-{new string('-', repWidth)}-+-{new string('-', maxWidth)}-+-{new string('-', relicsWidth)}-+-{new string('-', traitsWidth)}-+-{new string('-', itemLevelWidth)}";
         var capLabel = " CAP: 8000 / 12000 ";
         var capSeparator =
             capLabel.Length >= separator.Length
@@ -260,7 +395,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         var lines = new List<string>
         {
-            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)} | {PadLeft("Relics", relicsWidth)} | {PadLeft("Trait", traitsWidth)}",
+            $"{PadLeft("No.", numberWidth)} | {PadRight("Character", characterWidth)} | {PadLeft("Rep", repWidth)} | {PadLeft("Max", maxWidth)} | {PadLeft("Relics", relicsWidth)} | {PadLeft("Trait", traitsWidth)} | {PadLeft("ilvl", itemLevelWidth)}",
             separator,
         };
 
@@ -275,9 +410,12 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             var traits = row.Result.Artifact.Found
                 ? row.Result.Artifact.TraitCount.ToString()
                 : "N/A";
+            var itemLevel = row.Result.ItemLevel.Found
+                ? FormatItemLevel(row.Result.ItemLevel.Average)
+                : "N/A";
 
             lines.Add(
-                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)} | {PadLeft(relics, relicsWidth)} | {PadLeft(traits, traitsWidth)}"
+                $"{PadLeft((index + 1).ToString(), numberWidth)} | {PadRight(row.PlayerName, characterWidth)} | {PadLeft(rep, repWidth)} | {PadLeft(max, maxWidth)} | {PadLeft(relics, relicsWidth)} | {PadLeft(traits, traitsWidth)} | {PadLeft(itemLevel, itemLevelWidth)}"
             );
 
             var nextRow = index + 1 < rows.Count ? rows[index + 1] : null;
@@ -453,6 +591,82 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         }
     }
 
+    private static Task WriteSpreadsheetAsync(
+        string outputPath,
+        string guildName,
+        IReadOnlyList<OutputRow> rows,
+        CancellationToken cancellationToken
+    )
+    {
+        var header = new List<SimpleXlsxWriter.CellData>
+        {
+            new("No."),
+            new("Character"),
+            new("Rep"),
+            new("Max"),
+            new("Relics"),
+            new("Trait"),
+            new("ilvl"),
+        };
+        var sheetRows = rows
+            .Select(
+                (row, index) =>
+                    (IReadOnlyList<SimpleXlsxWriter.CellData>)
+                    [
+                        NumberCell(index + 1),
+                        new(row.PlayerName),
+                        ResultCell(row.Reputation.Found, row.Reputation.Reputation),
+                        ResultCell(row.Reputation.Found, row.Reputation.Maximum),
+                        ResultCell(row.Result.Artifact.Found, row.Result.Artifact.RelicCount),
+                        ResultCell(row.Result.Artifact.Found, row.Result.Artifact.TraitCount),
+                        ItemLevelCell(row.Result.ItemLevel),
+                    ]
+            )
+            .ToList();
+
+        return SimpleXlsxWriter.WriteSingleWorksheetAsync(
+            outputPath,
+            MakeWorksheetName(guildName),
+            header,
+            sheetRows,
+            cellStyles: null,
+            dataValidations: null,
+            autoFilterRef: null,
+            cancellationToken
+        );
+    }
+
+    private static SimpleXlsxWriter.CellData ResultCell(bool found, int value) =>
+        found ? NumberCell(value) : new("N/A");
+
+    private static SimpleXlsxWriter.CellData ItemLevelCell(ItemLevelResult result) =>
+        result.Found
+            ? new(
+                FormatItemLevel(result.Average),
+                ValueKind: SimpleXlsxWriter.CellValueKind.Number
+            )
+            : new("N/A");
+
+    private static SimpleXlsxWriter.CellData NumberCell(int value) =>
+        new(
+            value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ValueKind: SimpleXlsxWriter.CellValueKind.Number
+        );
+
+    private static string FormatItemLevel(decimal value) =>
+        value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string MakeWorksheetName(string value)
+    {
+        char[] invalidCharacters = ['[', ']', ':', '*', '?', '/', '\\'];
+        var sanitized = new string(
+            value.Trim().Where(character => !invalidCharacters.Contains(character)).ToArray()
+        );
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? "Guild"
+            : sanitized[..Math.Min(sanitized.Length, 31)];
+    }
+
     private readonly record struct ReputationResult(
         bool IsLevel110,
         bool Found,
@@ -476,9 +690,24 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         public static ArtifactResult Missing => new(false, 0, 0);
     }
 
+    private readonly record struct ItemLevelResult(bool Found, decimal Average)
+    {
+        public static ItemLevelResult Excluded => new(false, 0);
+
+        public static ItemLevelResult Missing => new(false, 0);
+    }
+
+    private sealed record EquippedItem(
+        int InventoryType,
+        int ItemLevel,
+        int Rarity,
+        bool IsArtifact
+    );
+
     private readonly record struct CharacterScanResult(
         ReputationResult Reputation,
-        ArtifactResult Artifact
+        ArtifactResult Artifact,
+        ItemLevelResult ItemLevel
     );
 
     private sealed record OutputRow(string PlayerName, CharacterScanResult Result)

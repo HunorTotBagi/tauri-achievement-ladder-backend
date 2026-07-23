@@ -58,9 +58,15 @@ Nightfallen data are shown as `N/A`. For every level 110 character, Guildkukker 
 calls `character-artifact` and counts the entries in the first artifact's
 `SocketContainedGem` array. It also calculates the character's artifact traits by
 summing `purchasedrank` across the first artifact's `artifactpowers`, matching the
-logic used by `EndlessGuildExporter`. The aligned
-`No. | Character | Rep | Max | Relics | Trait` table is printed to the console and
-file. The `No.` column is the player's position in the sorted ranking. Rows are
+logic used by `EndlessGuildExporter`. It calls `character-sheet` for each level 110
+character and calculates equipped item level across the 16 combat equipment slots.
+Two-handed weapons count for both weapon slots. Due to a Tauri API issue, an artifact
+off-hand reported at item level 750 uses the corresponding main-hand artifact's item
+level in the calculation. Calculated averages retain up to two decimal places. The aligned
+`No. | Character | Rep | Max | Relics | Trait | ilvl` table is printed to the console
+and text file. A plain `.xlsx` workbook containing exactly the same seven columns is
+also written beside the text file and can be opened or imported directly in Google
+Sheets. The `No.` column is the player's position in the sorted ranking. Rows are
 grouped by maximum reputation in `21000`,
 `12000`, `6000`, `3000`, then `N/A` order. Within each numeric group, the highest
 current reputation appears first. A labeled cap line separates players at or above

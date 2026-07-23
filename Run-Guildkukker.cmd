@@ -1,8 +1,8 @@
 @echo off
 setlocal
 
-set "PRIVATE_DIR=%~dp0"
-dotnet run --project "%~dp0tauri-achievement-ladder-backend\Guildkukker" -- Evermoon Endless --output-directory "%PRIVATE_DIR%"
+set "PRIVATE_DIR=%~dp0.."
+dotnet run --project "%~dp0Guildkukker" -- Evermoon Endless --output-directory "%PRIVATE_DIR%"
 
 if errorlevel 1 (
     echo.

@@ -5,5 +5,6 @@ public sealed record GuildMemberExportResult(
     int PlayerCount,
     int ReputationCount,
     int MissingReputationCount,
-    string OutputPath
+    string OutputPath,
+    string SpreadsheetOutputPath
 );
