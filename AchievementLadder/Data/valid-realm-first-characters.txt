@@ -16,6 +16,7 @@ Dannerx-Evermoon
 Deathdealing-Evermoon
 Deterrence-Evermoon
 Diaara-Evermoon
+Diaarawl-Evermoon
 Divinefist-Evermoon
 Dusk-Evermoon
 Ebonshriek-Evermoon
@@ -24,7 +25,6 @@ Eluuwa-Evermoon
 Es-Evermoon
 Exà-Evermoon
 Exâ-Evermoon
-Firefly-Evermoon
 Fitcha-Evermoon
 Frog-Evermoon
 Garwal-Evermoon
