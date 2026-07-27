@@ -10,7 +10,4 @@
     <ProjectReference Include="..\Tauri.Core\Tauri.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\EndlessGuildExporter\SimpleXlsxWriter.cs" Link="SimpleXlsxWriter.cs" />
-  </ItemGroup>
 </Project>

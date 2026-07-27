@@ -1,8 +1,8 @@
 @echo off
 setlocal
 
-set "PRIVATE_DIR=%~dp0.."
-dotnet run --project "%~dp0Guildkukker" -- Evermoon Endless --output-directory "%PRIVATE_DIR%"
+set "OUTPUT_DIR=%~dp0..\tauriachievements.github.io\src\guild-analysis"
+dotnet run --project "%~dp0Guildkukker" -- Evermoon Endless --output-directory "%OUTPUT_DIR%"
 
 if errorlevel 1 (
     echo.
@@ -12,5 +12,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Export completed in: %PRIVATE_DIR%
+echo Export completed in: %OUTPUT_DIR%
 pause

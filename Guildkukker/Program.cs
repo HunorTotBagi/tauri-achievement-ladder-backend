@@ -53,8 +53,7 @@ internal static class Program
             Console.WriteLine($"Exported {result.PlayerCount} level 110 players.");
             Console.WriteLine($"Nightfallen reputations found: {result.ReputationCount}");
             Console.WriteLine($"Missing reputation data: {result.MissingReputationCount}");
-            Console.WriteLine($"Text file: {result.OutputPath}");
-            Console.WriteLine($"Spreadsheet: {result.SpreadsheetOutputPath}");
+            Console.WriteLine($"JSON file: {result.OutputPath}");
             return 0;
         }
         catch (OperationCanceledException)
