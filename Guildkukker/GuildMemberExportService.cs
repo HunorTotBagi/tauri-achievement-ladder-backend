@@ -54,13 +54,18 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             throw new InvalidDataException("The guild response could not be parsed.", ex);
         }
 
-        var playerNames = guildInfo
-            .guildList.Values.Select(member => member.name?.Trim())
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Cast<string>()
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+        var guildMembers = guildInfo
+            .guildList.Values.Where(member => !string.IsNullOrWhiteSpace(member.name))
+            .GroupBy(member => member.name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(member => member.name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var playerNames = guildMembers.Select(member => member.name.Trim()).ToList();
+        var guildRankNames = guildMembers.ToDictionary(
+            member => member.name.Trim(),
+            member => member.rank_name?.Trim() ?? string.Empty,
+            StringComparer.OrdinalIgnoreCase
+        );
 
         Console.WriteLine($"Loading The Nightfallen reputation for {playerNames.Count} players...");
 
@@ -116,7 +121,11 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         var sortedRows = playerNames
             .Where(playerName => characterResults[playerName].Reputation.IsLevel110)
-            .Select(playerName => new OutputRow(playerName, characterResults[playerName]))
+            .Select(playerName => new OutputRow(
+                playerName,
+                guildRankNames[playerName],
+                characterResults[playerName]
+            ))
             .OrderBy(row => GetMaximumSortOrder(row.Reputation))
             .ThenByDescending(row => row.Reputation.Reputation)
             .ThenBy(row => row.PlayerName, StringComparer.OrdinalIgnoreCase)
@@ -289,9 +298,38 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             ReadInt(response, "race"),
             ReadInt(response, "gender"),
             ReadInt(response, "class"),
+            ReadSpecialization(response),
             ReadLong(response, "played_time"),
             ReadInt(response, "pts"),
             averageItemLevel
+        );
+    }
+
+    private static string ReadSpecialization(JsonElement response)
+    {
+        var activeSpec = ReadInt(response, "activeSpec");
+        if (
+            !response.TryGetProperty($"talents_legion_{activeSpec}", out var specialization)
+            || specialization.ValueKind != JsonValueKind.String
+        )
+        {
+            return string.Empty;
+        }
+
+        var parts = (specialization.GetString() ?? string.Empty).Split(
+            '&',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+        );
+        if (parts.Length < 2)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(
+            ' ',
+            parts[1]
+                .Split('-', StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => char.ToUpperInvariant(word[0]) + word[1..])
         );
     }
 
@@ -458,6 +496,8 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                     row.Result.Details.Race,
                     row.Result.Details.Gender,
                     row.Result.Details.Class,
+                    row.GuildRankName,
+                    row.Result.Details.Specialization,
                     row.Result.Details.PlayedTime,
                     row.Result.Details.AchievementPoints,
                     row.Reputation.Found ? row.Reputation.Reputation : null,
@@ -533,14 +573,17 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         int Race,
         int Gender,
         int Class,
+        string Specialization,
         long PlayedTime,
         int AchievementPoints,
         decimal? ItemLevel
     )
     {
-        public static CharacterDetailsResult Excluded => new(false, 0, 0, 0, 0, 0, null);
+        public static CharacterDetailsResult Excluded =>
+            new(false, 0, 0, 0, string.Empty, 0, 0, null);
 
-        public static CharacterDetailsResult Missing => new(false, 0, 0, 0, 0, 0, null);
+        public static CharacterDetailsResult Missing =>
+            new(false, 0, 0, 0, string.Empty, 0, 0, null);
     }
 
     private sealed record EquippedItem(
@@ -556,7 +599,11 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         CharacterDetailsResult Details
     );
 
-    private sealed record OutputRow(string PlayerName, CharacterScanResult Result)
+    private sealed record OutputRow(
+        string PlayerName,
+        string GuildRankName,
+        CharacterScanResult Result
+    )
     {
         public ReputationResult Reputation => Result.Reputation;
     }
@@ -571,6 +618,8 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         int Race,
         int Gender,
         int Class,
+        string GuildRankName,
+        string Specialization,
         long PlayedTime,
         int AchievementPoints,
         int? NightfallenReputation,

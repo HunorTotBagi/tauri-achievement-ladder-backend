@@ -5,4 +5,5 @@ public class GuildMember
     public string name { get; set; } = string.Empty;
     public int level { get; set; }
     public string realm { get; set; } = string.Empty;
+    public string rank_name { get; set; } = string.Empty;
 }
