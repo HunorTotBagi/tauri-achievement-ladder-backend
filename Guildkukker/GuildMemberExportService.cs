@@ -6,6 +6,63 @@ namespace Guildkukker;
 
 public sealed class GuildMemberExportService(string outputDirectory, ITauriApiClient apiClient)
 {
+    private static readonly IReadOnlyDictionary<int, string> ArtifactSpecializations =
+        new Dictionary<int, string>
+        {
+            [120978] = "Retribution",
+            [127829] = "Havoc",
+            [127830] = "Havoc",
+            [127857] = "Arcane",
+            [128288] = "Protection",
+            [128289] = "Protection",
+            [128292] = "Frost",
+            [128293] = "Frost",
+            [128306] = "Restoration",
+            [128402] = "Blood",
+            [128403] = "Unholy",
+            [128476] = "Subtlety",
+            [128479] = "Subtlety",
+            [128808] = "Survival",
+            [128819] = "Enhancement",
+            [128820] = "Fire",
+            [128821] = "Guardian",
+            [128822] = "Guardian",
+            [128823] = "Holy",
+            [128825] = "Holy",
+            [128826] = "Marksmanship",
+            [128827] = "Shadow",
+            [128832] = "Vengeance",
+            [128858] = "Balance",
+            [128859] = "Feral",
+            [128860] = "Feral",
+            [128861] = "Beast Mastery",
+            [128862] = "Frost",
+            [128866] = "Protection",
+            [128867] = "Protection",
+            [128868] = "Discipline",
+            [128869] = "Assassination",
+            [128870] = "Assassination",
+            [128872] = "Outlaw",
+            [128873] = "Enhancement",
+            [128908] = "Fury",
+            [128910] = "Arms",
+            [128911] = "Restoration",
+            [128934] = "Restoration",
+            [128935] = "Elemental",
+            [128936] = "Elemental",
+            [128937] = "Mistweaver",
+            [128938] = "Brewmaster",
+            [128940] = "Windwalker",
+            [128941] = "Destruction",
+            [128942] = "Affliction",
+            [128943] = "Demonology",
+            [133948] = "Windwalker",
+            [133958] = "Shadow",
+            [133959] = "Fire",
+            [134552] = "Outlaw",
+            [134553] = "Fury",
+        };
+
     private readonly string _outputDirectory = Path.GetFullPath(outputDirectory);
     private readonly ITauriApiClient _apiClient = apiClient;
 
@@ -179,43 +236,95 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
         if (artifacts.GetArrayLength() == 0)
         {
-            return new ArtifactResult(true, 0, 0);
+            return new ArtifactResult(true, 0, 0, string.Empty, string.Empty);
         }
 
-        var artifact = artifacts[0];
-        if (artifact.ValueKind != JsonValueKind.Object)
+        ArtifactCandidate? bestArtifact = null;
+        foreach (var artifact in artifacts.EnumerateArray())
+        {
+            if (artifact.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var candidate = new ArtifactCandidate(
+                artifact.TryGetProperty("SocketContainedGem", out var gems)
+                && gems.ValueKind == JsonValueKind.Array
+                    ? gems.GetArrayLength()
+                    : 0,
+                ReadArtifactTraitCount(artifact),
+                ReadArtifactSpecialization(artifact),
+                ReadString(artifact, "name")
+            );
+
+            if (bestArtifact is null || candidate.TraitCount > bestArtifact.TraitCount)
+            {
+                bestArtifact = candidate;
+            }
+        }
+
+        if (bestArtifact is null)
         {
             return ArtifactResult.Missing;
         }
 
-        var relicCount =
-            artifact.TryGetProperty("SocketContainedGem", out var gems)
-            && gems.ValueKind == JsonValueKind.Array
-                ? gems.GetArrayLength()
-                : 0;
+        return new ArtifactResult(
+            true,
+            bestArtifact.RelicCount,
+            bestArtifact.TraitCount,
+            string.IsNullOrWhiteSpace(bestArtifact.Specialization)
+                ? ReadSpecialization(response)
+                : bestArtifact.Specialization,
+            bestArtifact.Name
+        );
+    }
 
-        var traitCount = 0;
-        if (
-            artifact.TryGetProperty("artifact", out var artifactInfo)
-            && artifactInfo.ValueKind == JsonValueKind.Object
-            && artifactInfo.TryGetProperty("artifactpowers", out var artifactPowers)
-            && artifactPowers.ValueKind == JsonValueKind.Array
-        )
+    private static string ReadArtifactSpecialization(JsonElement artifact)
+    {
+        foreach (var propertyName in new[] { "specialization", "spec", "treeName" })
         {
-            foreach (var artifactPower in artifactPowers.EnumerateArray())
+            if (
+                artifact.TryGetProperty(propertyName, out var specialization)
+                && specialization.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(specialization.GetString())
+            )
             {
-                if (
-                    artifactPower.ValueKind == JsonValueKind.Object
-                    && artifactPower.TryGetProperty("purchasedrank", out var purchasedRank)
-                    && purchasedRank.TryGetInt32(out var rank)
-                )
-                {
-                    traitCount += rank;
-                }
+                return specialization.GetString()!.Trim();
             }
         }
 
-        return new ArtifactResult(true, relicCount, traitCount);
+        var itemId = ReadInt(artifact, "ID");
+        return ArtifactSpecializations.TryGetValue(itemId, out var mappedSpecialization)
+            ? mappedSpecialization
+            : string.Empty;
+    }
+
+    private static int ReadArtifactTraitCount(JsonElement artifact)
+    {
+        if (
+            !artifact.TryGetProperty("artifact", out var artifactInfo)
+            || artifactInfo.ValueKind != JsonValueKind.Object
+            || !artifactInfo.TryGetProperty("artifactpowers", out var artifactPowers)
+            || artifactPowers.ValueKind != JsonValueKind.Array
+        )
+        {
+            return 0;
+        }
+
+        var traitCount = 0;
+        foreach (var artifactPower in artifactPowers.EnumerateArray())
+        {
+            if (
+                artifactPower.ValueKind == JsonValueKind.Object
+                && artifactPower.TryGetProperty("purchasedrank", out var purchasedRank)
+                && purchasedRank.TryGetInt32(out var rank)
+            )
+            {
+                traitCount += rank;
+            }
+        }
+
+        return traitCount;
     }
 
     private async Task<CharacterDetailsResult> LoadCharacterDetailsAsync(
@@ -369,6 +478,12 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             ? value
             : 0;
 
+    private static string ReadString(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property)
+        && property.ValueKind == JsonValueKind.String
+            ? property.GetString() ?? string.Empty
+            : string.Empty;
+
     private async Task<ReputationResult> LoadNightfallenReputationAsync(
         string realmName,
         string playerName,
@@ -497,11 +612,17 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                     row.Result.Details.Gender,
                     row.Result.Details.Class,
                     row.GuildRankName,
-                    row.Result.Details.Specialization,
+                    string.IsNullOrWhiteSpace(row.Result.Artifact.Specialization)
+                        ? row.Result.Details.Specialization
+                        : row.Result.Artifact.Specialization,
                     row.Result.Details.PlayedTime,
                     row.Result.Details.AchievementPoints,
                     row.Reputation.Found ? row.Reputation.Reputation : null,
                     row.Reputation.Found ? row.Reputation.Maximum : null,
+                    row.Result.Artifact.Found
+                    && !string.IsNullOrWhiteSpace(row.Result.Artifact.Name)
+                        ? row.Result.Artifact.Name
+                        : null,
                     row.Result.Artifact.Found ? row.Result.Artifact.RelicCount : null,
                     row.Result.Artifact.Found ? row.Result.Artifact.TraitCount : null,
                     row.Result.Details.ItemLevel
@@ -560,13 +681,22 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
     private readonly record struct ArtifactResult(
         bool Found,
         int RelicCount,
-        int TraitCount
+        int TraitCount,
+        string Specialization,
+        string Name
     )
     {
-        public static ArtifactResult Excluded => new(false, 0, 0);
+        public static ArtifactResult Excluded => new(false, 0, 0, string.Empty, string.Empty);
 
-        public static ArtifactResult Missing => new(false, 0, 0);
+        public static ArtifactResult Missing => new(false, 0, 0, string.Empty, string.Empty);
     }
+
+    private sealed record ArtifactCandidate(
+        int RelicCount,
+        int TraitCount,
+        string Specialization,
+        string Name
+    );
 
     private readonly record struct CharacterDetailsResult(
         bool Found,
@@ -624,6 +754,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         int AchievementPoints,
         int? NightfallenReputation,
         int? NightfallenReputationMaximum,
+        string? ArtifactWeapon,
         int? ArtifactRelics,
         int? ArtifactTraits,
         decimal? ItemLevel

@@ -55,10 +55,11 @@ The text file is written to the `Guildkukker` project folder with one row per le
 110 player in `Character | rep | max` format for The Nightfallen reputation.
 Characters below level 110 are excluded. Level 110 players without available
 Nightfallen data are shown as `N/A`. For every level 110 character, Guildkukker then
-calls `character-artifact` and counts the entries in the first artifact's
-`SocketContainedGem` array. It also calculates the character's artifact traits by
-summing `purchasedrank` across the first artifact's `artifactpowers`, matching the
-logic used by `EndlessGuildExporter`. It calls `character-sheet` for each level 110
+calls `character-artifact`, sums `purchasedrank` for every returned artifact, and
+selects the artifact with the highest trait total. Weapon name, relics, and specialization
+are reported for that selected artifact response, so switching the character's active
+spec does not cause a lower-trait weapon to win merely because it appears first.
+It calls `character-sheet` for each level 110
 character and calculates equipped item level across the 16 combat equipment slots.
 Two-handed weapons count for both weapon slots. Due to a Tauri API issue, an artifact
 off-hand reported at item level 750 uses the corresponding main-hand artifact's item
