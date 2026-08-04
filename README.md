@@ -61,6 +61,8 @@ are reported for that selected artifact response, so switching the character's a
 spec does not cause a lower-trait weapon to win merely because it appears first.
 It calls `character-sheet` for each level 110
 character and calculates equipped item level across the 16 combat equipment slots.
+Equipped items reported at item level 910 count as item level 895 in the calculated
+average.
 Two-handed weapons count for both weapon slots. Due to a Tauri API issue, an artifact
 off-hand reported at item level 750 uses the corresponding main-hand artifact's item
 level in the calculation. Calculated averages retain up to two decimal places. The aligned

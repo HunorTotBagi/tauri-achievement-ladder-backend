@@ -356,7 +356,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             .Where(item => item.ValueKind == JsonValueKind.Object)
             .Select(item => new EquippedItem(
                 ReadInt(item, "InventoryType"),
-                ReadInt(item, "ilevel"),
+                NormalizeItemLevel(ReadInt(item, "ilevel")),
                 ReadInt(item, "rarity"),
                 item.TryGetProperty("artifact", out var artifact)
                     && artifact.ValueKind == JsonValueKind.Object
@@ -413,6 +413,9 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             averageItemLevel
         );
     }
+
+    private static int NormalizeItemLevel(int itemLevel) =>
+        itemLevel == 910 ? 895 : itemLevel;
 
     private static string ReadSpecialization(JsonElement response)
     {
