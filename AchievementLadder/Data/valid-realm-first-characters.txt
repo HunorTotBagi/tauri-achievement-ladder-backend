@@ -1,6 +1,7 @@
 Adalynn-Evermoon
 Ansello-Evermoon
 Arista-Evermoon
+Ashley-Evermoon
 Atorranta-Evermoon
 Aysta-Evermoon
 Banker-Evermoon
@@ -70,7 +71,6 @@ Røckwell-Evermoon
 Sargarepa-Evermoon
 Snowdon-Evermoon
 Sophierain-Evermoon
-Stareyez-Evermoon
 Stormspear-Evermoon
 Tnarfnet-Evermoon
 Traevyn-Evermoon
