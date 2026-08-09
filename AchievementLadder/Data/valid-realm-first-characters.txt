@@ -10,7 +10,6 @@ Blackeagle-Evermoon
 Braindeadly-Evermoon
 Carmenblanca-Evermoon
 Charcoal-Evermoon
-Christensen-Evermoon
 Chucknorris-Evermoon
 Coronaunholy-Evermoon
 Dannerx-Evermoon
@@ -35,6 +34,7 @@ Hainzlol-Evermoon
 Hushie-Evermoon
 Idototems-Evermoon
 Ithilda-Evermoon
+Jakobson-Evermoon
 Joe-Evermoon
 Jojo-Evermoon
 Keselowski-Evermoon
@@ -68,8 +68,8 @@ Rhaenys-Evermoon
 Ruðolf-Evermoon
 Røckwell-Evermoon
 Sargarepa-Evermoon
+Snowdon-Evermoon
 Sophierain-Evermoon
-Stareyes-Evermoon
 Stareyez-Evermoon
 Stormspear-Evermoon
 Tnarfnet-Evermoon
