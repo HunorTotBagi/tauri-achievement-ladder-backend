@@ -1,5 +1,8 @@
 # Tauri Achievement Ladder
 
+[![CI](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/ci.yml)
+[![Secret scan](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/secret-scan.yml)
+
 A .NET 10 batch-processing and ETL toolkit that builds achievement leaderboards and
 guild reports from the Tauri WoW API. It collects character data from several local
 sources, enriches it through API calls, normalizes inconsistent responses, and publishes
@@ -244,10 +247,15 @@ Values above are illustrative and contain no real credentials or player data.
 
 ## Testing and quality
 
-The solution currently builds with nullable reference types enabled and is scanned for secrets
-in CI. Automated unit and integration tests have not been added yet. The highest-value planned
-coverage is deterministic response parsing, character mapping, item-level calculation, CSV
-round trips, retry classification, deduplication, and interrupted-run recovery.
+CI restores and builds the complete solution in Release mode with the pinned .NET 10 SDK, runs
+all discovered tests, collects Cobertura coverage, and uploads the coverage report as a workflow
+artifact when one is produced. Gitleaks runs separately to scan for committed secrets.
+
+Automated unit and integration tests have not been added yet, so no coverage artifact is produced
+today. The highest-value planned coverage is deterministic response parsing, character mapping,
+item-level calculation, CSV round trips, retry classification, deduplication, and interrupted-run
+recovery. The existing CI workflow will start uploading coverage automatically when test projects
+are introduced.
 
 Build the complete solution with:
 
