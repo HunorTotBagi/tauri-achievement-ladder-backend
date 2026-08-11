@@ -13,6 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  formatting:
+    name: Check formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Check C# formatting
+        run: dotnet csharpier check .
+
   build-and-test:
     name: Build and test
     runs-on: ubuntu-latest
