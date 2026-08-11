@@ -251,11 +251,14 @@ CI restores and builds the complete solution in Release mode with the pinned .NE
 all discovered tests, collects Cobertura coverage, and uploads the coverage report as a workflow
 artifact when one is produced. Gitleaks runs separately to scan for committed secrets.
 
-Automated unit and integration tests have not been added yet, so no coverage artifact is produced
-today. The highest-value planned coverage is deterministic response parsing, character mapping,
-item-level calculation, CSV round trips, retry classification, deduplication, and interrupted-run
-recovery. The existing CI workflow will start uploading coverage automatically when test projects
-are introduced.
+The solution includes focused xUnit tests for character-age calculation, rare-achievement parsing,
+item-appearance counting, character mapping, realm normalization, CSV/JSON serialization, and the
+per-character synchronization workflow. Service tests replace the external API with a deterministic
+fake and cover successful, failed, and malformed endpoint responses without network access.
+
+Coverage is collected in CI and uploaded as a workflow artifact. Future tests will expand into
+item-level and artifact calculations, retry classification, full-scan deduplication, and
+interrupted-run recovery.
 
 Build the complete solution with:
 
@@ -275,7 +278,7 @@ dotnet build AchievementLadder.sln
   off-hand and item-level normalization cases.
 - The custom Excel writer supports the workbook features required here, not the complete Open
   XML specification.
-- The repository does not yet contain automated tests.
+- End-to-end scans still depend on the external Tauri API and are not exercised in CI.
 
 ## Roadmap
 
@@ -283,7 +286,7 @@ dotnet build AchievementLadder.sln
 - Register the Tauri API through `IHttpClientFactory`
 - Replace broad `JsonElement` handling with endpoint-specific transport contracts
 - Split large exporters into orchestration, parsing, domain, and persistence components
-- Add unit, integration, and output-contract tests with coverage reporting
+- Expand integration and output-contract coverage across the remaining exporters
 - Add build, formatting, analyzer, and test checks to CI
 - Make output locations explicit configuration instead of relying on sibling repositories
 - Add metrics for request latency, retry counts, failure categories, and throughput

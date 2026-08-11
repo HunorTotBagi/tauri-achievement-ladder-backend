@@ -172,7 +172,7 @@ public class PlayerService(
         }
     }
 
-    private static async Task<CharacterSyncResult> FetchCharacterSyncAsync(
+    internal static async Task<CharacterSyncResult> FetchCharacterSyncAsync(
         ITauriApiClient apiClient,
         string name,
         string apiRealm,
@@ -302,7 +302,7 @@ public class PlayerService(
         Console.Write($"\rProgress: [{bar}] {processed}/{total} ({ratio:P1})");
     }
 
-    private readonly record struct CharacterSyncResult(
+    internal readonly record struct CharacterSyncResult(
         Player? Player,
         IReadOnlyList<CharacterRareAchievement> RareAchievements,
         bool Succeeded
