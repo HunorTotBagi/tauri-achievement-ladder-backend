@@ -363,5 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 /AchievementLadder/appsettings.Development.json
 /AchievementLadder/appsettings.Secrets.json
+/AchievementLadder/appsettings.json
 /.dotnet/
 /RareAchiAndItemScan/Output/

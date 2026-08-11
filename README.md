@@ -16,11 +16,26 @@ There is no database, no EF Core migration flow, and no Docker setup anymore.
 
 ## Configuration
 
-Set real Tauri API credentials in `AchievementLadder/appsettings.json` or override them with environment variables:
+Copy `AchievementLadder/appsettings.example.json` to
+`AchievementLadder/appsettings.json` for local configuration. The destination file is
+ignored by Git and must never be committed. Prefer overriding credentials with environment
+variables:
 
 - `TAURI_API_BASEURL`
 - `TAURI_API_APIKEY`
 - `TAURI_API_SECRET`
+
+PowerShell example for the current terminal session:
+
+```powershell
+$env:TAURI_API_APIKEY = "your-api-key"
+$env:TAURI_API_SECRET = "your-api-secret"
+dotnet run --project AchievementLadder
+```
+
+If credentials have ever been committed, rotate them at the provider. Removing the file from
+the current revision does not remove secrets from existing Git history. Pull requests and pushes
+are scanned for committed secrets by Gitleaks.
 
 ## Run
 
