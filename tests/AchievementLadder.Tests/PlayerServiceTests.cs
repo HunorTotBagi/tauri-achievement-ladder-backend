@@ -6,15 +6,7 @@ namespace AchievementLadder.Tests;
 
 public sealed class PlayerServiceTests
 {
-    private static readonly DateTimeOffset ScanStartedAt = new(
-        2026,
-        8,
-        11,
-        0,
-        0,
-        0,
-        TimeSpan.Zero
-    );
+    private static readonly DateTimeOffset ScanStartedAt = new(2026, 8, 11, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public async Task FetchCharacterSyncAsync_AllEndpointsSucceed_ReturnsCompletePlayer()

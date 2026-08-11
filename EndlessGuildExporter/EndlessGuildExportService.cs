@@ -362,7 +362,11 @@ public sealed class EndlessGuildExportService(string projectRoot, ITauriApiClien
     {
         if (member.Name.Contains('#', StringComparison.Ordinal))
         {
-            return CreateFallbackRow(member, "guild-info fallback: placeholder name", ArtifactSummary.Empty);
+            return CreateFallbackRow(
+                member,
+                "guild-info fallback: placeholder name",
+                ArtifactSummary.Empty
+            );
         }
 
         var artifactSummaryTask = FetchArtifactSummaryAsync(

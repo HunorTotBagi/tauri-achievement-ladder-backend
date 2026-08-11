@@ -160,11 +160,7 @@ public sealed class BattlegroundCollectorService(
     {
         var result = await apiClient.FetchResponseElementAsync(
             "pvp-match",
-            new
-            {
-                r = apiRealm,
-                matchid = matchId.ToString(CultureInfo.InvariantCulture),
-            },
+            new { r = apiRealm, matchid = matchId.ToString(CultureInfo.InvariantCulture) },
             $"battleground match {matchId} on {apiRealm}",
             cancellationToken
         );
@@ -178,9 +174,9 @@ public sealed class BattlegroundCollectorService(
 
         if (
             responseElement.ValueKind
-                is JsonValueKind.Null
-                    or JsonValueKind.Undefined
-                    or JsonValueKind.False
+            is JsonValueKind.Null
+                or JsonValueKind.Undefined
+                or JsonValueKind.False
         )
         {
             return BattlegroundFetchResult.Stop("Missing response payload.");
@@ -745,7 +741,6 @@ public sealed class BattlegroundCollectorService(
         var duration = TimeSpan.FromMilliseconds(durationMilliseconds);
         return $"{(long)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
     }
-
 }
 
 public sealed record BattlegroundRecord(

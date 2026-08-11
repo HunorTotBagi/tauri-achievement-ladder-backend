@@ -1,6 +1,6 @@
+using AchievementLadder.Services;
 using Tauri.Core.Configuration;
 using Tauri.Core.Infrastructure;
-using AchievementLadder.Services;
 
 namespace AchievementLadder;
 

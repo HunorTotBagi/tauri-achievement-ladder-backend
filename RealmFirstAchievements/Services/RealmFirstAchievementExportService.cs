@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using RealmFirstAchievements.Models;
 using Tauri.Core.Configuration;
 using Tauri.Core.Infrastructure;
-using RealmFirstAchievements.Models;
 
 namespace RealmFirstAchievements.Services;
 

@@ -1,6 +1,6 @@
+using RealmFirstAchievements.Services;
 using Tauri.Core.Configuration;
 using Tauri.Core.Infrastructure;
-using RealmFirstAchievements.Services;
 
 namespace RealmFirstAchievements;
 

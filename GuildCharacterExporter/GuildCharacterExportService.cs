@@ -132,8 +132,8 @@ public sealed class GuildCharacterExportService(
 
         await WriteRetryGuildsAsync(retryOutputPath, orderedRetryGuilds, cancellationToken);
 
-        var orderedLines = characterLines.Keys
-            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
+        var orderedLines = characterLines
+            .Keys.OrderBy(line => line, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         await WriteLinesAsync(outputPath, orderedLines, cancellationToken);

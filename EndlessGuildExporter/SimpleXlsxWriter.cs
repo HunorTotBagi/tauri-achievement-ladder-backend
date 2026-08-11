@@ -113,14 +113,15 @@ internal static class SimpleXlsxWriter
             await WriteXmlEntryAsync(
                 archive,
                 "xl/worksheets/sheet1.xml",
-                writer => WriteWorksheetAsync(
-                    writer,
-                    header,
-                    rows,
-                    styleIndexByKey,
-                    validations,
-                    autoFilterRef
-                ),
+                writer =>
+                    WriteWorksheetAsync(
+                        writer,
+                        header,
+                        rows,
+                        styleIndexByKey,
+                        validations,
+                        autoFilterRef
+                    ),
                 cancellationToken
             );
         }

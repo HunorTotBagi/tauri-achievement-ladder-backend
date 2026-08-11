@@ -40,9 +40,7 @@ public static class RareAchievementExtractor
         {
             if (achievedAchievements.TryGetValue(definition.Id, out var obtainedAt))
             {
-                rareAchievements.Add(
-                    new CharacterRareAchievement(definition.Id, obtainedAt)
-                );
+                rareAchievements.Add(new CharacterRareAchievement(definition.Id, obtainedAt));
             }
         }
 

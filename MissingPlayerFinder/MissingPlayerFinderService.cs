@@ -60,11 +60,7 @@ public sealed class MissingPlayerFinderService(
         var sourceCharacters = LoadSourceCharacters(cancellationToken);
         var csvCharacterKeys = LoadCsvCharacterKeys(playersCsvPath, cancellationToken);
         var retryCharacters = LoadRetryCharacters(retryOutputPath, cancellationToken);
-        var targets = BuildBackfillTargets(
-            sourceCharacters,
-            csvCharacterKeys,
-            retryCharacters
-        );
+        var targets = BuildBackfillTargets(sourceCharacters, csvCharacterKeys, retryCharacters);
 
         Console.WriteLine($"Missing characters at start: {targets.Count}");
         Console.WriteLine(
@@ -288,9 +284,7 @@ public sealed class MissingPlayerFinderService(
         foreach (var character in sourceCharacters)
         {
             if (
-                !csvCharacterKeys.Contains(
-                    new CharacterKey(character.Name, character.DisplayRealm)
-                )
+                !csvCharacterKeys.Contains(new CharacterKey(character.Name, character.DisplayRealm))
             )
             {
                 UpsertTarget(

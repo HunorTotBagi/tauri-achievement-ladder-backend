@@ -24,7 +24,11 @@ public sealed class CharacterHelpersTests
     [Fact]
     public void TryResolveRealm_UnknownRealm_ReturnsFailureAndEmptyOutputs()
     {
-        var succeeded = CharacterHelpers.TryResolveRealm("Unknown", out var apiRealm, out var realm);
+        var succeeded = CharacterHelpers.TryResolveRealm(
+            "Unknown",
+            out var apiRealm,
+            out var realm
+        );
 
         Assert.False(succeeded);
         Assert.Empty(apiRealm);

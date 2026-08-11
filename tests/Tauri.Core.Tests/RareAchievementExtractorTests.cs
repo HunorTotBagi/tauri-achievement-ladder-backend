@@ -55,9 +55,7 @@ public sealed class RareAchievementExtractorTests
     [Fact]
     public void ExtractAchievements_UnixMilliseconds_ParsesUtcDate()
     {
-        var response = Parse(
-            """{ "Achievements": [{ "id": 416, "timestamp": 1609459200000 }] }"""
-        );
+        var response = Parse("""{ "Achievements": [{ "id": 416, "timestamp": 1609459200000 }] }""");
 
         var result = RareAchievementExtractor.ExtractAchievements(
             response,

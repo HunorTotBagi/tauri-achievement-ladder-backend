@@ -161,11 +161,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                 details = CharacterDetailsResult.Excluded;
             }
 
-            characterResults[playerName] = new CharacterScanResult(
-                reputation,
-                artifact,
-                details
-            );
+            characterResults[playerName] = new CharacterScanResult(reputation, artifact, details);
 
             processedPlayerCount++;
             if (processedPlayerCount % 25 == 0 || processedPlayerCount == playerNames.Count)
@@ -191,9 +187,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         var outputPath = Path.Combine(_outputDirectory, outputName + ".json");
         await WriteJsonAsync(outputPath, sortedRows, cancellationToken);
 
-        var level110Count = characterResults.Values.Count(result =>
-            result.Reputation.IsLevel110
-        );
+        var level110Count = characterResults.Values.Count(result => result.Reputation.IsLevel110);
         var reputationCount = characterResults.Values.Count(result => result.Reputation.Found);
         return new GuildMemberExportResult(
             playerNames.Count,
@@ -352,18 +346,19 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         var equippedItems =
             response.TryGetProperty("characterItems", out var characterItems)
             && characterItems.ValueKind == JsonValueKind.Array
-            ? characterItems.EnumerateArray()
-            .Where(item => item.ValueKind == JsonValueKind.Object)
-            .Select(item => new EquippedItem(
-                ReadInt(item, "InventoryType"),
-                NormalizeItemLevel(ReadInt(item, "ilevel")),
-                ReadInt(item, "rarity"),
-                item.TryGetProperty("artifact", out var artifact)
-                    && artifact.ValueKind == JsonValueKind.Object
-            ))
-            .Where(item => IsCombatEquipment(item.InventoryType) && item.ItemLevel > 0)
-            .ToList()
-            : [];
+                ? characterItems
+                    .EnumerateArray()
+                    .Where(item => item.ValueKind == JsonValueKind.Object)
+                    .Select(item => new EquippedItem(
+                        ReadInt(item, "InventoryType"),
+                        NormalizeItemLevel(ReadInt(item, "ilevel")),
+                        ReadInt(item, "rarity"),
+                        item.TryGetProperty("artifact", out var artifact)
+                            && artifact.ValueKind == JsonValueKind.Object
+                    ))
+                    .Where(item => IsCombatEquipment(item.InventoryType) && item.ItemLevel > 0)
+                    .ToList()
+                : [];
 
         decimal? averageItemLevel = null;
         if (equippedItems.Count > 0)
@@ -414,8 +409,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         );
     }
 
-    private static int NormalizeItemLevel(int itemLevel) =>
-        itemLevel == 910 ? 895 : itemLevel;
+    private static int NormalizeItemLevel(int itemLevel) => itemLevel == 910 ? 895 : itemLevel;
 
     private static string ReadSpecialization(JsonElement response)
     {
@@ -452,28 +446,28 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             : 0;
 
     private static bool IsCombatEquipment(int inventoryType) =>
-        inventoryType is
-            1
-            or 2
-            or 3
-            or 5
-            or 6
-            or 7
-            or 8
-            or 9
-            or 10
-            or 11
-            or 12
-            or 13
-            or 14
-            or 15
-            or 16
-            or 17
-            or 21
-            or 22
-            or 23
-            or 25
-            or 26;
+        inventoryType
+            is 1
+                or 2
+                or 3
+                or 5
+                or 6
+                or 7
+                or 8
+                or 9
+                or 10
+                or 11
+                or 12
+                or 13
+                or 14
+                or 15
+                or 16
+                or 17
+                or 21
+                or 22
+                or 23
+                or 25
+                or 26;
 
     private static int ReadInt(JsonElement element, string propertyName) =>
         element.TryGetProperty(propertyName, out var property)
@@ -741,10 +735,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         public ReputationResult Reputation => Result.Reputation;
     }
 
-    private sealed record GuildExport(
-        string Timestamp,
-        IReadOnlyList<CharacterExport> Players
-    );
+    private sealed record GuildExport(string Timestamp, IReadOnlyList<CharacterExport> Players);
 
     private sealed record CharacterExport(
         string Name,
