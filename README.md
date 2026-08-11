@@ -3,290 +3,141 @@
 [![CI](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/ci.yml)
 [![Secret scan](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/HunorTotBagi/tauri-achievement-ladder-backend/actions/workflows/secret-scan.yml)
 
-A .NET 10 batch-processing and ETL toolkit that builds achievement leaderboards and
-guild reports from the Tauri WoW API. It collects character data from several local
-sources, enriches it through API calls, normalizes inconsistent responses, and publishes
-deterministic CSV, JSON, text, and Excel outputs for the companion frontend.
+A .NET 10 batch-processing toolkit that builds achievement leaderboards and guild reports
+from the Tauri WoW API. It collects characters from multiple sources, enriches them through
+concurrent API calls, normalizes inconsistent responses, and publishes deterministic CSV,
+JSON, text, and Excel outputs for a companion frontend.
 
-This repository is a suite of one-shot console applications, not an HTTP API. Its backend
-responsibilities are external API integration, concurrent data collection, transformation,
-validation, retry handling, and durable file-based publishing.
+This is a suite of one-shot ETL-style console applications—not an HTTP API. The project
+focuses on external API integration, resilient high-volume processing, data consistency,
+and durable file-based publishing.
 
 ## Engineering highlights
 
-- Bounded parallel API processing with configurable concurrency
-- Request timeouts and exponential retry backoff with jitter
-- Graceful cancellation through `CancellationToken`
-- Retry files for incomplete character and guild scans
-- Resume state for long-running battleground collection
-- Atomic output replacement through temporary files
+- Bounded parallelism with configurable request concurrency
+- Per-request timeouts and exponential retry backoff with jitter
+- Graceful cancellation using `CancellationToken`
+- Retry queues and persistent resume state for interrupted jobs
+- Atomic output replacement to prevent partially published files
 - Defensive parsing of inconsistent third-party JSON
-- Deterministic deduplication and ordering
-- Shared API, mapping, and domain logic in `Tauri.Core`
-- Automated secret scanning with Gitleaks
+- Deterministic normalization, deduplication, and ordering
+- xUnit unit and service tests with fake API responses and Coverlet coverage
+- .NET 10 CI builds and Gitleaks secret scanning
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Sources[Character and guild source files]
-    Commands[Console applications]
-    Core[Tauri.Core]
-    Api[Tauri WoW API]
-    Output[CSV / JSON / TXT / XLSX]
-    Frontend[Achievement ladder frontend]
-
-    Sources --> Commands
-    Commands --> Core
-    Core --> Api
-    Api --> Core
-    Core --> Commands
-    Commands --> Output
-    Output --> Frontend
+    Input[Character and guild sources] --> Jobs[Console jobs]
+    Jobs --> Core[Tauri.Core]
+    Core <--> API[Tauri WoW API]
+    Jobs --> Output[CSV / JSON / TXT / XLSX]
+    Output --> Frontend[Achievement ladder frontend]
 ```
 
-`Tauri.Core` owns shared configuration, API transport, response mapping, achievement
-extraction, item-appearance counting, realm mapping, and project-path resolution. Each
-executable owns one workflow and its output contract.
+`Tauri.Core` contains shared configuration, HTTP transport, response mapping, realm
+normalization, achievement extraction, and item-appearance logic. Each executable owns one
+workflow and its output contract.
 
-| Project | Responsibility |
+| Project | Purpose |
 | --- | --- |
-| `AchievementLadder` | Produces the complete player leaderboard and rare-achievement export. |
-| `GuildCharacterExporter` | Expands configured guilds into character source rows. |
-| `MissingPlayerFinder` | Backfills characters missing from an existing leaderboard export. |
+| `AchievementLadder` | Builds the player leaderboard and rare-achievement export. |
+| `GuildCharacterExporter` | Expands configured guilds into character sources. |
+| `MissingPlayerFinder` | Backfills characters absent from an existing export. |
 | `RealmFirstAchievements` | Rebuilds and validates realm-first character sources. |
-| `BattlegroundCollector` | Collects sequential PvP matches with persistent resume state. |
-| `Guildkukker` | Produces a detailed, ranked guild report with reputation, artifact, and item-level data. |
-| `EndlessGuildExporter` | Produces a formatted Excel roster for the Endless guild. |
+| `BattlegroundCollector` | Collects sequential PvP matches with resumable state. |
+| `Guildkukker` | Generates ranked guild reports with reputation, artifact, and item-level data. |
+| `EndlessGuildExporter` | Produces a formatted Excel guild roster. |
 
-## Data flow
+## Processing model
 
-1. Character and guild targets are loaded from versioned text files.
-2. Targets are normalized and deduplicated by character and realm.
-3. Workers fetch achievements, appearances, character sheets, or workflow-specific data.
-4. API responses are mapped into stable internal and export models.
-5. Results are sorted deterministically and written to temporary files.
-6. Completed temporary files replace the published outputs atomically.
-7. Incomplete targets are written to retry files for a later run.
+1. Load, normalize, and deduplicate character or guild targets.
+2. Fetch workflow-specific data through the shared, concurrency-limited API client.
+3. Map unstable external responses into stable internal and export models.
+4. Sort results deterministically and write them to temporary files.
+5. Atomically publish completed outputs and preserve failures for retry.
 
-The main ladder reads from:
-
-- `AchievementLadder/Data/CharacterCollection/*.txt`
-- `AchievementLadder/Data/GuildCharacters/GuildCharacters.txt`
-- `AchievementLadder/Data/PvPSeasonCharacters/*.txt`
-- `AchievementLadder/Data/AdditionalCharacters/tauri-ban-list.txt`
-- `AchievementLadder/Data/AdditionalCharacters/vengeful.txt`
-
-## Resilience and consistency
-
-The shared API client limits simultaneous requests and connections, applies a per-request
-timeout, and retries transient HTTP, network, timeout, and invalid-response failures. Retry
-delays use exponential backoff with random jitter and honor the server's `Retry-After` header.
-
-Each character in the main scan is treated as one complete snapshot: achievement,
-appearance, and minimal-sheet requests must all succeed before the character is published.
-Failed or incomplete targets are kept in `MissingPlayersToScan.txt`. Guild exporting uses
-the equivalent `MissingGuildsToScan.txt` workflow and merges successful retries into the
-existing source. The battleground collector persists the next match ID so interrupted runs
-can resume safely.
-
-Output files are produced through a write-then-move pattern. Consumers therefore see the
-previous complete file or the new complete file, rather than a partially written export.
+The main scan treats a character as one consistent snapshot: achievements, appearances, and
+the minimal character sheet must all succeed before publication. Transient HTTP, network,
+timeout, and invalid-response failures are retried. Unresolved targets are recorded for the
+next run rather than silently discarded.
 
 ## Technology
 
-- .NET 10 and C# with nullable reference types enabled
-- `HttpClient` and `System.Text.Json`
-- `Parallel.ForEachAsync`, `SemaphoreSlim`, and concurrent collections
+- .NET 10, C#, nullable reference types
+- `HttpClient`, `System.Text.Json`
+- `Parallel.ForEachAsync`, `SemaphoreSlim`, concurrent collections
 - CSV, JSON, text, and Open XML `.xlsx` generation
-- GitHub Actions and Gitleaks
+- xUnit, Coverlet, GitHub Actions, Gitleaks
 
-The project intentionally has no database or web server. Versioned source files and generated
-artifacts fit its current batch-publishing workflow and keep deployment lightweight.
+The solution intentionally has no database or web server. File-based publishing is a conscious
+fit for its static frontend and scheduled batch workflow.
 
 ## Quick start
 
-Requirements:
-
-- .NET 10 SDK
-- Valid Tauri API credentials
-- The companion `tauriachievements.github.io` repository beside this repository when running
-  commands that publish directly to its `src` directory
-
-Create the ignored local configuration:
+Requirements: .NET 10 SDK, valid Tauri API credentials, and the companion frontend repository
+beside this repository for commands that publish directly to its `src` directory.
 
 ```powershell
 Copy-Item AchievementLadder/appsettings.example.json AchievementLadder/appsettings.json
-```
-
-Set credentials in the current PowerShell session and run the main export:
-
-```powershell
 $env:TAURI_API_APIKEY = "your-api-key"
 $env:TAURI_API_SECRET = "your-api-secret"
 dotnet run --project AchievementLadder
 ```
 
-Supported environment variables are:
-
-- `TAURI_API_BASEURL`
-- `TAURI_API_APIKEY`
-- `TAURI_API_SECRET`
-- `TAURI_API_MAX_CONCURRENT_REQUESTS`
-- `TAURI_API_REQUEST_TIMEOUT_SECONDS`
-- `TAURI_API_MAX_RETRY_ATTEMPTS`
-- `TAURI_API_INITIAL_RETRY_DELAY_MS`
-
-`AchievementLadder/appsettings.json` is ignored by Git and must never be committed. Pushes
-and pull requests are scanned for secrets by Gitleaks. Credentials found in Git history must
-be rotated because deleting them from the current revision does not invalidate them.
+The local `appsettings.json` is ignored by Git. Environment variables can also configure
+concurrency, timeouts, and retry behavior; see
+[`appsettings.example.json`](AchievementLadder/appsettings.example.json) for available values.
 
 ## Commands
 
-### Build the leaderboard
+| Task | Command |
+| --- | --- |
+| Build the leaderboard | `dotnet run --project AchievementLadder` |
+| Refresh guild character sources | `dotnet run --project GuildCharacterExporter` |
+| Backfill missing players | `dotnet run --project MissingPlayerFinder` |
+| Validate realm-first characters | `dotnet run --project RealmFirstAchievements` |
+| Collect battlegrounds | `dotnet run --project BattlegroundCollector -- 95874` |
+| Export a ranked guild report | `dotnet run --project Guildkukker -- Evermoon Endless` |
+| Export the Endless workbook | `dotnet run --project EndlessGuildExporter` |
+
+Commands with additional options expose usage through `--help` or document their arguments
+at startup.
+
+## Tests and CI
+
+The solution contains 28 focused tests covering:
+
+- Character-age calculation and date normalization
+- Rare-achievement parsing across valid, missing, and malformed payloads
+- Item-appearance counting and character mapping
+- Realm normalization
+- CSV escaping and JSON serialization
+- Successful and failed per-character synchronization through a fake `ITauriApiClient`
+
+Run the same Release validation used by CI:
 
 ```powershell
-dotnet run --project AchievementLadder
+dotnet restore AchievementLadder.sln
+dotnet build AchievementLadder.sln --configuration Release --no-restore
+dotnet test AchievementLadder.sln --configuration Release --no-build
 ```
 
-Publishes `Players.csv`, `RareAchievements.json`, and `lastUpdated.txt` to the companion
-frontend. `RareAchievements.json` includes the exported catalog and each character's matching
-achievement IDs and obtained dates. Incomplete characters are written to
-`MissingPlayersToScan.txt`.
+CI uploads Cobertura coverage reports as workflow artifacts. End-to-end scans are deliberately
+excluded because they require live credentials and depend on an external API.
 
-### Refresh guild character sources
+## Trade-offs and limitations
 
-```powershell
-dotnet run --project GuildCharacterExporter
-```
-
-Writes `Character-Realm` rows to `GuildCharacters.txt`. If `MissingGuildsToScan.txt` exists,
-the next run processes those retry targets and merges successful results into the existing
-character source.
-
-### Backfill missing players
-
-```powershell
-dotnet run --project MissingPlayerFinder
-```
-
-Compares the configured sources with `Players.csv`, fetches absent characters, appends
-complete results, refreshes related metadata, and retains unresolved targets for retry.
-
-### Validate realm-first characters
-
-```powershell
-dotnet run --project RealmFirstAchievements
-dotnet run --project RealmFirstAchievements -- --parallelism 30
-```
-
-Rebuilds the validated realm-first character source. `--parallelism` overrides API request
-parallelism for that run.
-
-### Collect battlegrounds
-
-Seed the first run with a known match ID:
-
-```powershell
-dotnet run --project BattlegroundCollector -- 95874
-```
-
-Later runs can resume from saved state:
-
-```powershell
-dotnet run --project BattlegroundCollector
-```
-
-The collector stops at the first missing match, prepends new records to `battlegrounds.json`,
-and records the next ID in `battleground-collector-state.json`. Run with `--help` for realm,
-output, and state-path options.
-
-### Export a ranked guild report
-
-```powershell
-dotnet run --project Guildkukker -- Evermoon Endless
-dotnet run --project Guildkukker -- Evermoon Endless --output-directory "C:\Exports"
-```
-
-Produces aligned text and Excel reports for level 110 guild members. Rows include Nightfallen
-reputation, the highest-trait artifact and relics, specialization, and calculated equipped
-item level. Results are ranked by reputation bracket and current reputation. Realm aliases
-`Evermoon`, `Tauri`, and `WoD` are expanded to their API names automatically.
-
-### Export the Endless guild workbook
-
-```powershell
-dotnet run --project EndlessGuildExporter
-dotnet run --project EndlessGuildExporter -- --output "C:\Exports\Endless.xlsx"
-```
-
-Produces a formatted workbook containing guild roster, class, race, profession, artifact,
-and related character details when those fields are available from the API.
-
-## Sanitized sample output
-
-Main scan summary:
-
-```text
-Scanning 12,450 characters...
-API settings: concurrency=50, timeout=30s, retries=8
-Generated 12,318 player rows.
-Characters needing retry: 132
-Players.csv: <frontend>/src/Players.csv
-RareAchievements.json: <frontend>/src/RareAchievements.json
-```
-
-Example player CSV row:
-
-```csv
-"Name","Race","Gender","Class","Realm","Guild","AchievementPoints","HonorableKills","Faction","AppearanceCount","CharacterAge","PlayedTime","AchievementsTotal"
-"Examplemage",1,0,8,"Evermoon","Example Guild",15420,8421,"Alliance",1375,"8 years",12500000,1865
-```
-
-Values above are illustrative and contain no real credentials or player data.
-
-## Testing and quality
-
-CI restores and builds the complete solution in Release mode with the pinned .NET 10 SDK, runs
-all discovered tests, collects Cobertura coverage, and uploads the coverage report as a workflow
-artifact when one is produced. Gitleaks runs separately to scan for committed secrets.
-
-The solution includes focused xUnit tests for character-age calculation, rare-achievement parsing,
-item-appearance counting, character mapping, realm normalization, CSV/JSON serialization, and the
-per-character synchronization workflow. Service tests replace the external API with a deterministic
-fake and cover successful, failed, and malformed endpoint responses without network access.
-
-Coverage is collected in CI and uploaded as a workflow artifact. Future tests will expand into
-item-level and artifact calculations, retry classification, full-scan deduplication, and
-interrupted-run recovery.
-
-Build the complete solution with:
-
-```powershell
-dotnet build AchievementLadder.sln
-```
-
-## Known limitations
-
-- The Tauri API can return inconsistent or missing fields, requiring defensive parsing.
-- Scan duration and throughput depend on external API latency and rate limits.
-- The main publishing commands expect a sibling frontend repository and use file-based
-  integration rather than configurable remote storage.
-- A character is excluded from the main export when any required endpoint remains incomplete
-  after retries.
-- Some item-level rules compensate for known legacy API data issues, including artifact
-  off-hand and item-level normalization cases.
-- The custom Excel writer supports the workbook features required here, not the complete Open
-  XML specification.
-- End-to-end scans still depend on the external Tauri API and are not exercised in CI.
+- Throughput is constrained by external API latency and rate limits.
+- Defensive `JsonElement` parsing remains necessary for several inconsistent response shapes.
+- Some commands currently expect the companion frontend as a sibling repository.
+- A custom Excel writer implements only the Open XML features required by these reports.
+- Several large exporter services still contain parsing, orchestration, and presentation logic
+  that should be separated incrementally.
 
 ## Roadmap
 
-- Adopt the .NET Generic Host, dependency injection, typed options, and structured logging
-- Register the Tauri API through `IHttpClientFactory`
-- Replace broad `JsonElement` handling with endpoint-specific transport contracts
-- Split large exporters into orchestration, parsing, domain, and persistence components
-- Expand integration and output-contract coverage across the remaining exporters
-- Add build, formatting, analyzer, and test checks to CI
-- Make output locations explicit configuration instead of relying on sibling repositories
-- Add metrics for request latency, retry counts, failure categories, and throughput
+- Adopt Generic Host, dependency injection, typed options, and structured logging
+- Register the API client through `IHttpClientFactory` and introduce typed response contracts
+- Split large exporters into orchestration, transformation, and persistence components
+- Expand integration and output-contract tests across the remaining workflows
