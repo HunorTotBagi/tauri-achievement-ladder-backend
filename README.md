@@ -1,6 +1,6 @@
 # Tauri Achievement Ladder
 
-A .NET 9 batch-processing and ETL toolkit that builds achievement leaderboards and
+A .NET 10 batch-processing and ETL toolkit that builds achievement leaderboards and
 guild reports from the Tauri WoW API. It collects character data from several local
 sources, enriches it through API calls, normalizes inconsistent responses, and publishes
 deterministic CSV, JSON, text, and Excel outputs for the companion frontend.
@@ -92,7 +92,7 @@ previous complete file or the new complete file, rather than a partially written
 
 ## Technology
 
-- .NET 9 and C# with nullable reference types enabled
+- .NET 10 and C# with nullable reference types enabled
 - `HttpClient` and `System.Text.Json`
 - `Parallel.ForEachAsync`, `SemaphoreSlim`, and concurrent collections
 - CSV, JSON, text, and Open XML `.xlsx` generation
@@ -105,7 +105,7 @@ artifacts fit its current batch-publishing workflow and keep deployment lightwei
 
 Requirements:
 
-- .NET 9 SDK
+- .NET 10 SDK
 - Valid Tauri API credentials
 - The companion `tauriachievements.github.io` repository beside this repository when running
   commands that publish directly to its `src` directory
