@@ -122,6 +122,12 @@ public sealed class GuildMemberExportService(
             .Select(group => group.First())
             .OrderBy(member => member.name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var faction = ReadInt(response, "faction") switch
+        {
+            0 => "Alliance",
+            1 => "Horde",
+            _ => "Unknown",
+        };
         var playerNames = guildMembers.Select(member => member.name.Trim()).ToList();
         var guildRankNames = guildMembers.ToDictionary(
             member => member.name.Trim(),
@@ -190,7 +196,14 @@ public sealed class GuildMemberExportService(
             .ToList();
         var outputName = MakeFileNamePart(guildName).ToLowerInvariant();
         var outputPath = Path.Combine(_outputDirectory, outputName + ".json");
-        await WriteJsonAsync(outputPath, sortedRows, cancellationToken);
+        await WriteJsonAsync(
+            outputPath,
+            realmName.Trim(),
+            guildName.Trim(),
+            faction,
+            sortedRows,
+            cancellationToken
+        );
 
         var level110Count = characterResults.Values.Count(result => result.Reputation.IsLevel110);
         var reputationCount = characterResults.Values.Count(result => result.Reputation.Found);
@@ -529,6 +542,9 @@ public sealed class GuildMemberExportService(
 
     private static async Task WriteJsonAsync(
         string outputPath,
+        string realmName,
+        string guildName,
+        string faction,
         IReadOnlyList<OutputRow> rows,
         CancellationToken cancellationToken
     )
@@ -537,6 +553,7 @@ public sealed class GuildMemberExportService(
         var temporaryPath = outputPath + ".tmp";
         var data = new GuildExport(
             GetCentralEuropeanTimestamp(),
+            new GuildMetadata(guildName, realmName, faction),
             rows.Select(row => new CharacterExport(
                     row.PlayerName,
                     row.Result.Details.Race,
@@ -665,7 +682,13 @@ public sealed class GuildMemberExportService(
         public ReputationResult Reputation => Result.Reputation;
     }
 
-    private sealed record GuildExport(string Timestamp, IReadOnlyList<CharacterExport> Players);
+    private sealed record GuildExport(
+        string Timestamp,
+        GuildMetadata Guild,
+        IReadOnlyList<CharacterExport> Players
+    );
+
+    private sealed record GuildMetadata(string Name, string Realm, string Faction);
 
     private sealed record CharacterExport(
         string Name,
