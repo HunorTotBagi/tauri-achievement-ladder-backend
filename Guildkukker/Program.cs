@@ -38,10 +38,11 @@ internal static class Program
         {
             var settings = AppSettings.Load(settingsPath);
             using var apiClient = new TauriApiClient(settings.TauriApi);
+            using var itemClient = new TauriShootItemClient();
             var outputDirectory = arguments.OutputDirectory is null
                 ? projectRoot
                 : Path.GetFullPath(arguments.OutputDirectory.Trim().Trim('"'));
-            var exporter = new GuildMemberExportService(outputDirectory, apiClient);
+            var exporter = new GuildMemberExportService(outputDirectory, apiClient, itemClient);
 
             var result = await exporter.ExportAsync(
                 arguments.RealmName,

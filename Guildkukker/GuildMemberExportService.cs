@@ -4,7 +4,11 @@ using Tauri.Core.Infrastructure;
 
 namespace Guildkukker;
 
-public sealed class GuildMemberExportService(string outputDirectory, ITauriApiClient apiClient)
+public sealed class GuildMemberExportService(
+    string outputDirectory,
+    ITauriApiClient apiClient,
+    TauriShootItemClient itemClient
+)
 {
     private static readonly IReadOnlyDictionary<int, string> ArtifactSpecializations =
         new Dictionary<int, string>
@@ -65,6 +69,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
 
     private readonly string _outputDirectory = Path.GetFullPath(outputDirectory);
     private readonly ITauriApiClient _apiClient = apiClient;
+    private readonly TauriShootItemClient _itemClient = itemClient;
 
     public async Task<GuildMemberExportResult> ExportAsync(
         string realmName,
@@ -344,6 +349,12 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         }
 
         var averageItemLevel = CharacterItemLevelCalculator.Calculate(response);
+        var legendaryStubs = LegendaryItemParser.ReadEquipped(response);
+        var legendaries = new List<LegendaryItem>(legendaryStubs.Count);
+        foreach (var legendary in legendaryStubs)
+        {
+            legendaries.Add(await _itemClient.LoadAsync(legendary, cancellationToken));
+        }
 
         return new CharacterDetailsResult(
             true,
@@ -353,7 +364,8 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
             ReadSpecialization(response),
             ReadLong(response, "played_time"),
             ReadInt(response, "pts"),
-            averageItemLevel
+            averageItemLevel,
+            legendaries
         );
     }
 
@@ -544,7 +556,8 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
                         : null,
                     row.Result.Artifact.Found ? row.Result.Artifact.RelicCount : null,
                     row.Result.Artifact.Found ? row.Result.Artifact.TraitCount : null,
-                    row.Result.Details.ItemLevel
+                    row.Result.Details.ItemLevel,
+                    row.Result.Details.Legendaries
                 ))
                 .ToList()
         );
@@ -625,14 +638,15 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         string Specialization,
         long PlayedTime,
         int AchievementPoints,
-        decimal? ItemLevel
+        decimal? ItemLevel,
+        IReadOnlyList<LegendaryItem> Legendaries
     )
     {
         public static CharacterDetailsResult Excluded =>
-            new(false, 0, 0, 0, string.Empty, 0, 0, null);
+            new(false, 0, 0, 0, string.Empty, 0, 0, null, []);
 
         public static CharacterDetailsResult Missing =>
-            new(false, 0, 0, 0, string.Empty, 0, 0, null);
+            new(false, 0, 0, 0, string.Empty, 0, 0, null, []);
     }
 
 
@@ -667,6 +681,7 @@ public sealed class GuildMemberExportService(string outputDirectory, ITauriApiCl
         string? ArtifactWeapon,
         int? ArtifactRelics,
         int? ArtifactTraits,
-        decimal? ItemLevel
+        decimal? ItemLevel,
+        IReadOnlyList<LegendaryItem> Legendaries
     );
 }
