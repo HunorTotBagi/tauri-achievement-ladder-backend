@@ -134,6 +134,21 @@ public sealed class GuildMemberExportService(
             member => member.rank_name?.Trim() ?? string.Empty,
             StringComparer.OrdinalIgnoreCase
         );
+        var guildRanks = guildMembers
+            .GroupBy(member => member.rank)
+            .Select(group => new GuildRankExport(
+                group.Key,
+                group.Select(member => member.rank_name?.Trim())
+                    .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? $"Rank {group.Key}"
+            ))
+            .OrderBy(rank => rank.Order)
+            .ThenBy(rank => rank.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var guildRankOrders = guildMembers.ToDictionary(
+            member => member.name.Trim(),
+            member => member.rank,
+            StringComparer.OrdinalIgnoreCase
+        );
 
         Console.WriteLine($"Loading The Nightfallen reputation for {playerNames.Count} players...");
 
@@ -187,6 +202,7 @@ public sealed class GuildMemberExportService(
             .Where(playerName => characterResults[playerName].Reputation.IsLevel110)
             .Select(playerName => new OutputRow(
                 playerName,
+                guildRankOrders[playerName],
                 guildRankNames[playerName],
                 characterResults[playerName]
             ))
@@ -201,6 +217,7 @@ public sealed class GuildMemberExportService(
             realmName.Trim(),
             guildName.Trim(),
             faction,
+            guildRanks,
             sortedRows,
             cancellationToken
         );
@@ -545,6 +562,7 @@ public sealed class GuildMemberExportService(
         string realmName,
         string guildName,
         string faction,
+        IReadOnlyList<GuildRankExport> ranks,
         IReadOnlyList<OutputRow> rows,
         CancellationToken cancellationToken
     )
@@ -554,11 +572,13 @@ public sealed class GuildMemberExportService(
         var data = new GuildExport(
             GetCentralEuropeanTimestamp(),
             new GuildMetadata(guildName, realmName, faction),
+            ranks,
             rows.Select(row => new CharacterExport(
                     row.PlayerName,
                     row.Result.Details.Race,
                     row.Result.Details.Gender,
                     row.Result.Details.Class,
+                    row.GuildRankOrder,
                     row.GuildRankName,
                     string.IsNullOrWhiteSpace(row.Result.Artifact.Specialization)
                         ? row.Result.Details.Specialization
@@ -675,6 +695,7 @@ public sealed class GuildMemberExportService(
 
     private sealed record OutputRow(
         string PlayerName,
+        int GuildRankOrder,
         string GuildRankName,
         CharacterScanResult Result
     )
@@ -685,16 +706,20 @@ public sealed class GuildMemberExportService(
     private sealed record GuildExport(
         string Timestamp,
         GuildMetadata Guild,
+        IReadOnlyList<GuildRankExport> Ranks,
         IReadOnlyList<CharacterExport> Players
     );
 
     private sealed record GuildMetadata(string Name, string Realm, string Faction);
+
+    private sealed record GuildRankExport(int Order, string Name);
 
     private sealed record CharacterExport(
         string Name,
         int Race,
         int Gender,
         int Class,
+        int GuildRank,
         string GuildRankName,
         string Specialization,
         long PlayedTime,
