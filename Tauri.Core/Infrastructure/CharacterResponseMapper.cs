@@ -19,6 +19,7 @@ public static class CharacterResponseMapper
         int race = response.TryGetProperty("race", out var value) ? value.GetInt32() : 0;
         int gender = response.TryGetProperty("gender", out value) ? value.GetInt32() : 0;
         int @class = response.TryGetProperty("class", out value) ? value.GetInt32() : 0;
+        int level = response.TryGetProperty("level", out value) ? value.GetInt32() : 0;
         int achievementPoints = response.TryGetProperty("pts", out value) ? value.GetInt32() : 0;
         int honorableKills = response.TryGetProperty("playerHonorKills", out value)
             ? value.GetInt32()
@@ -41,6 +42,7 @@ public static class CharacterResponseMapper
             Race = race,
             Gender = gender,
             Class = @class,
+            Level = level,
             Realm = displayRealm,
             Guild = guild,
             AchievementPoints = achievementPoints,

@@ -227,8 +227,9 @@ public class PlayerService(
 
         player.AppearanceCount = appearanceCount;
 
+        var sheetEndpoint = player.Level == 110 ? "character-sheet" : "character-sheet-minimal";
         var sheetResponseResult = await apiClient.FetchResponseElementAsync(
-            "character-sheet-minimal",
+            sheetEndpoint,
             new { r = apiRealm, n = name },
             $"{name}-{displayRealm}",
             ct
@@ -243,6 +244,10 @@ public class PlayerService(
         }
 
         CharacterResponseMapper.ApplyMinimalSheet(sheetResponse, player);
+        if (player.Level == 110)
+        {
+            player.ItemLevel = CharacterItemLevelCalculator.Calculate(sheetResponse);
+        }
 
         return CharacterSyncResult.Success(player, rareAchievements);
     }

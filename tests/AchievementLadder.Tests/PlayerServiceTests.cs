@@ -78,6 +78,42 @@ public sealed class PlayerServiceTests
     }
 
     [Fact]
+    public async Task FetchCharacterSyncAsync_Level110_CalculatesItemLevelFromFullSheet()
+    {
+        var client = new FakeTauriApiClient(
+            new Dictionary<string, TauriApiResponseResult>
+            {
+                ["character-achievements"] = Success(
+                    """{ "level": 110, "Achievements": {} }"""
+                ),
+                ["character-itemappearances"] = Success(
+                    """{ "itemappearances": { "owned": [] } }"""
+                ),
+                ["character-sheet"] = Success(
+                    """
+                    {
+                      "played_time": 100,
+                      "achievements_total": 20,
+                      "characterItems": [
+                        { "InventoryType": 1, "ilevel": 850, "rarity": 4 },
+                        { "InventoryType": 21, "ilevel": 900, "rarity": 6, "artifact": {} },
+                        { "InventoryType": 22, "ilevel": 750, "rarity": 6 }
+                      ]
+                    }
+                    """
+                ),
+            }
+        );
+
+        var result = await FetchAsync(client);
+
+        Assert.True(result.IsFullySuccessful);
+        Assert.Equal(110, result.Player!.Level);
+        Assert.Equal(883.33m, result.Player.ItemLevel);
+        Assert.Equal("character-sheet", client.RequestedEndpoints[^1]);
+    }
+
+    [Fact]
     public async Task FetchCharacterSyncAsync_MalformedAppearanceResponse_StopsBeforeSheetRequest()
     {
         var client = new FakeTauriApiClient(

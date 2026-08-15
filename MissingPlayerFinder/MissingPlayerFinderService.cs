@@ -428,8 +428,11 @@ public sealed class MissingPlayerFinderService(
 
             player.AppearanceCount = appearanceCount;
 
+            var sheetEndpoint = player.Level == 110
+                ? "character-sheet"
+                : "character-sheet-minimal";
             var sheetResponseResult = await apiClient.FetchResponseElementAsync(
-                "character-sheet-minimal",
+                sheetEndpoint,
                 new { r = target.Character.ApiRealm, n = target.Character.Name },
                 $"{target.Character.Name}-{target.Character.DisplayRealm}",
                 cancellationToken
@@ -444,6 +447,10 @@ public sealed class MissingPlayerFinderService(
             }
 
             CharacterResponseMapper.ApplyMinimalSheet(sheetResponse, player);
+            if (player.Level == 110)
+            {
+                player.ItemLevel = CharacterItemLevelCalculator.Calculate(sheetResponse);
+            }
         }
 
         return CharacterBackfillResult.Success(player, rareAchievements);
@@ -483,7 +490,7 @@ public sealed class MissingPlayerFinderService(
         if (writeHeader)
         {
             await writer.WriteLineAsync(
-                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\""
+                "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\",\"ilvl\""
             );
         }
         else if (needsLeadingNewLine)
@@ -739,7 +746,8 @@ public sealed class MissingPlayerFinderService(
             player.AppearanceCount.ToString(CultureInfo.InvariantCulture),
             Quote(player.CharacterAge),
             player.PlayedTime.ToString(CultureInfo.InvariantCulture),
-            player.AchievementsTotal.ToString(CultureInfo.InvariantCulture)
+            player.AchievementsTotal.ToString(CultureInfo.InvariantCulture),
+            player.ItemLevel?.ToString(CultureInfo.InvariantCulture) ?? string.Empty
         );
     }
 

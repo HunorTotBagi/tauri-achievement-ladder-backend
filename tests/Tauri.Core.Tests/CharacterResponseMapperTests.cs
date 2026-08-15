@@ -15,6 +15,7 @@ public sealed class CharacterResponseMapperTests
               "race": 1,
               "gender": 0,
               "class": 8,
+              "level": 110,
               "pts": 12345,
               "playerHonorKills": 678,
               "faction_string_class": "Alliance",
@@ -47,6 +48,7 @@ public sealed class CharacterResponseMapperTests
         Assert.Equal("Evermoon", player.Realm);
         Assert.Equal(1, player.Race);
         Assert.Equal(8, player.Class);
+        Assert.Equal(110, player.Level);
         Assert.Equal(12345, player.AchievementPoints);
         Assert.Equal(678, player.HonorableKills);
         Assert.Equal("Alliance", player.Faction);
