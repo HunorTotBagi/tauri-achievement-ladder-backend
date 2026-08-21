@@ -42,7 +42,6 @@ Keselowski-Evermoon
 Kodiaq-Evermoon
 Kogorm-Evermoon
 Lexane-Evermoon
-Life-Evermoon
 Lineaa-Evermoon
 Lucecita-Evermoon
 Marigo-Evermoon
@@ -81,6 +80,7 @@ Xailyn-Evermoon
 Xeo-Evermoon
 Ynes-Evermoon
 Zara-Evermoon
+Zerololqz-Evermoon
 Abgerimage-Tauri
 Ablakzsiráf-Tauri
 Aenthas-Tauri
