@@ -23,6 +23,7 @@ Dusk-Evermoon
 Ebonshriek-Evermoon
 Ekan-Evermoon
 Eluuwa-Evermoon
+Emotions-Evermoon
 Es-Evermoon
 Exà-Evermoon
 Exâ-Evermoon
@@ -42,6 +43,7 @@ Keselowski-Evermoon
 Kodiaq-Evermoon
 Kogorm-Evermoon
 Lexane-Evermoon
+Life-Evermoon
 Lineaa-Evermoon
 Lucecita-Evermoon
 Marigo-Evermoon
@@ -68,7 +70,6 @@ Rhaenys-Evermoon
 Ruðolf-Evermoon
 Røckwell-Evermoon
 Sargarepa-Evermoon
-Snowdon-Evermoon
 Sophierain-Evermoon
 Stormspear-Evermoon
 Tnarfnet-Evermoon
