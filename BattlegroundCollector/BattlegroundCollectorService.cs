@@ -48,6 +48,13 @@ public sealed class BattlegroundCollectorService(
         "Data",
         "Guilds"
     );
+    private readonly string _guildlessCharactersPath = Path.Combine(
+        solutionRoot,
+        "AchievementLadder",
+        "Data",
+        "GuildCharacters",
+        "guildless-cahracters.txt"
+    );
     private readonly string _frontendSrcDirectory = Path.GetFullPath(frontendSrcDirectory);
     private readonly ITauriApiClient _apiClient = apiClient;
 
@@ -64,6 +71,7 @@ public sealed class BattlegroundCollectorService(
         var currentMatchId = startMatchId;
         var newRecords = new List<BattlegroundRecord>();
         var newMembers = new List<MatchMember>();
+        var scannedMembers = new List<MatchMember>();
         var knownMatchIds = existingRecords
             .Where(record => record.Id > 0)
             .Select(record => record.Id)
@@ -94,6 +102,10 @@ public sealed class BattlegroundCollectorService(
                 Console.WriteLine($"Stopping at match id {currentMatchId}: {stopReason}");
                 break;
             }
+
+            // Member collection applies to both battleground and arena matches. Arena maps are
+            // excluded only from battlegrounds.json below.
+            scannedMembers.AddRange(fetchResult.Members);
 
             if (IsExcludedBattlegroundName(fetchResult.Record.Name))
             {
@@ -126,6 +138,7 @@ public sealed class BattlegroundCollectorService(
         var mergedRecords = MergeRecords(newRecords, existingRecords);
         await WriteJsonAsync(outputPath, mergedRecords, cancellationToken);
         var newGuildCount = CollectUnknownGuilds(newMembers);
+        CollectGuildlessCharacters(scannedMembers);
 
         var savedState = new BattlegroundCollectorState(
             currentMatchId,
@@ -466,6 +479,43 @@ public sealed class BattlegroundCollectorService(
         );
 
         return addedCount;
+    }
+
+    private int CollectGuildlessCharacters(IReadOnlyList<MatchMember> members)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== Guildless character collection ===");
+
+        var knownCharacters = LoadGuildSet(_guildlessCharactersPath);
+        var newCharacters = members
+            .Where(member =>
+                string.IsNullOrWhiteSpace(member.GuildName)
+                && !string.IsNullOrWhiteSpace(member.CharName)
+                && !string.IsNullOrWhiteSpace(member.RealmName)
+            )
+            .Select(member => $"{member.CharName.Trim()}-{member.RealmName.Trim()}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(knownCharacters.Add)
+            .OrderBy(character => character, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (newCharacters.Count == 0)
+        {
+            Console.WriteLine("No new guildless characters found.");
+            return 0;
+        }
+
+        var directory = Path.GetDirectoryName(_guildlessCharactersPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        AppendGuildNames(_guildlessCharactersPath, newCharacters);
+        Console.WriteLine(
+            $"Added {newCharacters.Count} guildless character(s) to {_guildlessCharactersPath}."
+        );
+        return newCharacters.Count;
     }
 
     private static async Task WriteJsonAsync<T>(
