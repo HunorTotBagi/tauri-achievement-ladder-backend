@@ -26,6 +26,37 @@ public sealed class ItemAppearanceCounterTests
     }
 
     [Fact]
+    public void TryFindOwned_ObjectEntries_ReadsKnownItemIdShapesWithoutThrowing()
+    {
+        var response = Parse(
+            """
+            {
+              "itemappearances": {
+                "owned": [[
+                  { "id": 22818, "quality": 5 },
+                  { "itemId": 23075 },
+                  { "22691": true },
+                  { "unexpected": 85046 }
+                ]]
+              }
+            }
+            """
+        );
+        var targets = new Dictionary<int, RareItemDefinition>
+        {
+            [22818] = new(22818, "The Plague Bearer"),
+            [23075] = new(23075, "Death's Bargain"),
+            [22691] = new(22691, "Corrupted Ashbringer"),
+            [85046] = new(85046, "DK Malev elite head"),
+        };
+
+        var succeeded = ItemAppearanceCounter.TryFindOwned(response, targets, out var found);
+
+        Assert.True(succeeded);
+        Assert.Equal([22691, 23075, 22818], found.Select(item => item.Id));
+    }
+
+    [Fact]
     public void TryCountOwned_MultipleGroups_ReturnsTotalAppearanceCount()
     {
         var response = Parse("""{ "itemappearances": { "owned": [[1, 2], [3], []] } }""");

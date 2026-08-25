@@ -56,9 +56,12 @@ public static class ItemAppearanceCounter
 
             foreach (var itemIdElement in itemTypeGroup.EnumerateArray())
             {
-                if (itemIdElement.TryGetInt32(out var itemId) && targetItems.ContainsKey(itemId))
+                foreach (var itemId in ReadItemIds(itemIdElement))
                 {
-                    foundIds.Add(itemId);
+                    if (targetItems.ContainsKey(itemId))
+                    {
+                        foundIds.Add(itemId);
+                    }
                 }
             }
         }
@@ -70,4 +73,45 @@ public static class ItemAppearanceCounter
             .ToList();
         return true;
     }
+
+    private static IEnumerable<int> ReadItemIds(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number)
+        {
+            if (element.TryGetInt32(out var numericId))
+            {
+                yield return numericId;
+            }
+
+            yield break;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            yield break;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (
+                IsItemIdProperty(property.Name)
+                && property.Value.ValueKind == JsonValueKind.Number
+                && property.Value.TryGetInt32(out var propertyId)
+            )
+            {
+                yield return propertyId;
+            }
+
+            if (int.TryParse(property.Name, out var keyedId))
+            {
+                yield return keyedId;
+            }
+        }
+    }
+
+    private static bool IsItemIdProperty(string propertyName) =>
+        propertyName.Equals("id", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("itemId", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("item_id", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("entry", StringComparison.OrdinalIgnoreCase);
 }
