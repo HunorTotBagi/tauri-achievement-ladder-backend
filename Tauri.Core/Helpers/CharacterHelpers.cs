@@ -5,6 +5,7 @@ namespace Tauri.Core.Helpers;
 public static class CharacterHelpers
 {
     private const string RealmFirstCharactersFileName = "valid-realm-first-characters.txt";
+    private const string GuildlessCharactersFileName = "guildless-cahracters.txt";
 
     private static readonly Dictionary<string, (string ApiRealm, string DisplayRealm)> Realms = new(
         StringComparer.OrdinalIgnoreCase
@@ -67,6 +68,17 @@ public static class CharacterHelpers
         else
         {
             LoadGuildCharacters(projectRoot, "GuildCharacters.txt", output);
+        }
+
+        var guildlessCharactersPath = Path.Combine(
+            projectRoot,
+            "Data",
+            "GuildCharacters",
+            GuildlessCharactersFileName
+        );
+        if (File.Exists(guildlessCharactersPath))
+        {
+            LoadGuildCharacters(projectRoot, GuildlessCharactersFileName, output);
         }
 
         foreach (var source in CharacterCollectionSources)
