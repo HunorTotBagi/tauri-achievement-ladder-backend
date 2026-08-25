@@ -101,17 +101,10 @@ public static class ItemAppearanceCounter
             {
                 yield return propertyId;
             }
-
-            if (int.TryParse(property.Name, out var keyedId))
-            {
-                yield return keyedId;
-            }
         }
     }
 
     private static bool IsItemIdProperty(string propertyName) =>
-        propertyName.Equals("id", StringComparison.OrdinalIgnoreCase)
-        || propertyName.Equals("itemId", StringComparison.OrdinalIgnoreCase)
-        || propertyName.Equals("item_id", StringComparison.OrdinalIgnoreCase)
-        || propertyName.Equals("entry", StringComparison.OrdinalIgnoreCase);
+        propertyName.Equals("itemId", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("item_id", StringComparison.OrdinalIgnoreCase);
 }

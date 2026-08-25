@@ -26,16 +26,21 @@ public sealed class ItemAppearanceCounterTests
     }
 
     [Fact]
-    public void TryFindOwned_ObjectEntries_ReadsKnownItemIdShapesWithoutThrowing()
+    public void TryFindOwned_ObjectEntries_MatchesItemIdAndIgnoresGenericId()
     {
         var response = Parse(
             """
             {
               "itemappearances": {
                 "owned": [[
-                  { "id": 22818, "quality": 5 },
-                  { "itemId": 23075 },
-                  { "22691": true },
+                  {
+                    "id": 22662,
+                    "itemid": 47249,
+                    "itemappearanceid": 11794,
+                    "name": "Leggings of the Snowy Bramble"
+                  },
+                  { "id": 7, "itemId": 23075 },
+                  { "id": 8, "item_id": 22691 },
                   { "unexpected": 85046 }
                 ]]
               }
@@ -44,7 +49,8 @@ public sealed class ItemAppearanceCounterTests
         );
         var targets = new Dictionary<int, RareItemDefinition>
         {
-            [22818] = new(22818, "The Plague Bearer"),
+            [22662] = new(22662, "Polar Gloves"),
+            [47249] = new(47249, "Leggings of the Snowy Bramble"),
             [23075] = new(23075, "Death's Bargain"),
             [22691] = new(22691, "Corrupted Ashbringer"),
             [85046] = new(85046, "DK Malev elite head"),
@@ -53,7 +59,8 @@ public sealed class ItemAppearanceCounterTests
         var succeeded = ItemAppearanceCounter.TryFindOwned(response, targets, out var found);
 
         Assert.True(succeeded);
-        Assert.Equal([22691, 23075, 22818], found.Select(item => item.Id));
+        Assert.Equal([22691, 23075, 47249], found.Select(item => item.Id));
+        Assert.DoesNotContain(found, item => item.Id == 22662);
     }
 
     [Fact]
