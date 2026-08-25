@@ -43,6 +43,7 @@ public sealed class PlayerServiceTests
             "[EN] Evermoon",
             "Evermoon",
             ScanStartedAt,
+            new Dictionary<int, Tauri.Core.Models.RareItemDefinition>(),
             CancellationToken.None
         );
 
@@ -50,6 +51,7 @@ public sealed class PlayerServiceTests
         Assert.NotNull(result.Player);
         Assert.Equal("Examplemage", result.Player.Name);
         Assert.Equal(3, result.Player.AppearanceCount);
+        Assert.Empty(result.RareItems);
         Assert.Equal(9000, result.Player.PlayedTime);
         Assert.Equal(321, result.Player.AchievementsTotal);
         Assert.Contains(result.RareAchievements, achievement => achievement.Id == 416);
@@ -57,6 +59,40 @@ public sealed class PlayerServiceTests
             ["character-achievements", "character-itemappearances", "character-sheet-minimal"],
             client.RequestedEndpoints
         );
+    }
+
+    [Fact]
+    public async Task FetchCharacterSyncAsync_OwnedRareItems_ReturnsMatches()
+    {
+        var client = new FakeTauriApiClient(
+            new Dictionary<string, TauriApiResponseResult>
+            {
+                ["character-achievements"] = Success("""{ "Achievements": {} }"""),
+                ["character-itemappearances"] = Success(
+                    """{ "itemappearances": { "owned": [[22818, 123], [23075]] } }"""
+                ),
+                ["character-sheet-minimal"] = Success("{}"),
+            }
+        );
+        var targets = new Dictionary<int, Tauri.Core.Models.RareItemDefinition>
+        {
+            [22818] = new(22818, "The Plague Bearer"),
+            [22691] = new(22691, "Corrupted Ashbringer"),
+        };
+
+        var result = await PlayerService.FetchCharacterSyncAsync(
+            client,
+            "Example",
+            "[EN] Evermoon",
+            "Evermoon",
+            ScanStartedAt,
+            targets,
+            CancellationToken.None
+        );
+
+        var item = Assert.Single(result.RareItems);
+        Assert.Equal(22818, item.Id);
+        Assert.Equal("The Plague Bearer", item.Name);
     }
 
     [Fact]
@@ -162,6 +198,7 @@ public sealed class PlayerServiceTests
             "[EN] Evermoon",
             "Evermoon",
             ScanStartedAt,
+            new Dictionary<int, Tauri.Core.Models.RareItemDefinition>(),
             CancellationToken.None
         );
 

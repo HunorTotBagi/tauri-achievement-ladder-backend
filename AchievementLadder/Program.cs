@@ -44,6 +44,7 @@ internal static class Program
             Console.WriteLine($"Characters needing retry: {result.RetryCharacterCount}");
             Console.WriteLine($"Players.csv: {result.PlayersCsvPath}");
             Console.WriteLine($"RareAchievements.json: {result.RareAchievementsPath}");
+            Console.WriteLine($"RareItems.json: {result.RareItemsPath}");
             Console.WriteLine($"lastUpdated.txt: {result.LastUpdatedPath}");
             Console.WriteLine($"MissingPlayersToScan.txt: {result.RetryOutputPath}");
 

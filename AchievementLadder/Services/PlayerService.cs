@@ -27,6 +27,8 @@ public class PlayerService(
 
         var solutionRoot = ProjectPaths.FindSolutionRoot(projectRoot);
         var retryOutputPath = Path.Combine(solutionRoot, "MissingPlayersToScan.txt");
+        var rareItems = RareItemCatalog.Load(Path.Combine(projectRoot, "Data", "rare-items.txt"));
+        var rareItemsById = rareItems.ToDictionary(item => item.Id);
         var allCharacters = new List<(string Name, string ApiRealm, string DisplayRealm)>();
         LoadCharacterSources(allCharacters);
 
@@ -48,6 +50,7 @@ public class PlayerService(
 
         var players = new ConcurrentBag<Player>();
         var rareAchievementEntries = new ConcurrentBag<CharacterRareAchievementEntry>();
+        var rareItemEntries = new ConcurrentBag<CharacterRareItemEntry>();
         var retryCharacters =
             new ConcurrentBag<(string Name, string ApiRealm, string DisplayRealm)>();
         var totalCharacters = distinctCharacters.Count;
@@ -69,6 +72,7 @@ public class PlayerService(
                     character.ApiRealm,
                     character.DisplayRealm,
                     scanStartedAt,
+                    rareItemsById,
                     ct
                 );
 
@@ -90,6 +94,17 @@ public class PlayerService(
                             )
                         );
                     }
+                }
+
+                if (syncResult.Player is { } rareItemPlayer && syncResult.RareItems.Count > 0)
+                {
+                    rareItemEntries.Add(
+                        new CharacterRareItemEntry(
+                            rareItemPlayer.Name,
+                            rareItemPlayer.Realm,
+                            syncResult.RareItems
+                        )
+                    );
                 }
 
                 if (!syncResult.IsFullySuccessful)
@@ -128,6 +143,10 @@ public class PlayerService(
             .OrderBy(character => character.DisplayRealm, StringComparer.OrdinalIgnoreCase)
             .ThenBy(character => character.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var orderedRareItemEntries = rareItemEntries
+            .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Realm, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var generatedAt = DateTimeOffset.UtcNow;
 
         var playersCsvPath = await csvStore.WriteAsync(
@@ -144,6 +163,11 @@ public class PlayerService(
             ),
             cancellationToken
         );
+        var rareItemsPath = await csvStore.WriteJsonAsync(
+            "RareItems.json",
+            new RareItemExport(generatedAt, rareItems, orderedRareItemEntries),
+            cancellationToken
+        );
         var lastUpdatedPath = await csvStore.WriteTextAsync(
             "lastUpdated.txt",
             generatedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
@@ -157,6 +181,7 @@ public class PlayerService(
             orderedRetryCharacters.Count,
             playersCsvPath,
             rareAchievementsPath,
+            rareItemsPath,
             lastUpdatedPath,
             retryOutputPath
         );
@@ -178,6 +203,7 @@ public class PlayerService(
         string apiRealm,
         string displayRealm,
         DateTimeOffset scanStartedAt,
+        IReadOnlyDictionary<int, RareItemDefinition>? rareItemsById,
         CancellationToken ct
     )
     {
@@ -226,6 +252,16 @@ public class PlayerService(
         }
 
         player.AppearanceCount = appearanceCount;
+        if (
+            !ItemAppearanceCounter.TryFindOwned(
+                appearanceResponse,
+                rareItemsById ?? new Dictionary<int, RareItemDefinition>(),
+                out var foundRareItems
+            )
+        )
+        {
+            return CharacterSyncResult.Failure();
+        }
 
         var sheetEndpoint = player.Level == 110 ? "character-sheet" : "character-sheet-minimal";
         var sheetResponseResult = await apiClient.FetchResponseElementAsync(
@@ -249,7 +285,7 @@ public class PlayerService(
             player.ItemLevel = CharacterItemLevelCalculator.Calculate(sheetResponse);
         }
 
-        return CharacterSyncResult.Success(player, rareAchievements);
+        return CharacterSyncResult.Success(player, rareAchievements, foundRareItems);
     }
 
     private static async Task WriteRetryCharactersAsync(
@@ -310,6 +346,7 @@ public class PlayerService(
     internal readonly record struct CharacterSyncResult(
         Player? Player,
         IReadOnlyList<CharacterRareAchievement> RareAchievements,
+        IReadOnlyList<RareItemDefinition> RareItems,
         bool Succeeded
     )
     {
@@ -317,11 +354,17 @@ public class PlayerService(
 
         public static CharacterSyncResult Success(
             Player player,
-            IReadOnlyList<CharacterRareAchievement> rareAchievements
-        ) => new(player, rareAchievements, true);
+            IReadOnlyList<CharacterRareAchievement> rareAchievements,
+            IReadOnlyList<RareItemDefinition> rareItems
+        ) => new(player, rareAchievements, rareItems, true);
 
         public static CharacterSyncResult Failure() =>
-            new(null, Array.Empty<CharacterRareAchievement>(), false);
+            new(
+                null,
+                Array.Empty<CharacterRareAchievement>(),
+                Array.Empty<RareItemDefinition>(),
+                false
+            );
     }
 
     private sealed class CharacterTargetComparer

@@ -5,6 +5,7 @@ public sealed record SyncResult(
     int RetryCharacterCount,
     string PlayersCsvPath,
     string RareAchievementsPath,
+    string RareItemsPath,
     string LastUpdatedPath,
     string RetryOutputPath
 );

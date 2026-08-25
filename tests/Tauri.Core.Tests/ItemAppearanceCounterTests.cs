@@ -1,10 +1,30 @@
 using System.Text.Json;
 using Tauri.Core.Infrastructure;
+using Tauri.Core.Models;
 
 namespace Tauri.Core.Tests;
 
 public sealed class ItemAppearanceCounterTests
 {
+    [Fact]
+    public void TryFindOwned_ReturnsConfiguredItemsOnlyOnce()
+    {
+        var response = Parse(
+            """{ "itemappearances": { "owned": [[22818, 7], [23075, 22818]] } }"""
+        );
+        var targets = new Dictionary<int, RareItemDefinition>
+        {
+            [22818] = new(22818, "The Plague Bearer"),
+            [23075] = new(23075, "Death's Bargain"),
+            [22691] = new(22691, "Corrupted Ashbringer"),
+        };
+
+        var succeeded = ItemAppearanceCounter.TryFindOwned(response, targets, out var found);
+
+        Assert.True(succeeded);
+        Assert.Equal([23075, 22818], found.Select(item => item.Id));
+    }
+
     [Fact]
     public void TryCountOwned_MultipleGroups_ReturnsTotalAppearanceCount()
     {
