@@ -6,11 +6,19 @@ DK Malev elite shoulder - 85086
 DK Malev elite chest - 84993
 DK Cata elite head - 73740
 DK Ruth elite head - 70492
+Monk Malev elite Shoulder - 85088
+Rogue Cata elite head - 73680
+Rogue Cata elite shoulder - 73678
+Mage Ruthless elite shoulder - 70454
+Mage Cata elite shoulder - 73709
 Furious Gladiator's Tabard - 45983
 Relentless Gladiator's Tabard - 49086
 Wrathful Gladiator's Tabard - 51534
+Tyrannical Gladiator's Tabard - 98162
 Polar Leggings - 22701 
 Polar Gloves - 22662
+Polar Helmet - 23020
+Polar Shoulder Pads - 22941
 Icebane Breastplate - 22669
 Icebane Leggings - 22699
 Icebane Helmet - 23019
@@ -23,3 +31,4 @@ Blessed Gauntlets of Undead Slaying - 43070
 Blessed Breastplate of Undead Slaying - 43069
 Benediction - 18608
 Anathema - 18609
+Rhok'delar - 18713
