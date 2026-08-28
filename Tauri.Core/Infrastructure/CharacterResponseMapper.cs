@@ -24,6 +24,16 @@ public static class CharacterResponseMapper
         int honorableKills = response.TryGetProperty("playerHonorKills", out value)
             ? value.GetInt32()
             : 0;
+        long playedTime = response.TryGetProperty("played_time", out value)
+            ? value.GetInt64()
+            : 0;
+        int achievementsTotal = response.TryGetProperty("achievements_total", out value)
+            ? value.GetInt32()
+            : 0;
+        decimal? itemLevel = response.TryGetProperty("avgitemlevel", out value)
+            && value.TryGetDecimal(out var averageItemLevel)
+                ? averageItemLevel
+                : null;
         string faction = response.TryGetProperty("faction_string_class", out value)
             ? (value.GetString() ?? string.Empty)
             : string.Empty;
@@ -49,6 +59,9 @@ public static class CharacterResponseMapper
             HonorableKills = honorableKills,
             Faction = faction,
             CharacterAge = characterAge,
+            PlayedTime = playedTime,
+            AchievementsTotal = achievementsTotal,
+            ItemLevel = itemLevel,
         };
     }
 

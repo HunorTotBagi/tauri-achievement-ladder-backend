@@ -263,28 +263,6 @@ public class PlayerService(
             return CharacterSyncResult.Failure();
         }
 
-        var sheetEndpoint = player.Level == 110 ? "character-sheet" : "character-sheet-minimal";
-        var sheetResponseResult = await apiClient.FetchResponseElementAsync(
-            sheetEndpoint,
-            new { r = apiRealm, n = name },
-            $"{name}-{displayRealm}",
-            ct
-        );
-
-        if (
-            !sheetResponseResult.Succeeded
-            || sheetResponseResult.ResponseElement is not { } sheetResponse
-        )
-        {
-            return CharacterSyncResult.Failure();
-        }
-
-        CharacterResponseMapper.ApplyMinimalSheet(sheetResponse, player);
-        if (player.Level == 110)
-        {
-            player.ItemLevel = CharacterItemLevelCalculator.Calculate(sheetResponse);
-        }
-
         return CharacterSyncResult.Success(player, rareAchievements, foundRareItems);
     }
 

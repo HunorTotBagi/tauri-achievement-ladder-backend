@@ -18,6 +18,9 @@ public sealed class CharacterResponseMapperTests
               "level": 110,
               "pts": 12345,
               "playerHonorKills": 678,
+              "played_time": 9000,
+              "achievements_total": 321,
+              "avgitemlevel": 856,
               "faction_string_class": "Alliance",
               "guildName": "Example Guild"
             }
@@ -54,6 +57,9 @@ public sealed class CharacterResponseMapperTests
         Assert.Equal("Alliance", player.Faction);
         Assert.Equal("Example Guild", player.Guild);
         Assert.Equal("2 years 1 months 2 days", player.CharacterAge);
+        Assert.Equal(9000, player.PlayedTime);
+        Assert.Equal(321, player.AchievementsTotal);
+        Assert.Equal(856m, player.ItemLevel);
     }
 
     [Fact]

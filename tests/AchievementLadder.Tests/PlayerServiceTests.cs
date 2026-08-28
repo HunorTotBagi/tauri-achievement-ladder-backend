@@ -22,6 +22,9 @@ public sealed class PlayerServiceTests
                       "class": 8,
                       "pts": 100,
                       "playerHonorKills": 25,
+                      "played_time": 9000,
+                      "achievements_total": 321,
+                      "avgitemlevel": 856,
                       "faction_string_class": "Alliance",
                       "guildName": "Test Guild",
                       "Achievements": { "6": { "date": "2020-01-01" }, "416": {} }
@@ -30,9 +33,6 @@ public sealed class PlayerServiceTests
                 ),
                 ["character-itemappearances"] = Success(
                     """{ "itemappearances": { "owned": [[1, 2], [3]] } }"""
-                ),
-                ["character-sheet-minimal"] = Success(
-                    """{ "played_time": 9000, "achievements_total": 321 }"""
                 ),
             }
         );
@@ -54,9 +54,10 @@ public sealed class PlayerServiceTests
         Assert.Empty(result.RareItems);
         Assert.Equal(9000, result.Player.PlayedTime);
         Assert.Equal(321, result.Player.AchievementsTotal);
+        Assert.Equal(856m, result.Player.ItemLevel);
         Assert.Contains(result.RareAchievements, achievement => achievement.Id == 416);
         Assert.Equal(
-            ["character-achievements", "character-itemappearances", "character-sheet-minimal"],
+            ["character-achievements", "character-itemappearances"],
             client.RequestedEndpoints
         );
     }
@@ -71,7 +72,6 @@ public sealed class PlayerServiceTests
                 ["character-itemappearances"] = Success(
                     """{ "itemappearances": { "owned": [[22818, 123], [23075]] } }"""
                 ),
-                ["character-sheet-minimal"] = Success("{}"),
             }
         );
         var targets = new Dictionary<int, Tauri.Core.Models.RareItemDefinition>
@@ -114,29 +114,16 @@ public sealed class PlayerServiceTests
     }
 
     [Fact]
-    public async Task FetchCharacterSyncAsync_Level110_CalculatesItemLevelFromFullSheet()
+    public async Task FetchCharacterSyncAsync_Level110_UsesApiItemLevelWithoutSheetRequest()
     {
         var client = new FakeTauriApiClient(
             new Dictionary<string, TauriApiResponseResult>
             {
                 ["character-achievements"] = Success(
-                    """{ "level": 110, "Achievements": {} }"""
+                    """{ "level": 110, "avgitemlevel": 856, "Achievements": {} }"""
                 ),
                 ["character-itemappearances"] = Success(
                     """{ "itemappearances": { "owned": [] } }"""
-                ),
-                ["character-sheet"] = Success(
-                    """
-                    {
-                      "played_time": 100,
-                      "achievements_total": 20,
-                      "characterItems": [
-                        { "InventoryType": 1, "ilevel": 850, "rarity": 4 },
-                        { "InventoryType": 21, "ilevel": 900, "rarity": 6, "artifact": {} },
-                        { "InventoryType": 22, "ilevel": 750, "rarity": 6 }
-                      ]
-                    }
-                    """
                 ),
             }
         );
@@ -145,12 +132,15 @@ public sealed class PlayerServiceTests
 
         Assert.True(result.IsFullySuccessful);
         Assert.Equal(110, result.Player!.Level);
-        Assert.Equal(883.33m, result.Player.ItemLevel);
-        Assert.Equal("character-sheet", client.RequestedEndpoints[^1]);
+        Assert.Equal(856m, result.Player.ItemLevel);
+        Assert.Equal(
+            ["character-achievements", "character-itemappearances"],
+            client.RequestedEndpoints
+        );
     }
 
     [Fact]
-    public async Task FetchCharacterSyncAsync_MalformedAppearanceResponse_StopsBeforeSheetRequest()
+    public async Task FetchCharacterSyncAsync_MalformedAppearanceResponse_FailsSync()
     {
         var client = new FakeTauriApiClient(
             new Dictionary<string, TauriApiResponseResult>
@@ -168,27 +158,6 @@ public sealed class PlayerServiceTests
             ["character-achievements", "character-itemappearances"],
             client.RequestedEndpoints
         );
-    }
-
-    [Fact]
-    public async Task FetchCharacterSyncAsync_SheetRequestFails_DiscardsPartialPlayer()
-    {
-        var client = new FakeTauriApiClient(
-            new Dictionary<string, TauriApiResponseResult>
-            {
-                ["character-achievements"] = Success("""{ "Achievements": {} }"""),
-                ["character-itemappearances"] = Success(
-                    """{ "itemappearances": { "owned": [] } }"""
-                ),
-                ["character-sheet-minimal"] = TauriApiResponseResult.Failure("Unavailable"),
-            }
-        );
-
-        var result = await FetchAsync(client);
-
-        Assert.False(result.IsFullySuccessful);
-        Assert.Null(result.Player);
-        Assert.Equal(3, client.RequestedEndpoints.Count);
     }
 
     private static Task<PlayerService.CharacterSyncResult> FetchAsync(FakeTauriApiClient client) =>
