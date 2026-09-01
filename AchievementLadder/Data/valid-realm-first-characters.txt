@@ -23,7 +23,6 @@ Dusk-Evermoon
 Ebonshriek-Evermoon
 Ekan-Evermoon
 Eluuwa-Evermoon
-Emotions-Evermoon
 Es-Evermoon
 Exà-Evermoon
 Exâ-Evermoon
@@ -70,6 +69,7 @@ Rhaenys-Evermoon
 Ruðolf-Evermoon
 Røckwell-Evermoon
 Sargarepa-Evermoon
+Snowdon-Evermoon
 Sophierain-Evermoon
 Stormspear-Evermoon
 Tnarfnet-Evermoon
