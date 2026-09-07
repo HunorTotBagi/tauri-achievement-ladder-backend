@@ -945,3 +945,35 @@ Tapyron-[HU] Tauri WoW Server
 Waldon-[HU] Warriors of Darkness
 Zsákonrugo-[EN] Evermoon
 ßeyoux-[EN] Evermoon
+Awwara-[EN] Evermoon
+Bjúti-[EN] Evermoon
+Darkostigard-[EN] Evermoon
+Dekabrinka-[EN] Evermoon
+Dominionn-[EN] Evermoon
+Feketepákóó-[HU] Tauri WoW Server
+Feldream-[EN] Evermoon
+Felpofozlak-[HU] Tauri WoW Server
+Gnev-[EN] Evermoon
+Høtwings-[EN] Evermoon
+Igitt-[EN] Evermoon
+Jadedrache-[HU] Warriors of Darkness
+Kazarim-[HU] Tauri WoW Server
+Kralar-[EN] Evermoon
+Krexon-[EN] Evermoon
+Kyuú-[EN] Evermoon
+Lencha-[EN] Evermoon
+Mohen-[EN] Evermoon
+Nakanno-[EN] Evermoon
+Nesi-[EN] Evermoon
+Nightpoppy-[HU] Warriors of Darkness
+Novabrielle-[HU] Warriors of Darkness
+Novakkatalin-[HU] Tauri WoW Server
+Plamus-[EN] Evermoon
+Plasu-[EN] Evermoon
+Roüge-[EN] Evermoon
+Taquiña-[EN] Evermoon
+Tatatakungfu-[EN] Evermoon
+Tinytomboy-[HU] Warriors of Darkness
+Uhriel-[EN] Evermoon
+Wildruner-[EN] Evermoon
+Xiye-[EN] Evermoon
