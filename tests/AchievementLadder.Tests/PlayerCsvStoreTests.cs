@@ -20,6 +20,7 @@ public sealed class PlayerCsvStoreTests : IDisposable
             Realm = "Evermoon",
             Guild = "First line\nSecond line",
             Faction = "Alliance",
+            Level = 110,
             ItemLevel = 883.33m,
         };
 
@@ -29,9 +30,10 @@ public sealed class PlayerCsvStoreTests : IDisposable
         Assert.Contains("\"Mage, \"\"The Great\"\"\"", content);
         Assert.Contains("\"First line\nSecond line\"", content);
         Assert.StartsWith(
-            "\"Name\",\"Race\",\"Gender\",\"Class\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\",\"ilvl\"",
+            "\"Name\",\"Race\",\"Gender\",\"Class\",\"Level\",\"Realm\",\"Guild\",\"AchievementPoints\",\"HonorableKills\",\"Faction\",\"AppearanceCount\",\"CharacterAge\",\"PlayedTime\",\"AchievementsTotal\",\"ilvl\"",
             content
         );
+        Assert.Contains(",0,0,0,110,\"Evermoon\",", content);
         Assert.EndsWith(",883.33" + Environment.NewLine, content);
     }
 

@@ -231,11 +231,12 @@ public sealed class MissingPlayerFinderService(
         }
 
         var appearanceCountIndex = FindColumnIndex(header, "AppearanceCount");
+        var levelIndex = FindColumnIndex(header, "Level");
 
-        if (appearanceCountIndex < 0)
+        if (appearanceCountIndex < 0 || levelIndex < 0)
         {
             throw new InvalidDataException(
-                "Players.csv must contain an AppearanceCount column. Run AchievementLadder once to regenerate it before appending missing players."
+                "Players.csv must contain AppearanceCount and Level columns. Run AchievementLadder once to regenerate it before appending missing players."
             );
         }
 
@@ -738,6 +739,7 @@ public sealed class MissingPlayerFinderService(
             player.Race.ToString(CultureInfo.InvariantCulture),
             player.Gender.ToString(CultureInfo.InvariantCulture),
             player.Class.ToString(CultureInfo.InvariantCulture),
+            player.Level.ToString(CultureInfo.InvariantCulture),
             Quote(player.Realm),
             Quote(player.Guild),
             player.AchievementPoints.ToString(CultureInfo.InvariantCulture),
