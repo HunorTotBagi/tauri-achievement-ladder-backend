@@ -46,6 +46,8 @@ public static class RareScanCatalog
         string
     >
     {
+        {11162, "Keystone Master"},
+        {11224, "Realm First! Keystone Master"},
         // Rank 1 Gladiators
         { 8666, "Prideful Gladiator" },
         { 8643, "Grievous Gladiator" },
