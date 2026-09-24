@@ -97,6 +97,8 @@ public static class RareScanCatalog
         { 5344, "Hero of the Alliance: Vicious" },
         { 416, "Scarab Lord" },
         { 425, "Atiesh" },
+        { 5116, "Heroic: Nefarian" },
+        { 5108, "Heroic: Maloriak" },
         { 4576, "Realm First! Fall of the Lich King" },
         { 4078, "Realm First! Grand Crusader" },
         { 3117, "Realm First! Death's Demise" },
@@ -206,6 +208,30 @@ public static class RareScanCatalog
         RareAchievementNames
             .Select(entry => new RareAchievementDefinition(entry.Key, entry.Value))
             .ToList();
+
+    private static readonly DateOnly MayThird2015 = new(2015, 5, 3);
+
+    /// <summary>
+    /// Additional conditions for rare achievements that are only meaningful as a matched set.
+    /// Both Cataclysm heroic achievements must exist and have been obtained on 3 May 2015.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<int, IReadOnlyDictionary<int, DateOnly>>
+        RareAchievementDateRequirements = new Dictionary<
+            int,
+            IReadOnlyDictionary<int, DateOnly>
+        >
+        {
+            [5116] = new Dictionary<int, DateOnly>
+            {
+                [5116] = MayThird2015,
+                [5108] = MayThird2015,
+            },
+            [5108] = new Dictionary<int, DateOnly>
+            {
+                [5116] = MayThird2015,
+                [5108] = MayThird2015,
+            },
+        };
 
     /// <summary>
     /// Achievement ids whose obtained dates are consumed downstream: the rare achievements

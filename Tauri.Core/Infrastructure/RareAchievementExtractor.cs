@@ -31,20 +31,49 @@ public static class RareAchievementExtractor
 
     public static IReadOnlyList<CharacterRareAchievement> ExtractRareAchievements(
         IReadOnlyDictionary<int, DateTimeOffset?> achievedAchievements,
-        IReadOnlyList<RareAchievementDefinition> definitions
+        IReadOnlyList<RareAchievementDefinition> definitions,
+        IReadOnlyDictionary<int, IReadOnlyDictionary<int, DateOnly>>? dateRequirements = null
     )
     {
         var rareAchievements = new List<CharacterRareAchievement>();
 
         foreach (var definition in definitions)
         {
-            if (achievedAchievements.TryGetValue(definition.Id, out var obtainedAt))
+            if (
+                achievedAchievements.TryGetValue(definition.Id, out var obtainedAt)
+                && MeetsDateRequirements(
+                    definition.Id,
+                    achievedAchievements,
+                    dateRequirements
+                )
+            )
             {
                 rareAchievements.Add(new CharacterRareAchievement(definition.Id, obtainedAt));
             }
         }
 
         return rareAchievements;
+    }
+
+    private static bool MeetsDateRequirements(
+        int achievementId,
+        IReadOnlyDictionary<int, DateTimeOffset?> achievedAchievements,
+        IReadOnlyDictionary<int, IReadOnlyDictionary<int, DateOnly>>? dateRequirements
+    )
+    {
+        if (
+            dateRequirements is null
+            || !dateRequirements.TryGetValue(achievementId, out var requirements)
+        )
+        {
+            return true;
+        }
+
+        return requirements.All(requirement =>
+            achievedAchievements.TryGetValue(requirement.Key, out var obtainedAt)
+            && obtainedAt.HasValue
+            && DateOnly.FromDateTime(obtainedAt.Value.Date) == requirement.Value
+        );
     }
 
     /// <summary>

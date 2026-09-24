@@ -406,7 +406,8 @@ public sealed class MissingPlayerFinderService(
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
             achievements,
-            RareScanCatalog.RareAchievementDefinitions
+            RareScanCatalog.RareAchievementDefinitions,
+            RareScanCatalog.RareAchievementDateRequirements
         );
 
         if (target.RequiresPlayerBackfill)

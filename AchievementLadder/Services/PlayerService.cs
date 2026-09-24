@@ -232,7 +232,8 @@ public class PlayerService(
         );
         var rareAchievements = RareAchievementExtractor.ExtractRareAchievements(
             achievements,
-            RareScanCatalog.RareAchievementDefinitions
+            RareScanCatalog.RareAchievementDefinitions,
+            RareScanCatalog.RareAchievementDateRequirements
         );
 
         var appearanceResponseResult = await apiClient.FetchResponseElementAsync(

@@ -94,5 +94,77 @@ public sealed class RareAchievementExtractorTests
         );
     }
 
+    [Fact]
+    public void ExtractRareAchievements_MatchedDateRequirements_IncludesBothAchievements()
+    {
+        var requiredDate = new DateTimeOffset(2015, 5, 3, 0, 0, 0, TimeSpan.Zero);
+        var achieved = new Dictionary<int, DateTimeOffset?>
+        {
+            [5116] = requiredDate,
+            [5108] = requiredDate,
+        };
+        RareAchievementDefinition[] definitions =
+        [
+            new(5116, "Heroic: Nefarian"),
+            new(5108, "Heroic: Maloriak"),
+        ];
+        var requirements = CreateMatchedDateRequirements(new DateOnly(2015, 5, 3));
+
+        var result = RareAchievementExtractor.ExtractRareAchievements(
+            achieved,
+            definitions,
+            requirements
+        );
+
+        Assert.Equal([5116, 5108], result.Select(achievement => achievement.Id));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExtractRareAchievements_UnmetMatchedDateRequirements_ExcludesBothAchievements(
+        bool includesBoth
+    )
+    {
+        var achieved = new Dictionary<int, DateTimeOffset?>
+        {
+            [5116] = new DateTimeOffset(2015, 5, 3, 0, 0, 0, TimeSpan.Zero),
+        };
+        if (includesBoth)
+        {
+            achieved[5108] = new DateTimeOffset(2015, 5, 4, 0, 0, 0, TimeSpan.FromHours(2));
+        }
+
+        RareAchievementDefinition[] definitions =
+        [
+            new(5116, "Heroic: Nefarian"),
+            new(5108, "Heroic: Maloriak"),
+        ];
+
+        var result = RareAchievementExtractor.ExtractRareAchievements(
+            achieved,
+            definitions,
+            CreateMatchedDateRequirements(new DateOnly(2015, 5, 3))
+        );
+
+        Assert.Empty(result);
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyDictionary<int, DateOnly>>
+        CreateMatchedDateRequirements(DateOnly requiredDate)
+    {
+        IReadOnlyDictionary<int, DateOnly> pair = new Dictionary<int, DateOnly>
+        {
+            [5116] = requiredDate,
+            [5108] = requiredDate,
+        };
+
+        return new Dictionary<int, IReadOnlyDictionary<int, DateOnly>>
+        {
+            [5116] = pair,
+            [5108] = pair,
+        };
+    }
+
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();
 }
