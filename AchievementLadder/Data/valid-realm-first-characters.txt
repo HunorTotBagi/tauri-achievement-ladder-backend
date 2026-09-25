@@ -24,7 +24,6 @@ Ebonshriek-Evermoon
 Ekan-Evermoon
 Eluuwa-Evermoon
 Es-Evermoon
-Exà-Evermoon
 Exâ-Evermoon
 Fitcha-Evermoon
 Frog-Evermoon
@@ -141,6 +140,7 @@ Coress-Tauri
 Cottäge-Tauri
 Critx-Tauri
 Crshdd-Tauri
+Csikimonk-Tauri
 Csiksz-Tauri
 Csuros-Tauri
 Csußy-Tauri
@@ -176,6 +176,7 @@ Enladora-Tauri
 Erothus-Tauri
 Estranged-Tauri
 Exoden-Tauri
+Exà-Tauri
 Ezpk-Tauri
 Fanatc-Tauri
 Fawee-Tauri
