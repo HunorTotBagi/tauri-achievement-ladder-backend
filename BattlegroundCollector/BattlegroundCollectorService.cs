@@ -31,6 +31,7 @@ public sealed class BattlegroundCollectorService(
         "The Tiger's Peak",
         "Tol'Viron Arena",
         "Dalaran Sewers",
+        "Ashamane's Fall",
     };
 
     private static readonly (string Token, string FileName)[] GuildFileByRealm =
@@ -65,11 +66,17 @@ public sealed class BattlegroundCollectorService(
     {
         var outputPath = ResolveOutputPath(options.OutputPath);
         var statePath = ResolveStatePath(options.StatePath);
+        var ratedOutputPath = Path.Combine(_frontendSrcDirectory, "rated-battlegrounds.json");
         var existingRecords = await LoadExistingRecordsAsync(outputPath, cancellationToken);
+        var existingRatedMatches = await LoadExistingRatedMatchesAsync(
+            ratedOutputPath,
+            cancellationToken
+        );
         var existingState = await LoadStateAsync(statePath, cancellationToken);
         var startMatchId = ResolveStartMatchId(options, existingState, statePath);
         var currentMatchId = startMatchId;
         var newRecords = new List<BattlegroundRecord>();
+        var newRatedMatches = new List<JsonElement>();
         var newMembers = new List<MatchMember>();
         var scannedMembers = new List<MatchMember>();
         var knownMatchIds = existingRecords
@@ -79,6 +86,11 @@ public sealed class BattlegroundCollectorService(
         var knownRecordKeys = existingRecords
             .Select(GetRecordKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var knownRatedMatchIds = existingRatedMatches
+            .Where(match => match.ValueKind == JsonValueKind.Object)
+            .Select(match => ReadInt(match, "matchid"))
+            .Where(matchId => matchId > 0)
+            .ToHashSet();
 
         Console.WriteLine(
             $"Scanning battlegrounds on {options.DisplayRealm} from match id {startMatchId}..."
@@ -116,6 +128,23 @@ public sealed class BattlegroundCollectorService(
                 continue;
             }
 
+            if (fetchResult.IsRanked && fetchResult.Response is { } ratedResponse)
+            {
+                if (knownRatedMatchIds.Add(fetchResult.Record.Id))
+                {
+                    newRatedMatches.Add(ratedResponse.Clone());
+                    Console.WriteLine(
+                        $"  ★ {fetchResult.Record.Id}: queued complete rated battleground response."
+                    );
+                }
+                else
+                {
+                    Console.WriteLine(
+                        $"  = {fetchResult.Record.Id}: rated battleground already exists in rated-battlegrounds.json."
+                    );
+                }
+            }
+
             var recordKey = GetRecordKey(fetchResult.Record);
             var isKnownId = fetchResult.Record.Id > 0 && !knownMatchIds.Add(fetchResult.Record.Id);
             var isKnownRecord = !knownRecordKeys.Add(recordKey);
@@ -137,6 +166,11 @@ public sealed class BattlegroundCollectorService(
 
         var mergedRecords = MergeRecords(newRecords, existingRecords);
         await WriteJsonAsync(outputPath, mergedRecords, cancellationToken);
+        var mergedRatedMatches = existingRatedMatches.Concat(newRatedMatches).ToList();
+        if (newRatedMatches.Count > 0 || !File.Exists(ratedOutputPath))
+        {
+            await WriteJsonAsync(ratedOutputPath, mergedRatedMatches, cancellationToken);
+        }
         var newGuildCount = CollectUnknownGuilds(newMembers);
         CollectGuildlessCharacters(scannedMembers);
 
@@ -157,8 +191,11 @@ public sealed class BattlegroundCollectorService(
             currentMatchId,
             newRecords.Count,
             mergedRecords.Count,
+            newRatedMatches.Count,
+            mergedRatedMatches.Count,
             newGuildCount,
             outputPath,
+            ratedOutputPath,
             statePath,
             stopReason
         );
@@ -226,7 +263,12 @@ public sealed class BattlegroundCollectorService(
         );
         var members = ReadMembers(responseElement);
 
-        return BattlegroundFetchResult.Found(record, members);
+        return BattlegroundFetchResult.Found(
+            record,
+            members,
+            responseElement,
+            ReadBoolean(responseElement, "isranked")
+        );
     }
 
     private int ResolveStartMatchId(
@@ -364,6 +406,39 @@ public sealed class BattlegroundCollectorService(
             JsonOptions,
             cancellationToken
         );
+    }
+
+    private static async Task<List<JsonElement>> LoadExistingRatedMatchesAsync(
+        string outputPath,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!File.Exists(outputPath))
+        {
+            return [];
+        }
+
+        await using var stream = new FileStream(
+            outputPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            64 * 1024,
+            useAsync: true
+        );
+        using var document = await JsonDocument.ParseAsync(
+            stream,
+            cancellationToken: cancellationToken
+        );
+
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException(
+                $"Rated battleground output must contain a JSON array: {outputPath}"
+            );
+        }
+
+        return document.RootElement.EnumerateArray().Select(match => match.Clone()).ToList();
     }
 
     private static List<BattlegroundRecord> MergeRecords(
@@ -610,6 +685,22 @@ public sealed class BattlegroundCollectorService(
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
 
+    private static bool ReadBoolean(JsonElement parent, string propertyName)
+    {
+        if (!parent.TryGetProperty(propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.String
+                when bool.TryParse(property.GetString(), out var value) => value,
+            _ => false,
+        };
+    }
+
     private static List<MatchMember> ReadMembers(JsonElement responseElement)
     {
         if (
@@ -743,7 +834,8 @@ public sealed class BattlegroundCollectorService(
         $"{record.Name}|{record.StartTime}|{record.Duration}";
 
     private static bool IsExcludedBattlegroundName(string name) =>
-        ExcludedBattlegroundNames.Contains(name.Trim());
+        ExcludedBattlegroundNames.Contains(name.Trim())
+        || name.Contains("Arena", StringComparison.OrdinalIgnoreCase);
 
     private static string ReadDuration(JsonElement element)
     {
@@ -815,8 +907,11 @@ public sealed record BattlegroundCollectionResult(
     int NextMatchId,
     int NewBattlegroundCount,
     int TotalBattlegroundCount,
+    int NewRatedBattlegroundCount,
+    int TotalRatedBattlegroundCount,
     int NewGuildCount,
     string OutputPath,
+    string RatedOutputPath,
     string StatePath,
     string StopReason
 );
@@ -824,15 +919,19 @@ public sealed record BattlegroundCollectionResult(
 internal sealed record BattlegroundFetchResult(
     BattlegroundRecord? Record,
     IReadOnlyList<MatchMember> Members,
+    JsonElement? Response,
+    bool IsRanked,
     string? StopReason
 )
 {
     public static BattlegroundFetchResult Found(
         BattlegroundRecord record,
-        IReadOnlyList<MatchMember> members
-    ) => new(record, members, null);
+        IReadOnlyList<MatchMember> members,
+        JsonElement response,
+        bool isRanked
+    ) => new(record, members, response, isRanked, null);
 
-    public static BattlegroundFetchResult Stop(string reason) => new(null, [], reason);
+    public static BattlegroundFetchResult Stop(string reason) => new(null, [], null, false, reason);
 }
 
 internal sealed record MatchMember(string CharName, string GuildName, string RealmName);

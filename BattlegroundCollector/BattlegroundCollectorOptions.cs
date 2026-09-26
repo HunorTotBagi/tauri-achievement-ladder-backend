@@ -23,7 +23,7 @@ public sealed record BattlegroundCollectorOptions(
 
     public static string UsageText =>
         """
-            BattlegroundCollector - collects battleground match metadata into JSON.
+            BattlegroundCollector - collects battleground match metadata and full rated matches into JSON.
 
             Usage:
               dotnet run --project BattlegroundCollector -- <startMatchId> [realm]
@@ -42,6 +42,7 @@ public sealed record BattlegroundCollectorOptions(
               --output <path>
                              Optional JSON output path. Relative paths are resolved from BattlegroundCollector.
               --state <path> Optional resume-state JSON path. Relative paths are resolved from BattlegroundCollector.
+                             Rated matches are automatically merged into the frontend src/rated-battlegrounds.json.
               --help         Show this help text.
             """;
 

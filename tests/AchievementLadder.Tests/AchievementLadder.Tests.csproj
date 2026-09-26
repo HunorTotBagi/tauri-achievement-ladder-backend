@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\AchievementLadder\AchievementLadder.csproj" />
+    <ProjectReference Include="..\..\BattlegroundCollector\BattlegroundCollector.csproj" />
     <ProjectReference Include="..\..\Tauri.Core\Tauri.Core.csproj" />
   </ItemGroup>
 </Project>

@@ -45,7 +45,7 @@ workflow and its output contract.
 | `GuildCharacterExporter` | Expands configured guilds into character sources. |
 | `MissingPlayerFinder` | Backfills characters absent from an existing export. |
 | `RealmFirstAchievements` | Rebuilds and validates realm-first character sources. |
-| `BattlegroundCollector` | Collects sequential PvP matches with resumable state. |
+| `BattlegroundCollector` | Collects sequential PvP matches with resumable state and appends complete ranked responses to the frontend archive. |
 | `Guildkukker` | Generates ranked guild reports with reputation, artifact, and item-level data. |
 | `EndlessGuildExporter` | Produces a formatted Excel guild roster. |
 
